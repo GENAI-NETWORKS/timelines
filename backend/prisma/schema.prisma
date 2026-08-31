@@ -1,0 +1,179 @@
+// This is your Prisma schema file for Timelines Costume Designers
+// MySQL on Hostinger
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Users (Admin / Staff) ────────────────────────────────────────────────
+model User {
+  id          String     @id @default(cuid())
+  name        String
+  email       String     @unique
+  password    String
+  role        String     @default("staff")   // "admin" | "staff"
+  employeeRef String?                         // employeeId ref (string)
+  plainPassword String?  @default("timelines123")
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  auditLogs   AuditLog[]
+}
+
+// ─── Customers ────────────────────────────────────────────────────────────
+model Customer {
+  customerId   String        @id              // TC-YYYY-XXXX
+  name         String
+  phone        String
+  address      String        @default("")     @db.Text
+  email        String        @default("")
+  notes        String        @default("")     @db.Text
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  designOrders DesignOrder[]
+  payments     Payment[]
+}
+
+// ─── Employees ────────────────────────────────────────────────────────────
+model Employee {
+  employeeId   String        @id              // EMP-XXXX
+  name         String
+  role         String                         // Tailor | Designer | Helper | Manager | Cutter | Other
+  phone        String        @default("")
+  email        String        @default("")
+  address      String        @default("")     @db.Text
+  joiningDate  DateTime      @default(now())
+  status       String        @default("active") // active | inactive
+  notes        String        @default("")     @db.Text
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  designOrders DesignOrder[]
+  salaries     Salary[]
+}
+
+// ─── Garment Templates ────────────────────────────────────────────────────
+model GarmentTemplate {
+  id          String   @id @default(cuid())
+  garmentType String   @unique
+  fields      Json                            // Array of {name, label, unit, required, order}
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ─── Design Orders ────────────────────────────────────────────────────────
+model DesignOrder {
+  orderId             String    @id            // ORD-XXXX
+  customerId          String
+  customer            Customer  @relation(fields: [customerId], references: [customerId])
+  garmentType         String
+  measurements        Json      @default("{}")  // {fieldName: value}
+  fabricNotes         String    @default("")    @db.Text
+  specialInstructions String    @default("")    @db.Text
+  assignedTailorId    String?
+  tailor              Employee? @relation(fields: [assignedTailorId], references: [employeeId])
+  status              String    @default("Pending") // Pending | In Progress | Ready | Delivered
+  designSketchUrl     String?
+  designSketchJSON    String?   @db.LongText
+  orderDate           DateTime  @default(now())
+  deliveryDate        DateTime?
+  createdById         String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  payments            Payment[]
+}
+
+// ─── Salary ───────────────────────────────────────────────────────────────
+model Salary {
+  id             String   @id @default(cuid())
+  employeeId     String
+  employee       Employee @relation(fields: [employeeId], references: [employeeId])
+  month          Int                           // 1–12
+  year           Int
+  baseSalary     Float    @default(0)
+  advances       Float    @default(0)
+  deductions     Float    @default(0)
+  bonus          Float    @default(0)
+  netPaid        Float    @default(0)
+  paidStatus     String   @default("unpaid")  // unpaid | partial | paid
+  paymentHistory Json     @default("[]")      // [{amount, note, paidAt}]
+  notes          String   @default("")        @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([employeeId, month, year])
+}
+
+// ─── Audit Log ────────────────────────────────────────────────────────────
+model AuditLog {
+  id            String   @id @default(cuid())
+  recordType    String                        // Customer | Employee | DesignOrder | Salary | GarmentTemplate
+  recordId      String
+  action        String                        // create | update | delete
+  changedById   String
+  changedBy     User     @relation(fields: [changedById], references: [id])
+  changedByName String?
+  changes       Json     @default("[]")       // [{field, oldValue, newValue}]
+  snapshot      Json?
+  timestamp     DateTime @default(now())
+
+  @@index([recordType, recordId])
+  @@index([timestamp])
+}
+
+// ─── Inventory & Purchases ────────────────────────────────────────────────
+model InventoryItem {
+  id           String     @id @default(cuid())
+  name         String
+  category     String     @default("Raw Material") // e.g., Thread, Fabric, Buttons
+  quantity     Float      @default(0)
+  unit         String     @default("pcs")          // e.g., meters, spools, pcs
+  minStockLevel Float     @default(0)
+  purchases    Purchase[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model Purchase {
+  id           String        @id @default(cuid())
+  itemId       String
+  item         InventoryItem @relation(fields: [itemId], references: [id])
+  quantity     Float
+  totalCost    Float
+  supplier     String        @default("")
+  purchaseDate DateTime      @default(now())
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+// ─── Services ─────────────────────────────────────────────────────────────
+model Service {
+  id          String   @id @default(cuid())
+  name        String
+  description String   @default("")
+  basePrice   Float
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ─── Customer Payments ────────────────────────────────────────────────────
+model Payment {
+  id            String       @id @default(cuid())
+  customerId    String
+  customer      Customer     @relation(fields: [customerId], references: [customerId])
+  orderId       String?
+  order         DesignOrder? @relation(fields: [orderId], references: [orderId])
+  amount        Float
+  paymentDate   DateTime     @default(now())
+  paymentMethod String       @default("Cash") // Cash, UPI, Card, Transfer
+  status        String       @default("Completed") // Pending, Completed
+  notes         String       @default("")
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
