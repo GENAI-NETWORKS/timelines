@@ -101,6 +101,11 @@ export default function Login() {
 
         </div>
       </div>
+
+      {/* Footer */}
+      <div className="absolute bottom-4 left-0 right-0 text-center text-xs text-gray-500">
+        powered by <a href="https://genaitechnology.in/" target="_blank" rel="noopener noreferrer" className="text-brand-400 hover:text-brand-300 transition-colors">Gen-AI Tech | IT Solutions Salem</a>
+      </div>
     </div>
   );
 }
