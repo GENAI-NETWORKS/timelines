@@ -9,19 +9,17 @@ import { useAuth } from '../../context/AuthContext';
 import { logout } from '../../api/auth';
 
 const navItems = [
-  { to: '/',          label: 'Dashboard',     icon: LayoutDashboard },
-  { to: '/customers', label: 'Customers',     icon: Users, adminOnly: true },
-  { to: '/employees', label: 'Employees',     icon: UserSquare2, adminOnly: true },
-  { to: '/orders',    label: 'Design Orders', icon: ShoppingBag },
-  { to: '/canvas',    label: 'Design Canvas', icon: Palette },
-  { to: '/salary',    label: 'Salary',        icon: IndianRupee, adminOnly: true },
-  { to: '/print',     label: 'Print',         icon: Printer },
-  { to: '/inventory', label: 'Stocks (Inv)',  icon: Package, adminOnly: true },
-  { to: '/purchases', label: 'Purchases',     icon: ShoppingCart, adminOnly: true },
-  { to: '/services',  label: 'Services',      icon: Scissors, adminOnly: true },
-  { to: '/payments',  label: 'Payments',      icon: CreditCard, adminOnly: true },
-  { to: '/audit',     label: 'Audit Log',     icon: ClipboardList, adminOnly: true },
-  { to: '/garments',  label: 'Garment Types', icon: Settings, adminOnly: true },
+  { to: '/',              label: 'Dashboard',     icon: LayoutDashboard },
+  { to: '/customers',     label: 'Customers',      icon: Users,         adminOnly: true },
+  { to: '/customer/list', label: 'All Orders',    icon: ShoppingBag,   adminOnly: true },
+  { to: '/employees',     label: 'Employees',     icon: UserSquare2,   adminOnly: true },
+  { to: '/salary',        label: 'Salary',        icon: IndianRupee,   adminOnly: true },
+  { to: '/inventory',     label: 'Stocks (Inv)',  icon: Package,       adminOnly: true },
+  { to: '/purchases',     label: 'Purchases',     icon: ShoppingCart,  adminOnly: true },
+  { to: '/services',      label: 'Services',      icon: Scissors,      adminOnly: true },
+  { to: '/payments',      label: 'Payments',      icon: CreditCard,    adminOnly: true },
+  { to: '/audit',         label: 'Audit Log',     icon: ClipboardList, adminOnly: true },
+  { to: '/garments',      label: 'Garment Types', icon: Settings,      adminOnly: true },
 ];
 
 export default function Sidebar({ open, onClose }) {

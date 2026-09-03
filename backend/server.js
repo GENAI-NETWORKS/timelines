@@ -28,6 +28,7 @@ app.use('/api/customers', require('./src/routes/customers'));
 app.use('/api/employees', require('./src/routes/employees'));
 app.use('/api/garment-templates', require('./src/routes/garmentTemplates'));
 app.use('/api/design-orders', require('./src/routes/designOrders'));
+app.use('/api/tailoring-orders', require('./src/routes/tailoringOrders'));
 app.use('/api/salary', require('./src/routes/salary'));
 app.use('/api/audit-logs', require('./src/routes/auditLogs'));
 app.use('/api/inventory', require('./src/routes/inventory'));

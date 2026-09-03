@@ -9,6 +9,9 @@ import Dashboard from './pages/Dashboard/Dashboard';
 import Customers from './pages/Customers/Customers';
 import Employees from './pages/Employees/Employees';
 import DesignOrders from './pages/DesignOrders/DesignOrders';
+import OrderEntry from './pages/OrderEntry/OrderEntry';
+import CustomerOrderPage from './pages/Customer/CustomerOrderPage';
+import CustomerOrderList from './pages/Customer/CustomerOrderList';
 import DesignCanvas from './pages/DesignCanvas/DesignCanvas';
 import Salary from './pages/Salary/Salary';
 import PrintView from './pages/Print/PrintView';
@@ -51,7 +54,16 @@ function AppRoutes() {
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/customers" element={<Customers />} />
                 <Route path="/employees" element={<Employees />} />
+                <Route path="/customer"        element={<ProtectedRoute adminOnly><CustomerOrderPage /></ProtectedRoute>} />
+                <Route path="/customer/list"   element={<ProtectedRoute adminOnly><CustomerOrderList /></ProtectedRoute>} />
+                <Route path="/customer/:id"    element={<ProtectedRoute adminOnly><CustomerOrderPage /></ProtectedRoute>} />
                 <Route path="/orders" element={<DesignOrders />} />
+                <Route path="/orders/new" element={
+                  <ProtectedRoute adminOnly><OrderEntry /></ProtectedRoute>
+                } />
+                <Route path="/orders/:id/edit" element={
+                  <ProtectedRoute adminOnly><OrderEntry /></ProtectedRoute>
+                } />
                 <Route path="/canvas" element={<DesignCanvas />} />
                 <Route path="/print" element={<PrintView />} />
                 <Route path="/salary" element={

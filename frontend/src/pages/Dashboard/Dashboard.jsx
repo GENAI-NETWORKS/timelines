@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Users, UserSquare2, ShoppingBag, Clock, TrendingUp, CheckCircle, AlertCircle, Loader, Package, ShoppingCart, Scissors, CreditCard } from 'lucide-react';
 import { getCustomers } from '../../api/customers';
 import { getEmployees } from '../../api/employees';
-import { getDesignOrders } from '../../api/designOrders';
+import { getTailoringOrders } from '../../api/tailoringOrders';
 import { getCredentials } from '../../api/auth';
 import { getInventory } from '../../api/inventory';
 import { getPurchases } from '../../api/purchases';
@@ -13,8 +13,8 @@ import { useAuth } from '../../context/AuthContext';
 import { format } from 'date-fns';
 
 const statusColors = {
-  'Pending':     'badge-pending',
-  'In Progress': 'badge-progress',
+  'Draft':     'badge-pending',
+  'Submitted': 'badge-progress',
   'Ready':       'badge-ready',
   'Delivered':   'badge-delivered',
 };
@@ -49,7 +49,7 @@ export default function Dashboard() {
           const [custRes, empRes, ordersRes, credsRes, invRes, purchRes, servRes, payRes] = await Promise.all([
             getCustomers({ limit: 1 }),
             getEmployees({ limit: 1 }),
-            getDesignOrders({ limit: 5 }),
+            getTailoringOrders({ limit: 5 }),
             getCredentials(),
             getInventory(),
             getPurchases(),
@@ -57,9 +57,9 @@ export default function Dashboard() {
             getPayments()
           ]);
           const [pendingRes, progressRes, readyRes] = await Promise.all([
-            getDesignOrders({ status: 'Pending', limit: 1 }),
-            getDesignOrders({ status: 'In Progress', limit: 1 }),
-            getDesignOrders({ status: 'Ready', limit: 1 }),
+            getTailoringOrders({ status: 'Draft', limit: 1 }),
+            getTailoringOrders({ status: 'Submitted', limit: 1 }),
+            getTailoringOrders({ status: 'Ready', limit: 1 }),
           ]);
           setStats({
             customers: custRes.data.total,
@@ -77,7 +77,7 @@ export default function Dashboard() {
           setCredentials(credsRes.data);
         } else {
           // Staff view: Just fetch assigned orders
-          const ordersRes = await getDesignOrders({ limit: 20 });
+          const ordersRes = await getTailoringOrders({ limit: 20 });
           setRecentOrders(ordersRes.data.orders);
         }
       } catch (err) {
@@ -108,10 +108,10 @@ export default function Dashboard() {
             <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
               <StatCard icon={Users} label="Customers" value={stats?.customers} color="bg-gradient-brand" to="/customers" />
               <StatCard icon={UserSquare2} label="Employees" value={stats?.employees} color="bg-blue-600" to="/employees" />
-              <StatCard icon={ShoppingBag} label="Total Orders" value={stats?.totalOrders} color="bg-purple-600" to="/orders" />
-              <StatCard icon={AlertCircle} label="Pending" value={stats?.pending} color="bg-amber-600" to="/orders?status=Pending" />
-              <StatCard icon={TrendingUp} label="In Progress" value={stats?.inProgress} color="bg-blue-500" to="/orders?status=In%20Progress" />
-              <StatCard icon={CheckCircle} label="Ready" value={stats?.ready} color="bg-green-600" to="/orders?status=Ready" />
+              <StatCard icon={ShoppingBag} label="Total Orders" value={stats?.totalOrders} color="bg-purple-600" to="/customer/list" />
+              <StatCard icon={AlertCircle} label="Draft" value={stats?.pending} color="bg-amber-600" to="/customer/list?status=Draft" />
+              <StatCard icon={TrendingUp} label="Submitted" value={stats?.inProgress} color="bg-blue-500" to="/customer/list?status=Submitted" />
+              <StatCard icon={CheckCircle} label="Ready" value={stats?.ready} color="bg-green-600" to="/customer/list?status=Ready" />
               <StatCard icon={Package} label="Low Stock Items" value={stats?.lowStock} color="bg-rose-600" to="/inventory" />
               <StatCard icon={ShoppingCart} label="Total Purchases" value={stats?.purchases !== undefined ? `₹${stats.purchases}` : '-'} color="bg-orange-600" to="/purchases" />
               <StatCard icon={Scissors} label="Services" value={stats?.services} color="bg-indigo-600" to="/services" />
@@ -121,38 +121,40 @@ export default function Dashboard() {
 
           <div className="card mt-6">
             <div className="px-5 py-4 border-b border-surface-border flex items-center justify-between">
-              <h3 className="font-display font-semibold text-white">Recent Design Orders</h3>
-              <Link to="/orders" className="text-sm text-brand-400 hover:text-brand-300 transition-colors">View all →</Link>
+              <h3 className="font-display font-semibold text-white">Recent Customer Orders</h3>
+              <Link to="/customer/list" className="text-sm text-brand-400 hover:text-brand-300 transition-colors">View all →</Link>
             </div>
             <div className="table-wrapper rounded-t-none border-0">
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Order ID</th>
                     <th>Customer</th>
-                    <th>Garment</th>
+                    <th>Order Date</th>
+                    <th>Delivery Date</th>
                     <th>Status</th>
-                    <th>Delivery</th>
-                    <th>Tailor</th>
+                    <th>Items</th>
                   </tr>
                 </thead>
                 <tbody>
                   {recentOrders.length === 0 && (
-                    <tr><td colSpan={6} className="text-center py-8 text-gray-500">No orders yet.</td></tr>
+                    <tr><td colSpan={5} className="text-center py-8 text-gray-500">No orders yet.</td></tr>
                   )}
                   {recentOrders.map((order) => (
-                    <tr key={order.orderId}>
-                      <td className="font-mono text-brand-400 text-xs">{order.orderId}</td>
+                    <tr key={order.id}>
                       <td>
-                        <div className="font-medium text-white">{order.customer?.name || order.customerId?.name}</div>
-                        <div className="text-xs text-gray-500">{order.customerId?.customerId || order.customerId}</div>
+                        <div className="font-medium text-white">{order.customer?.name}</div>
+                        {order.customer?.phone && <div className="text-xs text-gray-500 mt-0.5">{order.customer.phone}</div>}
                       </td>
-                      <td>{order.garmentType}</td>
+                      <td className="text-gray-400 text-xs">
+                        {order.orderDate ? format(new Date(order.orderDate), 'dd MMM yy') : '-'}
+                      </td>
+                      <td className="text-gray-400 text-xs">
+                        {order.deliveryDate ? format(new Date(order.deliveryDate), 'dd MMM yy') : '-'}
+                      </td>
                       <td><span className={statusColors[order.status] || 'badge'}>{order.status}</span></td>
                       <td className="text-gray-400 text-xs">
-                        {order.deliveryDate ? format(new Date(order.deliveryDate), 'dd MMM yyyy') : '-'}
+                        {order._count?.items ?? order.items?.length ?? '-'}
                       </td>
-                      <td className="text-gray-400 text-sm">{order.assignedTailorId?.name || order.tailor?.name || '-'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -198,40 +200,27 @@ export default function Dashboard() {
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {recentOrders.map(order => (
-                  <div key={order.orderId} className="card p-5 border-l-4 border-brand-500 hover:border-brand-400 transition-colors">
+                  <div key={order.id} className="card p-5 border-l-4 border-brand-500 hover:border-brand-400 transition-colors">
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <span className="text-xs text-gray-500 uppercase tracking-wider">{order.orderId}</span>
-                        <h4 className="font-bold text-white text-lg mt-0.5">{order.garmentType}</h4>
+                        <span className="text-xs text-gray-500 uppercase tracking-wider">{order.id}</span>
+                        <h4 className="font-bold text-white text-lg mt-0.5">{order.customer?.name}</h4>
                       </div>
                       <span className={statusColors[order.status] || 'badge'}>{order.status}</span>
                     </div>
                     
-                    {Object.keys(order.measurements || {}).length > 0 && (
-                       <div className="mb-4">
-                         <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Measurements</p>
-                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                           {Object.entries(order.measurements || {}).map(([k, v]) => (
-                             <div key={k} className="bg-surface-elevated rounded px-2 py-1 text-xs">
-                               <span className="text-gray-500 capitalize">{k.replace(/([A-Z])/g, ' $1').trim()}: </span>
-                               <span className="text-white font-medium">{v}"</span>
-                             </div>
-                           ))}
-                         </div>
-                       </div>
-                    )}
+                    <div className="mb-4">
+                      <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Order Items</p>
+                      <div className="text-sm text-gray-300">
+                        {order._count?.items ?? order.items?.length ?? 0} item(s)
+                      </div>
+                    </div>
 
                     <div className="space-y-3 mb-4">
-                      {order.fabricNotes && (
+                      {order.notes && (
                         <div>
-                          <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Fabric Notes</p>
-                          <p className="text-sm text-gray-200">{order.fabricNotes}</p>
-                        </div>
-                      )}
-                      {order.specialInstructions && (
-                        <div className="bg-amber-900/10 p-2 rounded border border-amber-900/30">
-                          <p className="text-xs text-amber-500/70 uppercase tracking-wider mb-1">Instructions</p>
-                          <p className="text-sm text-amber-200">{order.specialInstructions}</p>
+                          <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Notes</p>
+                          <p className="text-sm text-gray-200">{order.notes}</p>
                         </div>
                       )}
                     </div>
@@ -240,8 +229,8 @@ export default function Dashboard() {
                       <div className="text-xs text-gray-500">
                         Delivery: <span className="text-gray-300 font-medium">{order.deliveryDate ? format(new Date(order.deliveryDate), 'dd MMM yyyy') : '-'}</span>
                       </div>
-                      <Link to={`/canvas?orderId=${order.orderId}`} className="btn-secondary py-1.5 px-3 text-xs">
-                        Open Design Canvas
+                      <Link to={`/customer/${order.id}`} className="btn-secondary py-1.5 px-3 text-xs">
+                        View Order
                       </Link>
                     </div>
                   </div>

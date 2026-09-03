@@ -17,6 +17,29 @@ async function generateCustomerId() {
   return `${prefix}${String(num).padStart(4, '0')}`;
 }
 
+// GET /api/customers/search?q=  — typeahead (must be before /:id)
+router.get('/search', protect, async (req, res, next) => {
+  try {
+    const { q = '' } = req.query;
+    const where = q
+      ? {
+          OR: [
+            { name: { contains: q } },
+            { phone: { contains: q } },
+            { customerId: { contains: q } },
+          ],
+        }
+      : {};
+    const customers = await prisma.customer.findMany({
+      where,
+      select: { customerId: true, name: true, phone: true, address: true, email: true },
+      orderBy: { name: 'asc' },
+      take: 15,
+    });
+    res.json(customers);
+  } catch (err) { next(err); }
+});
+
 // GET /api/customers
 router.get('/', protect, async (req, res, next) => {
   try {

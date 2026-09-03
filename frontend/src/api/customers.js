@@ -2,7 +2,9 @@ import api from './axios';
 
 export const getCustomers = (params) => api.get('/customers', { params });
 export const getCustomer = (id) => api.get(`/customers/${id}`);
+export const searchCustomers = (q) => api.get('/customers/search', { params: { q } });
 export const createCustomer = (data) => api.post('/customers', data);
 export const updateCustomer = (id, data) => api.put(`/customers/${id}`, data);
 export const deleteCustomer = (id) => api.delete(`/customers/${id}`);
 export const getCustomerAudit = (id) => api.get(`/customers/${id}/audit`);
+

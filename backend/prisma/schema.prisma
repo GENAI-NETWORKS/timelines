@@ -1,6 +1,3 @@
-// This is your Prisma schema file for Timelines Costume Designers
-// MySQL on Hostinger
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,148 +7,180 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ─── Users (Admin / Staff) ────────────────────────────────────────────────
 model User {
-  id          String     @id @default(cuid())
-  name        String
-  email       String     @unique
-  password    String
-  role        String     @default("staff")   // "admin" | "staff"
-  employeeRef String?                         // employeeId ref (string)
-  plainPassword String?  @default("timelines123")
-  isActive    Boolean    @default(true)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  auditLogs   AuditLog[]
+  id            String     @id @default(cuid())
+  name          String
+  email         String     @unique
+  password      String
+  role          String     @default("staff")
+  employeeRef   String?
+  isActive      Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  plainPassword String?    @default("timelines123")
+  auditLogs     AuditLog[]
 }
 
-// ─── Customers ────────────────────────────────────────────────────────────
 model Customer {
-  customerId   String        @id              // TC-YYYY-XXXX
-  name         String
-  phone        String
-  address      String        @default("")     @db.Text
-  email        String        @default("")
-  notes        String        @default("")     @db.Text
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  designOrders DesignOrder[]
-  payments     Payment[]
+  customerId      String           @id
+  name            String
+  phone           String
+  address         String           @default("") @db.Text
+  email           String           @default("")
+  notes           String           @default("") @db.Text
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  designOrders    DesignOrder[]
+  payments        Payment[]
+  tailoringOrders TailoringOrder[]
 }
 
-// ─── Employees ────────────────────────────────────────────────────────────
 model Employee {
-  employeeId   String        @id              // EMP-XXXX
+  employeeId   String        @id
   name         String
-  role         String                         // Tailor | Designer | Helper | Manager | Cutter | Other
+  role         String
   phone        String        @default("")
   email        String        @default("")
-  address      String        @default("")     @db.Text
+  address      String        @default("") @db.Text
   joiningDate  DateTime      @default(now())
-  status       String        @default("active") // active | inactive
-  notes        String        @default("")     @db.Text
+  status       String        @default("active")
+  notes        String        @default("") @db.Text
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   designOrders DesignOrder[]
   salaries     Salary[]
 }
 
-// ─── Garment Templates ────────────────────────────────────────────────────
 model GarmentTemplate {
   id          String   @id @default(cuid())
   garmentType String   @unique
-  fields      Json                            // Array of {name, label, unit, required, order}
+  fields      String   @db.LongText
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
 
-// ─── Design Orders ────────────────────────────────────────────────────────
 model DesignOrder {
-  orderId             String    @id            // ORD-XXXX
+  orderId             String               @id
   customerId          String
-  customer            Customer  @relation(fields: [customerId], references: [customerId])
   garmentType         String
-  measurements        Json      @default("{}")  // {fieldName: value}
-  fabricNotes         String    @default("")    @db.Text
-  specialInstructions String    @default("")    @db.Text
+  measurements        String               @db.LongText
+  fabricNotes         String               @default("") @db.Text
+  specialInstructions String               @default("") @db.Text
   assignedTailorId    String?
-  tailor              Employee? @relation(fields: [assignedTailorId], references: [employeeId])
-  status              String    @default("Pending") // Pending | In Progress | Ready | Delivered
+  status              String               @default("Pending")
   designSketchUrl     String?
-  designSketchJSON    String?   @db.LongText
-  orderDate           DateTime  @default(now())
+  designSketchJSON    String?              @db.LongText
+  orderDate           DateTime             @default(now())
   deliveryDate        DateTime?
   createdById         String?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  bagRef              String?
+  baseDescription     String?              @db.Text
+  buttonsNeeded       String?
+  customerConfirmedAt DateTime?
+  isSample            Boolean              @default(false)
+  threadColors        String?
+  tailor              Employee?            @relation(fields: [assignedTailorId], references: [employeeId])
+  customer            Customer             @relation(fields: [customerId], references: [customerId])
+  designSections      OrderDesignSection[]
+  particulars         OrderParticular[]
   payments            Payment[]
+
+  @@index([assignedTailorId], map: "DesignOrder_assignedTailorId_fkey")
+  @@index([customerId], map: "DesignOrder_customerId_fkey")
 }
 
-// ─── Salary ───────────────────────────────────────────────────────────────
+model OrderParticular {
+  id        String      @id @default(cuid())
+  orderId   String
+  itemName  String      @default("")
+  qty       String      @default("")
+  notes     String      @default("") @db.Text
+  sortOrder Int         @default(0)
+  createdAt DateTime    @default(now())
+  order     DesignOrder @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
+
+  @@index([orderId], map: "OrderParticular_orderId_fkey")
+}
+
+model OrderDesignSection {
+  id             String      @id @default(cuid())
+  orderId        String
+  sectionType    String
+  notes          String      @default("") @db.Text
+  sketchImageUrl String?
+  sketchJSON     String?     @db.LongText
+  updatedAt      DateTime    @updatedAt
+  order          DesignOrder @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
+
+  @@unique([orderId, sectionType])
+}
+
 model Salary {
   id             String   @id @default(cuid())
   employeeId     String
-  employee       Employee @relation(fields: [employeeId], references: [employeeId])
-  month          Int                           // 1–12
+  month          Int
   year           Int
   baseSalary     Float    @default(0)
   advances       Float    @default(0)
   deductions     Float    @default(0)
   bonus          Float    @default(0)
   netPaid        Float    @default(0)
-  paidStatus     String   @default("unpaid")  // unpaid | partial | paid
-  paymentHistory Json     @default("[]")      // [{amount, note, paidAt}]
-  notes          String   @default("")        @db.Text
+  paidStatus     String   @default("unpaid")
+  paymentHistory String   @db.LongText
+  notes          String   @default("") @db.Text
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  employee       Employee @relation(fields: [employeeId], references: [employeeId])
 
   @@unique([employeeId, month, year])
 }
 
-// ─── Audit Log ────────────────────────────────────────────────────────────
 model AuditLog {
   id            String   @id @default(cuid())
-  recordType    String                        // Customer | Employee | DesignOrder | Salary | GarmentTemplate
+  recordType    String
   recordId      String
-  action        String                        // create | update | delete
+  action        String
   changedById   String
-  changedBy     User     @relation(fields: [changedById], references: [id])
   changedByName String?
-  changes       Json     @default("[]")       // [{field, oldValue, newValue}]
-  snapshot      Json?
+  changes       String   @db.LongText
+  snapshot      String?  @db.LongText
   timestamp     DateTime @default(now())
+  changedBy     User     @relation(fields: [changedById], references: [id])
 
   @@index([recordType, recordId])
   @@index([timestamp])
+  @@index([changedById], map: "AuditLog_changedById_fkey")
 }
 
-// ─── Inventory & Purchases ────────────────────────────────────────────────
 model InventoryItem {
-  id           String     @id @default(cuid())
-  name         String
-  category     String     @default("Raw Material") // e.g., Thread, Fabric, Buttons
-  quantity     Float      @default(0)
-  unit         String     @default("pcs")          // e.g., meters, spools, pcs
-  minStockLevel Float     @default(0)
-  purchases    Purchase[]
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  id            String     @id @default(cuid())
+  name          String
+  category      String     @default("Raw Material")
+  quantity      Float      @default(0)
+  unit          String     @default("pcs")
+  minStockLevel Float      @default(0)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  purchases     Purchase[]
 }
 
 model Purchase {
   id           String        @id @default(cuid())
   itemId       String
-  item         InventoryItem @relation(fields: [itemId], references: [id])
   quantity     Float
   totalCost    Float
   supplier     String        @default("")
   purchaseDate DateTime      @default(now())
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+  item         InventoryItem @relation(fields: [itemId], references: [id])
+
+  @@index([itemId], map: "Purchase_itemId_fkey")
 }
 
-// ─── Services ─────────────────────────────────────────────────────────────
 model Service {
   id          String   @id @default(cuid())
   name        String
@@ -162,18 +191,50 @@ model Service {
   updatedAt   DateTime @updatedAt
 }
 
-// ─── Customer Payments ────────────────────────────────────────────────────
 model Payment {
   id            String       @id @default(cuid())
   customerId    String
-  customer      Customer     @relation(fields: [customerId], references: [customerId])
   orderId       String?
-  order         DesignOrder? @relation(fields: [orderId], references: [orderId])
   amount        Float
   paymentDate   DateTime     @default(now())
-  paymentMethod String       @default("Cash") // Cash, UPI, Card, Transfer
-  status        String       @default("Completed") // Pending, Completed
+  paymentMethod String       @default("Cash")
+  status        String       @default("Completed")
   notes         String       @default("")
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
+  customer      Customer     @relation(fields: [customerId], references: [customerId])
+  order         DesignOrder? @relation(fields: [orderId], references: [orderId])
+
+  @@index([customerId], map: "Payment_customerId_fkey")
+  @@index([orderId], map: "Payment_orderId_fkey")
+}
+
+model TailoringOrder {
+  id           String               @id @default(cuid())
+  customerId   String
+  orderDate    DateTime             @default(now())
+  deliveryDate DateTime?
+  status       String               @default("Draft")
+  notes        String               @default("") @db.Text
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  customer     Customer             @relation(fields: [customerId], references: [customerId])
+  items        TailoringOrderItem[]
+
+  @@index([customerId], map: "TailoringOrder_customerId_fkey")
+}
+
+model TailoringOrderItem {
+  id        String         @id @default(cuid())
+  orderId   String
+  itemType  String
+  quantity  Int            @default(1)
+  sortOrder Int            @default(0)
+  details   String         @db.LongText
+  subItems  String         @db.LongText
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  order     TailoringOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId], map: "TailoringOrderItem_orderId_fkey")
 }
