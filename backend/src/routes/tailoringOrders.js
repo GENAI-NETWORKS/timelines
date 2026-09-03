@@ -208,8 +208,8 @@ router.post('/:id/items', protect, adminOnly, async (req, res, next) => {
         itemType,
         quantity: parseInt(quantity),
         sortOrder: count,
-        details: details || {},
-        subItems: subItems || buildDefaultSubItems(parseInt(quantity), itemType),
+        details: JSON.stringify(details || {}),
+        subItems: JSON.stringify(subItems || buildDefaultSubItems(parseInt(quantity), itemType)),
       },
     });
     res.status(201).json(item);
@@ -238,16 +238,16 @@ router.put('/:id/items/:itemId', protect, adminOnly, async (req, res, next) => {
       }
     }
 
-    const item = await prisma.tailoringOrderItem.update({
+    const updated = await prisma.tailoringOrderItem.update({
       where: { id: req.params.itemId },
       data: {
-        quantity: newQty,
-        sortOrder: sortOrder !== undefined ? sortOrder : existing.sortOrder,
-        details: details !== undefined ? details : existing.details,
-        subItems: updatedSubItems,
+        quantity: quantity !== undefined ? parseInt(quantity) : undefined,
+        sortOrder: sortOrder !== undefined ? parseInt(sortOrder) : undefined,
+        ...(details ? { details: JSON.stringify(details) } : {}),
+        ...(subItems ? { subItems: JSON.stringify(subItems) } : {}),
       },
     });
-    res.json(item);
+    res.json(updated);
   } catch (err) { next(err); }
 });
 
