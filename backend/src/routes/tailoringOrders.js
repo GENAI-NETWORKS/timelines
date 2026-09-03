@@ -224,7 +224,12 @@ router.put('/:id/items/:itemId', protect, adminOnly, async (req, res, next) => {
     if (!existing) return res.status(404).json({ message: 'Item not found.' });
 
     const newQty = quantity !== undefined ? parseInt(quantity) : existing.quantity;
-    let updatedSubItems = subItems !== undefined ? subItems : existing.subItems;
+    
+    let existingSubItemsRaw = existing.subItems;
+    if (typeof existingSubItemsRaw === 'string') {
+      try { existingSubItemsRaw = JSON.parse(existingSubItemsRaw); } catch (e) { existingSubItemsRaw = []; }
+    }
+    let updatedSubItems = subItems !== undefined ? subItems : existingSubItemsRaw;
 
     // Grow/shrink sub-items array if quantity changed
     if (quantity !== undefined && newQty !== existing.quantity) {
@@ -273,16 +278,21 @@ router.post('/:id/items/:itemId/upload', protect, adminOnly, upload.single('imag
 
     const imageUrl = `/uploads/tailoring/${req.file.filename}`;
     const subNum = parseInt(subItemNumber);
-    const subs = Array.isArray(item.subItems) ? [...item.subItems] : [];
+    let subsRaw = item.subItems;
+    if (typeof subsRaw === 'string') {
+      try { subsRaw = JSON.parse(subsRaw); } catch (e) { subsRaw = []; }
+    }
+    const subs = Array.isArray(subsRaw) ? [...subsRaw] : [];
+    
     const idx = subs.findIndex(s => s.number === subNum);
     if (idx === -1) return res.status(404).json({ message: 'Sub-item not found.' });
     subs[idx] = { ...subs[idx], [field]: imageUrl };
 
     const updated = await prisma.tailoringOrderItem.update({
       where: { id: req.params.itemId },
-      data: { subItems: subs },
+      data: { subItems: JSON.stringify(subs) },
     });
-    res.json({ imageUrl, subItems: updated.subItems });
+    res.json({ imageUrl, subItems: subs });
   } catch (err) { next(err); }
 });
 
@@ -300,7 +310,12 @@ router.post('/:id/items/:itemId/canvas', protect, adminOnly, upload.single('canv
 
     const imageUrl = req.file ? `/uploads/tailoring/${req.file.filename}` : null;
     const subNum = parseInt(subItemNumber);
-    const subs = Array.isArray(item.subItems) ? [...item.subItems] : [];
+    let subsRaw = item.subItems;
+    if (typeof subsRaw === 'string') {
+      try { subsRaw = JSON.parse(subsRaw); } catch (e) { subsRaw = []; }
+    }
+    const subs = Array.isArray(subsRaw) ? [...subsRaw] : [];
+
     const idx = subs.findIndex(s => s.number === subNum);
     if (idx === -1) return res.status(404).json({ message: 'Sub-item not found.' });
 
@@ -312,9 +327,9 @@ router.post('/:id/items/:itemId/canvas', protect, adminOnly, upload.single('canv
 
     const updated = await prisma.tailoringOrderItem.update({
       where: { id: req.params.itemId },
-      data: { subItems: subs },
+      data: { subItems: JSON.stringify(subs) },
     });
-    res.json({ imageUrl, subItems: updated.subItems });
+    res.json({ imageUrl, subItems: subs });
   } catch (err) { next(err); }
 });
 
