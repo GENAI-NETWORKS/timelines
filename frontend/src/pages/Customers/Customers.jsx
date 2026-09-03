@@ -76,17 +76,16 @@ export default function Customers() {
                 <th>Name</th>
                 <th>Phone</th>
                 <th>Registered</th>
-                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={5} className="text-center py-10">
+                <tr><td colSpan={4} className="text-center py-10">
                   <Loader className="w-6 h-6 text-brand-400 animate-spin mx-auto" />
                 </td></tr>
               )}
               {!loading && customers.length === 0 && (
-                <tr><td colSpan={5} className="text-center py-10 text-gray-500">No customers found.</td></tr>
+                <tr><td colSpan={4} className="text-center py-10 text-gray-500">No customers found.</td></tr>
               )}
               {customers.map((c) => (
                 <tr key={c.customerId}>
@@ -98,11 +97,6 @@ export default function Customers() {
                     </a>
                   </td>
                   <td className="text-gray-500 text-xs">{format(new Date(c.createdAt), 'dd MMM yyyy')}</td>
-                  <td>
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => openHistory(c.customerId, c.name)} className="btn-icon" title="History"><History className="w-4 h-4" /></button>
-                    </div>
-                  </td>
                 </tr>
               ))}
             </tbody>
