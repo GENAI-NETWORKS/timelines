@@ -3,16 +3,16 @@ import * as fabric from 'fabric';
 import { Pen, Eraser, Square, Circle, Type, Trash2, Download, Save, RotateCcw, Minus, Loader, ZoomIn, ZoomOut, Maximize } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const COLORS  = ['#be4bf4','#f43f5e','#60a5fa','#34d399','#fbbf24','#fb923c','#ffffff','#94a3b8','#1e1e2e'];
-const SIZES   = [1, 2, 4, 7, 12];
+const COLORS = ['#be4bf4', '#f43f5e', '#60a5fa', '#34d399', '#fbbf24', '#fb923c', '#ffffff', '#94a3b8', '#1e1e2e'];
+const SIZES = [1, 2, 4, 7, 12];
 
-const TOOLS   = [
+const TOOLS = [
   { id: 'select', label: 'Select', icon: '↖' },
-  { id: 'pen',    label: 'Pen',    icon: Pen },
-  { id: 'line',   label: 'Line',   icon: Minus },
-  { id: 'rect',   label: 'Rect',   icon: Square },
+  { id: 'pen', label: 'Pen', icon: Pen },
+  { id: 'line', label: 'Line', icon: Minus },
+  { id: 'rect', label: 'Rect', icon: Square },
   { id: 'circle', label: 'Circle', icon: Circle },
-  { id: 'text',   label: 'Text',   icon: Type },
+  { id: 'text', label: 'Text', icon: Type },
   { id: 'eraser', label: 'Eraser', icon: Eraser },
 ];
 
@@ -26,16 +26,16 @@ const TOOLS   = [
  *   label          – e.g. "Front Design"
  */
 export default function InlineCanvas({ width = 460, height = 280, initialJSON, onSave, savedImageUrl, label = 'Canvas', saving = false }) {
-  const canvasRef  = useRef(null);
-  const fabricRef  = useRef(null);
-  const isDrawing  = useRef(false);
-  const startPt    = useRef(null);
-  const activeObj  = useRef(null);
+  const canvasRef = useRef(null);
+  const fabricRef = useRef(null);
+  const isDrawing = useRef(false);
+  const startPt = useRef(null);
+  const activeObj = useRef(null);
 
-  const [tool,       setTool]       = useState('pen');
-  const [color,      setColor]      = useState('#be4bf4');
-  const [size,       setSize]       = useState(2);
-  const [ready,      setReady]      = useState(false);
+  const [tool, setTool] = useState('pen');
+  const [color, setColor] = useState('#be4bf4');
+  const [size, setSize] = useState(2);
+  const [ready, setReady] = useState(false);
   const [hasContent, setHasContent] = useState(false);
 
   // Init
@@ -57,7 +57,7 @@ export default function InlineCanvas({ width = 460, height = 280, initialJSON, o
     cvs.on('object:added', () => setHasContent(true));
     fabricRef.current = cvs;
     setReady(true);
-    return () => { try { cvs.dispose(); } catch {} fabricRef.current = null; };
+    return () => { try { cvs.dispose(); } catch { } fabricRef.current = null; };
   }, [width, height]);
 
   // Load saved JSON
@@ -68,7 +68,7 @@ export default function InlineCanvas({ width = 460, height = 280, initialJSON, o
       const json = typeof initialJSON === 'string' ? JSON.parse(initialJSON) : initialJSON;
       cvs.loadFromJSON(json, () => cvs.renderAll());
       setHasContent(true);
-    } catch {}
+    } catch { }
   }, [ready, initialJSON]);
 
   // Apply tool
@@ -76,7 +76,7 @@ export default function InlineCanvas({ width = 460, height = 280, initialJSON, o
     const cvs = fabricRef.current;
     if (!cvs || !ready) return;
     cvs.isDrawingMode = false;
-    cvs.selection     = false;
+    cvs.selection = false;
     cvs.off('mouse:down'); cvs.off('mouse:move'); cvs.off('mouse:up');
     cvs.getObjects().forEach(o => { o.selectable = tool === 'select'; });
 
@@ -105,10 +105,10 @@ export default function InlineCanvas({ width = 460, height = 280, initialJSON, o
     // Shape tools
     cvs.on('mouse:down', opt => {
       isDrawing.current = true;
-      startPt.current   = cvs.getScenePoint(opt.e);
+      startPt.current = cvs.getScenePoint(opt.e);
       const base = { stroke: color, strokeWidth: size, fill: 'transparent', selectable: true };
       let shape;
-      if (tool === 'rect') shape   = new fabric.Rect({ ...base, left: startPt.current.x, top: startPt.current.y, width: 1, height: 1 });
+      if (tool === 'rect') shape = new fabric.Rect({ ...base, left: startPt.current.x, top: startPt.current.y, width: 1, height: 1 });
       else if (tool === 'circle') shape = new fabric.Circle({ ...base, left: startPt.current.x, top: startPt.current.y, radius: 1 });
       else shape = new fabric.Line([startPt.current.x, startPt.current.y, startPt.current.x, startPt.current.y], { ...base, fill: undefined });
       cvs.add(shape); activeObj.current = shape;
@@ -116,7 +116,7 @@ export default function InlineCanvas({ width = 460, height = 280, initialJSON, o
     cvs.on('mouse:move', opt => {
       if (!isDrawing.current || !activeObj.current) return;
       const p = cvs.getScenePoint(opt.e), s = startPt.current;
-      if (tool === 'rect')   activeObj.current.set({ left: Math.min(p.x, s.x), top: Math.min(p.y, s.y), width: Math.abs(p.x - s.x), height: Math.abs(p.y - s.y) });
+      if (tool === 'rect') activeObj.current.set({ left: Math.min(p.x, s.x), top: Math.min(p.y, s.y), width: Math.abs(p.x - s.x), height: Math.abs(p.y - s.y) });
       else if (tool === 'circle') { const r = Math.hypot(p.x - s.x, p.y - s.y) / 2; activeObj.current.set({ radius: r, left: Math.min(p.x, s.x), top: Math.min(p.y, s.y) }); }
       else activeObj.current.set({ x2: p.x, y2: p.y });
       cvs.renderAll();
@@ -124,15 +124,15 @@ export default function InlineCanvas({ width = 460, height = 280, initialJSON, o
     cvs.on('mouse:up', () => { isDrawing.current = false; activeObj.current = null; });
   }, [tool, color, size, ready]);
 
-  const undo  = () => { const cvs = fabricRef.current; if (!cvs) return; const o = cvs.getObjects(); if (o.length) { cvs.remove(o[o.length-1]); cvs.renderAll(); } };
+  const undo = () => { const cvs = fabricRef.current; if (!cvs) return; const o = cvs.getObjects(); if (o.length) { cvs.remove(o[o.length - 1]); cvs.renderAll(); } };
   const clear = () => { const cvs = fabricRef.current; if (!cvs) return; cvs.clear(); cvs.backgroundColor = '#0f0a1a'; cvs.renderAll(); setHasContent(false); };
-  const zoom  = (d) => { const cvs = fabricRef.current; if (!cvs) return; const z = Math.min(10, Math.max(0.2, cvs.getZoom() * d)); cvs.zoomToPoint({ x: width/2, y: height/2 }, z); };
+  const zoom = (d) => { const cvs = fabricRef.current; if (!cvs) return; const z = Math.min(10, Math.max(0.2, cvs.getZoom() * d)); cvs.zoomToPoint({ x: width / 2, y: height / 2 }, z); };
   const reset = () => { const cvs = fabricRef.current; if (!cvs) return; cvs.setZoom(1); cvs.viewportTransform[4] = 0; cvs.viewportTransform[5] = 0; cvs.requestRenderAll(); };
 
   const handleSave = useCallback(() => {
     const cvs = fabricRef.current;
     if (!cvs) return;
-    const png  = cvs.toDataURL({ format: 'png', quality: 0.9 });
+    const png = cvs.toDataURL({ format: 'png', quality: 0.9 });
     const json = JSON.stringify(cvs.toJSON());
     onSave?.(png, json);
   }, [onSave]);

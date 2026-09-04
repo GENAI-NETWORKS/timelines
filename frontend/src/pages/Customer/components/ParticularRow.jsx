@@ -18,14 +18,15 @@ import { uploadItemImage, saveItemCanvas } from '../../../api/tailoringOrders';
 
 // ─── Product type metadata ────────────────────────────────────────────────
 export const ITEM_TYPES = [
-  { value: 'DESIGN_BLOUSE',     label: 'Design Blouse',       hasMeter: true,  hasSource: false, hasDesign: true,  hasLining: true  },
-  { value: 'LINING_BLOUSE',     label: 'Lining Blouse',       hasMeter: true,  hasSource: true,  hasDesign: true,  hasLining: false },
+  { value: 'DESIGN_BLOUSE',     label: 'Design Blouse',       hasMeter: true,  hasSource: false, hasDesign: true,  hasLining: true,  hasMeasurements: true },
+  { value: 'LINING_BLOUSE',     label: 'Lining Blouse',       hasMeter: true,  hasSource: true,  hasDesign: true,  hasLining: false, hasMeasurements: true },
   { value: 'LINING',            label: 'Lining',              hasMeter: true,  hasSource: true,  hasDesign: false, hasLining: false },
-  { value: 'SILK_COTTON_BLOUSE',label: 'Silk Cotton Blouse',  hasMeter: true,  hasSource: false, hasDesign: false, hasLining: false },
+  { value: 'SILK_COTTON_BLOUSE',label: 'Silk Cotton Blouse',  hasMeter: true,  hasSource: true,  hasDesign: false, hasLining: false, hasMeasurements: false },
   { value: 'SAREE_FALLS',       label: 'Saree Falls',         hasMeter: false, hasSource: true,  hasDesign: false, hasLining: false, isSaree: true },
-  { value: 'SAREE_BORDER',      label: 'Saree Border / Ooram',hasMeter: false, hasSource: false, hasDesign: false, hasLining: false },
-  { value: 'ARYA_WORK_BLOUSE',  label: 'Aari Work Blouse',    hasMeter: false, hasSource: false, hasDesign: true,  hasLining: false, isArya: true },
-  { value: 'ARYA_WORK_LINING',  label: 'Aari Work Lining',    hasMeter: true,  hasSource: true,  hasDesign: false, hasLining: false },
+  { value: 'SAREE_BORDER',      label: 'Saree Border / Ooram',hasMeter: false, hasSource: false, hasDesign: false, hasLining: false, isSaree: true },
+  { value: 'ARYA_WORK_BLOUSE',  label: 'Aari Work Blouse',    hasMeter: true,  hasSource: false, hasDesign: true,  hasLining: false, hasMeasurements: true, isArya: true },
+  { value: 'AARI_WORK_BLOUSE_STITCHING', label: 'Aari Work Blouse Stitching', hasMeter: true, hasSource: false, hasDesign: true, hasLining: true, hasMeasurements: true, isArya: true },
+
 ];
 
 export function getItemMeta(itemType) {
@@ -114,34 +115,29 @@ function SubItemPanel({ sub, itemNumber, meta, orderId, itemId, onChange, onImag
             </div>
           )}
           {meta.hasSource && (
-            <div className="flex-1 min-w-[130px]">
-              <label className="label text-xs">Source</label>
-              <select className="select text-sm py-1.5" value={sub.source || 'SHOP'} onChange={e => update('source', e.target.value)}>
-                <option value="SHOP">Shop purchase (Inside)</option>
-                <option value="CUSTOMER">Customer purchased(outside)</option>
-              </select>
-            </div>
+            <>
+              <div className="flex-1 min-w-[130px]">
+                <label className="label text-xs">Source</label>
+                <select className="select text-sm py-1.5" value={sub.source || 'SHOP'} onChange={e => update('source', e.target.value)}>
+                  <option value="SHOP">Shop purchase (Inside)</option>
+                  <option value="CUSTOMER">Customer purchased(outside)</option>
+                </select>
+              </div>
+              {sub.source !== 'CUSTOMER' && (
+                <div className="flex-1 min-w-[100px]">
+                  <label className="label text-xs">Source Price (₹)</label>
+                  <input className="input text-sm py-1.5" type="number" min="0" placeholder="0" value={sub.sourcePrice || ''} onChange={e => update('sourcePrice', e.target.value)} />
+                </div>
+              )}
+            </>
           )}
           {meta.isSaree && (
-            <>
-              <div className="flex-1 min-w-[90px]">
-                <label className="label text-xs">No. of Sarees</label>
-                <input className="input text-sm py-1.5" type="number" min="1" value={sub.numberOfSarees || ''} onChange={e => update('numberOfSarees', e.target.value)} />
-              </div>
-              <div className="flex-1 min-w-[90px]">
-                <label className="label text-xs">No. of Falls</label>
-                <input className="input text-sm py-1.5" type="number" min="1" value={sub.numberOfFalls || ''} onChange={e => update('numberOfFalls', e.target.value)} />
-              </div>
-            </>
+            <div className="flex-1 min-w-[120px]">
+              <label className="label text-xs">Saree Colour</label>
+              <input className="input text-sm py-1.5" type="text" placeholder="e.g. Red, Blue..." value={sub.sareeColour || ''} onChange={e => update('sareeColour', e.target.value)} />
+            </div>
           )}
-          {meta.isArya && (
-            <>
-              <div className="flex-1 min-w-[120px]">
-                <label className="label text-xs">Aari Work Price (₹)</label>
-                <input className="input text-sm py-1.5" type="number" min="0" value={sub.aryaWorkPrice || ''} onChange={e => update('aryaWorkPrice', e.target.value)} />
-              </div>
-            </>
-          )}
+
         </div>
 
         {/* Description / Notes */}
@@ -155,6 +151,40 @@ function SubItemPanel({ sub, itemNumber, meta, orderId, itemId, onChange, onImag
           <div>
             <label className="label text-xs text-amber-500">Reason for Edit</label>
             <input className="input text-sm py-1.5 border-amber-500/30 focus:border-amber-500" placeholder="If modifying an existing order, why?" value={sub.editReason || ''} onChange={e => update('editReason', e.target.value)} />
+          </div>
+        )}
+
+        {/* Measurements */}
+        {meta.hasMeasurements && (
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xs font-semibold text-gray-300">Measurements (inches/cm)</span>
+            </div>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 border border-surface-border/30 rounded-lg p-2 bg-surface-elevated/10">
+              {[
+                { key: 'SL', label: 'SL' },
+                { key: 'SA', label: 'SA' },
+                { key: 'ARM', label: 'ARM' },
+                { key: 'BACK_L', label: 'BACK L' },
+                { key: 'HIP', label: 'HIP' },
+                { key: 'PAKKA', label: 'PAKKA' },
+                { key: 'SHOULDER', label: 'SHOULDER' },
+                { key: 'BACKNECK', label: 'BACKNECK' },
+                { key: 'CHEST', label: 'CHEST' },
+                { key: 'FRONT_NECK', label: 'FRONT NECK' },
+                { key: 'FRONT_LEN', label: 'FRONT LEN' },
+              ].map(m => (
+                <div key={m.key} className="flex flex-col">
+                  <label className="text-[10px] text-gray-400 mb-0.5 uppercase">{m.label}</label>
+                  <input
+                    className="input text-sm py-1 px-1.5"
+                    placeholder="—"
+                    value={sub[`measurement_${m.key}`] || ''}
+                    onChange={e => update(`measurement_${m.key}`, e.target.value)}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -391,15 +421,17 @@ export default function ParticularRow({
                   onChange={e => onUpdate({ ...item, details: { ...item.details, liningMeter: e.target.value } })}
                 />
               </div>
-              <div>
-                <label className="label text-xs">Lining Price (₹)</label>
-                <input
-                  className="input text-sm py-1.5 w-28"
-                  type="number" min="0" placeholder="0"
-                  value={item.details?.liningPrice || ''}
-                  onChange={e => onUpdate({ ...item, details: { ...item.details, liningPrice: e.target.value } })}
-                />
-              </div>
+              {item.details?.liningSource !== 'CUSTOMER' && (
+                <div>
+                  <label className="label text-xs">Lining Price (₹)</label>
+                  <input
+                    className="input text-sm py-1.5 w-28"
+                    type="number" min="0" placeholder="0"
+                    value={item.details?.liningPrice || ''}
+                    onChange={e => onUpdate({ ...item, details: { ...item.details, liningPrice: e.target.value } })}
+                  />
+                </div>
+              )}
             </div>
           )}
 
