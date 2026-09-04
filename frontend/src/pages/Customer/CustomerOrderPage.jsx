@@ -280,13 +280,12 @@ export default function CustomerOrderPage() {
     saveTimers.current[updated.id] = setTimeout(async () => {
       if (!order || !updated.id) return;
       try {
-        const res = await updateOrderItem(order.id, updated.id, {
+        await updateOrderItem(order.id, updated.id, {
           quantity: updated.quantity,
           details:  updated.details,
           subItems: updated.subItems,
         });
-        // Refresh with server response
-        setItems(prev => prev.map(i => i.id === res.data.id ? res.data : i));
+        // Removed `setItems` here to prevent overwriting active typing
       } catch {}
     }, 1500);
   }, [order]);
