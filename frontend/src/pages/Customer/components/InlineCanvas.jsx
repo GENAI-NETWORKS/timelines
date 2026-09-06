@@ -25,7 +25,7 @@ const TOOLS = [
  *   savedImageUrl  – thumbnail URL of last saved image (shown as badge)
  *   label          – e.g. "Front Design"
  */
-export default function InlineCanvas({ width = 460, height = 280, initialJSON, onSave, savedImageUrl, label = 'Canvas', saving = false }) {
+export default function InlineCanvas({ width = 460, height = 280, initialJSON, onSave, savedImageUrl, label = 'Canvas', saving = false, backgroundImageUrl = null }) {
   const canvasRef = useRef(null);
   const fabricRef = useRef(null);
   const isDrawing = useRef(false);
@@ -70,6 +70,34 @@ export default function InlineCanvas({ width = 460, height = 280, initialJSON, o
       setHasContent(true);
     } catch { }
   }, [ready, initialJSON]);
+
+  // Load library background image
+  useEffect(() => {
+    const cvs = fabricRef.current;
+    if (!cvs || !ready) return;
+    if (!backgroundImageUrl) return;
+
+    fabric.FabricImage.fromURL(backgroundImageUrl, { crossOrigin: 'anonymous' }).then(img => {
+      // Scale to fill the canvas
+      img.scaleToWidth(width);
+      if (img.getScaledHeight() < height) img.scaleToHeight(height);
+      img.set({
+        left: 0,
+        top: 0,
+        selectable: false,
+        evented: false,
+        lockMovementX: true,
+        lockMovementY: true,
+        hoverCursor: 'default',
+        data: { isLibraryBg: true },
+      });
+      // Remove any previous library bg
+      const prev = cvs.getObjects().find(o => o.data?.isLibraryBg);
+      if (prev) cvs.remove(prev);
+      cvs.insertAt(0, img);
+      cvs.renderAll();
+    }).catch(() => toast.error('Could not load library image'));
+  }, [ready, backgroundImageUrl, width, height]);
 
   // Apply tool
   useEffect(() => {

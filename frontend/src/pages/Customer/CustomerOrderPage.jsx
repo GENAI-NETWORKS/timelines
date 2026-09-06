@@ -7,9 +7,8 @@
  *  Step 3: Submit Order → Print tailor worksheet
  */
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, Printer, CheckCircle2, Loader, ArrowLeft, Search, UserPlus, X, ChevronDown, Save } from 'lucide-react';
+import { Printer, CheckCircle2, Loader, ArrowLeft, Search, UserPlus, X, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 
@@ -20,7 +19,8 @@ import {
 } from '../../api/tailoringOrders';
 import { searchCustomers } from '../../api/customers';
 
-import ParticularRow, { ITEM_TYPES } from './components/ParticularRow';
+import QuickEntryTable from './components/QuickEntryTable';
+import DetailSidePanel from './components/DetailSidePanel';
 import TailorPrintout from './components/TailorPrintout';
 
 // ─── Customer step ────────────────────────────────────────────────────────
@@ -173,61 +173,6 @@ function CustomerStep({ onOrderCreated }) {
   );
 }
 
-// ─── Add particular picker (portal dropdown) ──────────────────────────────
-function AddParticularPicker({ onAdd, adding }) {
-  const [open, setOpen] = useState(false);
-  const [pos,  setPos]  = useState({ top: 0, left: 0, width: 220 });
-  const btnRef          = useRef(null);
-
-  const handleOpen = () => {
-    if (btnRef.current) {
-      const r = btnRef.current.getBoundingClientRect();
-      setPos({ top: r.bottom + 6, left: r.left, width: Math.max(220, r.width) });
-    }
-    setOpen(o => !o);
-  };
-
-  // Use onMouseDown on items so selection fires BEFORE the backdrop onClick closes the menu
-  const handleSelect = async (type) => {
-    setOpen(false);
-    await onAdd(type);
-  };
-
-  return (
-    <>
-      <button ref={btnRef} onClick={handleOpen} className="btn-primary" disabled={adding}>
-        {adding ? <Loader className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-        Add Particular
-        <ChevronDown className="w-3.5 h-3.5" />
-      </button>
-
-      {open && createPortal(
-        <>
-          {/* Backdrop — closes on click-outside */}
-          <div className="fixed inset-0 z-[998]" onMouseDown={() => setOpen(false)} />
-          {/* Dropdown — z higher than backdrop so clicks reach it */}
-          <div
-            className="fixed z-[999] bg-surface-card border border-surface-border rounded-xl shadow-2xl overflow-hidden animate-fade-in"
-            style={{ top: pos.top, left: pos.left, minWidth: pos.width }}
-          >
-            {ITEM_TYPES.map(t => (
-              <button
-                key={t.value}
-                // Use onMouseDown so it fires before backdrop's onMouseDown closes the portal
-                onMouseDown={(e) => { e.stopPropagation(); handleSelect(t.value); }}
-                className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-surface-elevated hover:text-white transition-colors border-b border-surface-border/40 last:border-0"
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-        </>,
-        document.body
-      )}
-    </>
-  );
-}
-
 
 
 // ─── Main page ────────────────────────────────────────────────────────────
@@ -241,6 +186,7 @@ export default function CustomerOrderPage() {
   const [adding,    setAdding]    = useState(false);
   const [submitting,setSubmitting]= useState(false);
   const [savingAll, setSavingAll] = useState(false);
+  const [detailItemId, setDetailItemId] = useState(null); // which item has details panel open
   const saveTimers  = useRef({});
 
   // Load existing order
@@ -461,47 +407,25 @@ export default function CustomerOrderPage() {
                   {order.deliveryDate && ` · Delivery: ${format(new Date(order.deliveryDate), 'dd MMM yyyy')}`}
                 </p>
               </div>
-              <AddParticularPicker onAdd={handleAddItem} adding={adding} />
-
+              {/* Count badge */}
+              {items.length > 0 && (
+                <span className="badge badge-progress text-xs">
+                  {items.length} {items.length === 1 ? 'item' : 'items'}
+                </span>
+              )}
             </div>
 
-            {/* Particulars header */}
-            {items.length > 0 && (
-              <div className="flex items-center gap-2 px-1">
-                <h2 className="font-semibold text-white text-base">Particulars</h2>
-                <span className="badge badge-progress text-xs">{items.length} {items.length === 1 ? 'item' : 'items'}</span>
-              </div>
-            )}
+            {/* Quick-entry spreadsheet table */}
+            <QuickEntryTable
+              items={items}
+              onAdd={handleAddItem}
+              onUpdate={handleUpdateItem}
+              onDelete={handleDeleteItem}
+              onOpenDetail={(item) => setDetailItemId(item.id)}
+              adding={adding}
+            />
 
-            {/* Empty state */}
-            {items.length === 0 && (
-              <div className="card p-10 text-center space-y-3">
-                <div className="w-14 h-14 rounded-2xl bg-surface-elevated flex items-center justify-center mx-auto">
-                  <Plus className="w-7 h-7 text-gray-500" />
-                </div>
-                <p className="font-semibold text-gray-300">No particulars yet</p>
-                <p className="text-sm text-gray-500">Click "Add Particular" above to add the first product/service.</p>
-              </div>
-            )}
-
-            {/* Item rows */}
-            {items.map((item, idx) => (
-              <ParticularRow
-                key={item.id}
-                item={item}
-                rowIndex={idx + 1}
-                orderId={order.id}
-                isEditing={order.status !== 'Draft'}
-                onUpdate={handleUpdateItem}
-                onDelete={() => handleDeleteItem(item.id)}
-                onSaveToServer={async (updated) => {
-                  await updateOrderItem(order.id, updated.id, updated);
-                }}
-              />
-            ))}
-
-            {/* Bottom action bar */}
-            {/* ── Bottom action bar — always visible when order exists ── */}
+            {/* ── Bottom action bar ── */}
             {items.length > 0 && (
               <div className="card p-4 flex flex-wrap items-center gap-3">
 
@@ -513,7 +437,7 @@ export default function CustomerOrderPage() {
                   </div>
                 )}
 
-                {/* Action buttons — always on the right */}
+                {/* Action buttons */}
                 <div className="flex gap-2 ml-auto flex-wrap">
                   <button onClick={handleSaveAll} disabled={savingAll} className="btn-secondary">
                     {savingAll ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
@@ -534,6 +458,20 @@ export default function CustomerOrderPage() {
 
           </div>
         )}
+
+        {/* Detail side panel — opens when user clicks 📋 on a row */}
+        {detailItemId && (() => {
+          const detailItem = items.find(i => i.id === detailItemId);
+          return detailItem ? (
+            <DetailSidePanel
+              item={detailItem}
+              orderId={order?.id}
+              isEditing={order?.status !== 'Draft'}
+              onUpdate={handleUpdateItem}
+              onClose={() => setDetailItemId(null)}
+            />
+          ) : null;
+        })()}
       </div>
     </>
   );

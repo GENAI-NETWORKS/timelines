@@ -35,6 +35,7 @@ app.use('/api/inventory', require('./src/routes/inventory'));
 app.use('/api/purchases', require('./src/routes/purchases'));
 app.use('/api/services', require('./src/routes/services'));
 app.use('/api/payments', require('./src/routes/payments'));
+app.use('/api/design-library', require('./src/routes/designLibrary'));
 
 // Health check
 app.get('/api/health', async (req, res) => {

@@ -18,14 +18,13 @@ import { uploadItemImage, saveItemCanvas } from '../../../api/tailoringOrders';
 
 // ─── Product type metadata ────────────────────────────────────────────────
 export const ITEM_TYPES = [
-  { value: 'DESIGN_BLOUSE',     label: 'Design Blouse',       hasMeter: true,  hasSource: false, hasDesign: true,  hasLining: true,  hasMeasurements: true },
-  { value: 'LINING_BLOUSE',     label: 'Lining Blouse',       hasMeter: true,  hasSource: true,  hasDesign: true,  hasLining: false, hasMeasurements: true },
-  { value: 'LINING',            label: 'Lining',              hasMeter: true,  hasSource: true,  hasDesign: false, hasLining: false },
+  { value: 'DESIGN_BLOUSE',     label: 'Design Blouse',       hasMeter: true,  hasSource: false, hasDesign: true,  hasLining: true,  hasMeasurements: true,  hasBlouseType: true },
+  { value: 'LINING_BLOUSE',     label: 'Lining Blouse',       hasMeter: true,  hasSource: true,  hasDesign: true,  hasLining: false, hasMeasurements: true,  hasBlouseType: true },
   { value: 'SILK_COTTON_BLOUSE',label: 'Silk Cotton Blouse',  hasMeter: true,  hasSource: true,  hasDesign: false, hasLining: false, hasMeasurements: false },
   { value: 'SAREE_FALLS',       label: 'Saree Falls',         hasMeter: false, hasSource: true,  hasDesign: false, hasLining: false, isSaree: true },
   { value: 'SAREE_BORDER',      label: 'Saree Border / Ooram',hasMeter: false, hasSource: false, hasDesign: false, hasLining: false, isSaree: true },
-  { value: 'ARYA_WORK_BLOUSE',  label: 'Aari Work Blouse',    hasMeter: true,  hasSource: false, hasDesign: true,  hasLining: false, hasMeasurements: true, isArya: true },
-  { value: 'AARI_WORK_BLOUSE_STITCHING', label: 'Aari Work Blouse Stitching', hasMeter: true, hasSource: false, hasDesign: true, hasLining: true, hasMeasurements: true, isArya: true },
+  { value: 'ARYA_WORK_BLOUSE',  label: 'Aari Work Blouse',    hasMeter: true,  hasSource: false, hasDesign: true,  hasLining: false, hasMeasurements: true,  isArya: true, hasBlouseType: true },
+  { value: 'AARI_WORK_BLOUSE_STITCHING', label: 'Aari Work Blouse Stitching', hasMeter: true, hasSource: false, hasDesign: true, hasLining: true, hasMeasurements: true, isArya: true, hasBlouseType: true },
 
 ];
 
@@ -317,7 +316,7 @@ export default function ParticularRow({
     if (q > newSubs.length) {
       // Grow
       while (newSubs.length < q) {
-        newSubs.push({ number: newSubs.length + 1, price: '', referenceImageUrl: null, meter: '', frontDesignNotes: '', backDesignNotes: '', sleeveDesignNotes: '', frontCanvasJSON: null, backCanvasJSON: null, sleeveCanvasJSON: null, frontCanvasImageUrl: null, backCanvasImageUrl: null, sleeveCanvasImageUrl: null, aryaWorkNotes: '', aryaWorkPrice: '', frontDesignImageUrl: null, backDesignImageUrl: null, sleeveDesignImageUrl: null, source: 'SHOP', description: '', numberOfSarees: '', numberOfFalls: '', fallsSource: 'SHOP' });
+        newSubs.push({ number: newSubs.length + 1, price: '', referenceImageUrl: null, meter: '', frontDesignNotes: '', backDesignNotes: '', sleeveDesignNotes: '', frontCanvasJSON: null, backCanvasJSON: null, sleeveCanvasJSON: null, frontCanvasImageUrl: null, backCanvasImageUrl: null, sleeveCanvasImageUrl: null, aryaWorkNotes: '', aryaWorkPrice: '', frontDesignImageUrl: null, backDesignImageUrl: null, sleeveDesignImageUrl: null, source: 'SHOP', description: '', numberOfSarees: '', numberOfFalls: '', fallsSource: 'SHOP', bagNo: '', bagColour: '' });
       }
     } else {
       newSubs = newSubs.slice(0, q);
@@ -434,6 +433,28 @@ export default function ParticularRow({
               )}
             </div>
           )}
+
+          {/* ── Bag No + Bag Colour (all item types) ─────────────────────── */}
+          <div className="flex flex-wrap gap-3 px-1 pb-2 border-b border-surface-border/40">
+            <div>
+              <label className="label text-xs">Bag No</label>
+              <input
+                className="input text-sm py-1.5 w-32"
+                placeholder="e.g. B001"
+                value={item.details?.bagNo || ''}
+                onChange={e => onUpdate({ ...item, details: { ...item.details, bagNo: e.target.value } })}
+              />
+            </div>
+            <div>
+              <label className="label text-xs">Bag Colour</label>
+              <input
+                className="input text-sm py-1.5 w-40"
+                placeholder="e.g. Red, Blue…"
+                value={item.details?.bagColour || ''}
+                onChange={e => onUpdate({ ...item, details: { ...item.details, bagColour: e.target.value } })}
+              />
+            </div>
+          </div>
 
           {subItems.map((sub, i) => (
             <SubItemPanel

@@ -132,7 +132,7 @@ export function TailorPrintContent({ order, customer }) {
                   ? 'Customer purchased(outside)'
                   : item.details.liningSource || ''}
                 {item.details.liningMeter ? `  ·  ${item.details.liningMeter} m` : ''}
-                {item.details.liningPrice  ? `  ·  ₹ (not printed)` : ''}
+                {item.details.liningPrice  ? `  ·  ₹ ${item.details.liningPrice}` : ''}
               </div>
             )}
 
