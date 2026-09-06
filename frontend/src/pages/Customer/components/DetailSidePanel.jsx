@@ -326,9 +326,10 @@ export default function DetailSidePanel({ item, orderId, isEditing, onUpdate, on
   // If the server hasn't created subItems yet (e.g. item just added), we
   // show a blank one locally — any edit will push it into the array.
   const qty      = Math.max(1, item.quantity || 1);
-  const subItems = item.subItems?.length
+  const subItems = (item.subItems?.length
     ? item.subItems
-    : Array.from({ length: qty }, (_, i) => ({ number: i + 1 }));
+    : Array.from({ length: qty }, (_, i) => ({ number: i + 1 }))
+  ).slice(0, qty);
 
   // Keyboard: Escape closes
   useEffect(() => {
