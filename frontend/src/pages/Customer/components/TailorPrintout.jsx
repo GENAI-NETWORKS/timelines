@@ -110,8 +110,8 @@ export function TailorPrintContent({ order, customer }) {
 
       {/* ── Per item ─────────────────────────────────────────────────── */}
       {items.map((item, idx) => {
-        const meta = getItemMeta(item.itemType);
-        const subs = Array.isArray(item.subItems) ? item.subItems : [];
+        const rawSubs = Array.isArray(item.subItems) ? item.subItems : [];
+        const subs = rawSubs.slice(0, Math.max(1, item.quantity || 1));
 
         return (
           <div key={item.id} className="tp-item">
@@ -136,12 +136,27 @@ export function TailorPrintContent({ order, customer }) {
               </div>
             )}
 
+            {/* Bag row */}
+            {(item.details?.bagNo || item.details?.bagColour) && (
+              <div className="tp-lining-row" style={{ marginTop: '2px' }}>
+                <strong>Bag Details:</strong> {item.details?.bagNo || '—'} {item.details?.bagColour ? `(${item.details.bagColour})` : ''}
+              </div>
+            )}
+
             {/* Per-quantity sub-items */}
             {subs.map((sub, si) => (
               <div key={si} className="tp-subitem">
                 {/* Sub-item header — only if more than 1 */}
                 {item.quantity > 1 && (
                   <div className="tp-subitem-header">Item {si + 1}</div>
+                )}
+
+                {/* Blouse Type & Notes */}
+                {meta.hasBlouseType && (
+                  <div className="tp-field" style={{ marginBottom: '4px' }}>
+                    <strong>Blouse Type:</strong> {sub.blouseType === 'MEASUREMENT' ? 'Measurement Blouse' : 'Sample Blouse'}
+                    {sub.blouseNotes ? <><br/><strong>Notes:</strong> {sub.blouseNotes}</> : ''}
+                  </div>
                 )}
 
                 {/* Basic fields row */}
