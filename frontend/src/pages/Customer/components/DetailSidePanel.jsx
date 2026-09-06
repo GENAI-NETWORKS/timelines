@@ -470,6 +470,31 @@ export default function DetailSidePanel({ item, orderId, isEditing, onUpdate, on
                 ))}
               </div>
 
+              {/* Sample Blouse Upload */}
+              {item.details?.blouseType === 'SAMPLE' && (
+                <div className="mt-3">
+                  <label className="text-[11px] text-sky-400 uppercase tracking-wider mb-1 block">Sample Blouse Image</label>
+                  <ImageUploadSlot
+                    imageUrl={item.details?.sampleBlouseImageUrl}
+                    onUpload={async (file) => {
+                      if (!orderId || !item.id) { toast.error('Save the order first.'); return; }
+                      try {
+                        const fd = new FormData();
+                        fd.append('image', file);
+                        fd.append('field', 'sampleBlouseImageUrl');
+                        // no subItemNumber provided -> handled by updated backend logic to save to item.details
+                        const res = await uploadItemImage(orderId, item.id, fd);
+                        if (res.data) onUpdate(res.data);
+                        toast.success('Sample blouse image uploaded!');
+                      } catch { toast.error('Failed to upload image.'); }
+                    }}
+                    onRemove={() => onUpdate({ ...item, details: { ...item.details, sampleBlouseImageUrl: null } })}
+                    label="Sample Blouse"
+                    small
+                  />
+                </div>
+              )}
+
               {/* Notes */}
               <div>
                 <label className="text-[11px] text-gray-400 uppercase tracking-wider mb-1 block">Blouse Notes</label>

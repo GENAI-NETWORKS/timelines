@@ -265,18 +265,35 @@ router.delete('/:id/items/:itemId', protect, adminOnly, async (req, res, next) =
 });
 
 // ── POST /:id/items/:itemId/upload ────────────────────────────────────────
-// Upload a reference/design image for a specific sub-item + field.
-// Body (multipart): subItemNumber (1-based), field (referenceImageUrl | frontDesignImageUrl | backDesignImageUrl | sleeveDesignImageUrl)
+// Upload a reference/design/sample image for a specific sub-item + field, or item-level details.
+// Body (multipart): field (referenceImageUrl | frontDesignImageUrl | backDesignImageUrl | sleeveDesignImageUrl | sampleBlouseImageUrl), optional subItemNumber (1-based)
 router.post('/:id/items/:itemId/upload', protect, adminOnly, upload.single('image'), async (req, res, next) => {
   try {
     const { subItemNumber, field } = req.body;
-    const allowedFields = ['referenceImageUrl', 'frontDesignImageUrl', 'backDesignImageUrl', 'sleeveDesignImageUrl'];
+    const allowedFields = ['referenceImageUrl', 'frontDesignImageUrl', 'backDesignImageUrl', 'sleeveDesignImageUrl', 'sampleBlouseImageUrl'];
     if (!allowedFields.includes(field)) return res.status(400).json({ message: 'Invalid field.' });
 
     const item = await prisma.tailoringOrderItem.findUnique({ where: { id: req.params.itemId } });
     if (!item) return res.status(404).json({ message: 'Item not found.' });
 
     const imageUrl = `/uploads/tailoring/${req.file.filename}`;
+
+    // If no subItemNumber provided, save to item.details
+    if (!subItemNumber || subItemNumber === 'null' || subItemNumber === 'undefined') {
+      let detailsRaw = item.details;
+      if (typeof detailsRaw === 'string') {
+        try { detailsRaw = JSON.parse(detailsRaw); } catch (e) { detailsRaw = {}; }
+      }
+      const details = detailsRaw || {};
+      details[field] = imageUrl;
+
+      const updated = await prisma.tailoringOrderItem.update({
+        where: { id: req.params.itemId },
+        data: { details: JSON.stringify(details) },
+      });
+      return res.json(updated);
+    }
+
     const subNum = parseInt(subItemNumber);
     let subsRaw = item.subItems;
     if (typeof subsRaw === 'string') {
@@ -292,7 +309,7 @@ router.post('/:id/items/:itemId/upload', protect, adminOnly, upload.single('imag
       where: { id: req.params.itemId },
       data: { subItems: JSON.stringify(subs) },
     });
-    res.json({ imageUrl, subItems: subs });
+    res.json(updated);
   } catch (err) { next(err); }
 });
 

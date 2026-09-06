@@ -154,8 +154,8 @@ export function TailorPrintContent({ order, customer }) {
                 {/* Blouse Type & Notes */}
                 {meta.hasBlouseType && (
                   <div className="tp-field" style={{ marginBottom: '4px' }}>
-                    <strong>Blouse Type:</strong> {sub.blouseType === 'MEASUREMENT' ? 'Measurement Blouse' : 'Sample Blouse'}
-                    {sub.blouseNotes ? <><br/><strong>Notes:</strong> {sub.blouseNotes}</> : ''}
+                    <strong>Blouse Type:</strong> {item.details?.blouseType === 'MEASUREMENT' ? 'Measurement Blouse' : 'Sample Blouse'}
+                    {item.details?.blouseNotes ? <><br/><strong>Notes:</strong> {item.details.blouseNotes}</> : ''}
                   </div>
                 )}
 
@@ -200,6 +200,18 @@ export function TailorPrintContent({ order, customer }) {
                     <img
                       src={`${API_BASE}${sub.referenceImageUrl}`}
                       alt="Reference"
+                      className="tp-ref-img"
+                    />
+                  </div>
+                )}
+
+                {/* Sample Blouse Image */}
+                {item.details?.blouseType === 'SAMPLE' && item.details?.sampleBlouseImageUrl && (
+                  <div className="tp-ref-image-block">
+                    <div className="tp-img-caption">Sample Blouse Image:</div>
+                    <img
+                      src={`${API_BASE}${item.details.sampleBlouseImageUrl}`}
+                      alt="Sample Blouse"
                       className="tp-ref-img"
                     />
                   </div>
