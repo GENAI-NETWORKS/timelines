@@ -301,8 +301,10 @@ router.post('/:id/items/:itemId/upload', protect, adminOnly, upload.single('imag
     }
     const subs = Array.isArray(subsRaw) ? [...subsRaw] : [];
     
-    const idx = subs.findIndex(s => s.number === subNum);
-    if (idx === -1) return res.status(404).json({ message: 'Sub-item not found.' });
+    // Find by number field, fall back to array index (0-based: subNum-1)
+    let idx = subs.findIndex(s => Number(s.number) === subNum);
+    if (idx === -1) idx = subNum - 1; // fallback to positional index
+    if (idx < 0 || idx >= subs.length) return res.status(404).json({ message: 'Sub-item not found.' });
     subs[idx] = { ...subs[idx], [field]: imageUrl };
 
     const updated = await prisma.tailoringOrderItem.update({
@@ -333,8 +335,10 @@ router.post('/:id/items/:itemId/canvas', protect, adminOnly, upload.single('canv
     }
     const subs = Array.isArray(subsRaw) ? [...subsRaw] : [];
 
-    const idx = subs.findIndex(s => s.number === subNum);
-    if (idx === -1) return res.status(404).json({ message: 'Sub-item not found.' });
+    // Find by number field, fall back to array index (0-based: subNum-1)
+    let idx = subs.findIndex(s => Number(s.number) === subNum);
+    if (idx === -1) idx = subNum - 1; // fallback to positional index
+    if (idx < 0 || idx >= subs.length) return res.status(404).json({ message: 'Sub-item not found.' });
 
     subs[idx] = {
       ...subs[idx],

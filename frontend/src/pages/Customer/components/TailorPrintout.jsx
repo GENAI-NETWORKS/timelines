@@ -2,10 +2,8 @@
  * TailorPrintout.jsx — Portal-rendered, print-only tailor worksheet.
  * Shown via createPortal into document.body so CSS `#root{display:none}` doesn't clip it.
  *
- * Includes: Customer Name, Phone, Dates, all Particulars,
- *           Design sections (Front/Back/Sleeve) with canvas images at full size,
- *           Reference images at high quality.
- * Excludes: Price, Total, Payment.
+ * showPrices=false (default / print) — excludes all price columns
+ * showPrices=true  (preview)         — includes prices & totals
  */
 import { createPortal } from 'react-dom';
 import { format } from 'date-fns';
@@ -17,9 +15,38 @@ function fmt(d) {
   try { return d ? format(new Date(d), 'dd MMM yyyy') : '—'; } catch { return '—'; }
 }
 
+/* ── Measurement grid ────────────────────────────────────────────────────── */
+const MEAS_FIELDS = [
+  { key: 'SL',         label: 'SL' },
+  { key: 'SA',         label: 'SA' },
+  { key: 'ARM',        label: 'ARM' },
+  { key: 'BACK_L',     label: 'Back L' },
+  { key: 'HIP',        label: 'HIP' },
+  { key: 'PAKKA',      label: 'PAKKA' },
+  { key: 'SHOULDER',   label: 'Shoulder' },
+  { key: 'BACKNECK',   label: 'Back Neck' },
+  { key: 'CHEST',      label: 'CHEST' },
+  { key: 'FRONT_NECK', label: 'Front Neck' },
+  { key: 'FRONT_LEN',  label: 'Front Len' },
+];
+
+function MeasurementGrid({ sub }) {
+  const filled = MEAS_FIELDS.filter(f => sub[`measurement_${f.key}`]);
+  if (!filled.length) return null;
+  return (
+    <div className="tp-meas-grid">
+      {filled.map(f => (
+        <div key={f.key} className="tp-meas-cell">
+          <span className="tp-meas-label">{f.label}</span>
+          <span className="tp-meas-val">{sub[`measurement_${f.key}`]}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ── Design section block (Front / Back / Sleeve) ─────────────────────── */
 function DesignBlock({ label, notes, canvasImgUrl, canvasDataUrl, designImgUrl, isArya }) {
-  // Use server URL if available, fall back to local data URL (saved but not uploaded yet)
   const displaySrc = canvasImgUrl
     ? (canvasImgUrl.startsWith('data:') ? canvasImgUrl : `${API_BASE}${canvasImgUrl}`)
     : canvasDataUrl || null;
@@ -28,37 +55,25 @@ function DesignBlock({ label, notes, canvasImgUrl, canvasDataUrl, designImgUrl, 
     <div className="tp-design-block">
       <div className="tp-design-label">{label} Design</div>
 
-      {/* Notes */}
       {notes ? (
         <div className="tp-design-notes">{notes}</div>
       ) : (
         <div className="tp-design-notes tp-placeholder">—</div>
       )}
 
-      {/* Arya reference image */}
       {isArya && designImgUrl && (
-        <div className="tp-img-caption">Design Reference:</div>
-      )}
-      {isArya && designImgUrl && (
-        <img
-          src={`${API_BASE}${designImgUrl}`}
-          alt={`${label} design ref`}
-          className="tp-design-ref-img"
-        />
+        <>
+          <div className="tp-img-caption">Design Reference:</div>
+          <img src={`${API_BASE}${designImgUrl}`} alt={`${label} design ref`} className="tp-design-ref-img" />
+        </>
       )}
 
-      {/* Canvas drawing — from server or local data URL */}
       {displaySrc ? (
         <>
           <div className="tp-img-caption">Drawn Canvas:</div>
-          <img
-            src={displaySrc}
-            alt={`${label} canvas`}
-            className="tp-canvas-img"
-          />
+          <img src={displaySrc} alt={`${label} canvas`} className="tp-canvas-img" />
         </>
       ) : (
-        /* Empty drawing box for tailor to sketch manually */
         <div className="tp-empty-canvas">
           <span className="tp-empty-label">[ Sketch / Draw here ]</span>
         </div>
@@ -69,10 +84,12 @@ function DesignBlock({ label, notes, canvasImgUrl, canvasDataUrl, designImgUrl, 
 
 
 /* ── Main print content ─────────────────────────────────────────────────── */
-export function TailorPrintContent({ order, customer }) {
+export function TailorPrintContent({ order, customer, showPrices = false }) {
   const items     = order?.items || [];
   const custName  = customer?.name  || order?.customer?.name  || '—';
   const custPhone = customer?.phone || order?.customer?.phone || '—';
+
+  let grandTotal = 0;
 
   return (
     <div className="tp-wrapper">
@@ -80,7 +97,7 @@ export function TailorPrintContent({ order, customer }) {
       {/* ── Shop header ─────────────────────────────────────────────── */}
       <div className="tp-header">
         <div className="tp-shop-name">TIMELINES COSTUME DESIGNERS</div>
-        <div className="tp-sheet-title">Tailor Work Sheet</div>
+        <div className="tp-sheet-title">{showPrices ? 'Customer Order Preview' : 'Tailor Work Sheet'}</div>
       </div>
 
       {/* ── Customer block ──────────────────────────────────────────── */}
@@ -114,6 +131,19 @@ export function TailorPrintContent({ order, customer }) {
         const subs = rawSubs.slice(0, Math.max(1, item.quantity || 1));
         const meta = getItemMeta(item.itemType);
 
+        // Running total for preview
+        let itemTotal = 0;
+        if (showPrices) {
+          subs.forEach(sub => {
+            itemTotal += parseFloat(sub.price || 0);
+            if (sub.source !== 'CUSTOMER') itemTotal += parseFloat(sub.sourcePrice || 0);
+          });
+          if (meta.hasLining && item.details?.liningSource !== 'CUSTOMER') {
+            itemTotal += parseFloat(item.details?.liningPrice || 0);
+          }
+          grandTotal += itemTotal;
+        }
+
         return (
           <div key={item.id} className="tp-item">
 
@@ -121,19 +151,22 @@ export function TailorPrintContent({ order, customer }) {
             <div className="tp-item-header">
               {idx + 1}.&nbsp;&nbsp;{meta.label}
               <span className="tp-qty-badge">Qty: {item.quantity}</span>
+              {showPrices && itemTotal > 0 && (
+                <span className="tp-price-badge">₹ {itemTotal.toFixed(0)}</span>
+              )}
             </div>
 
-            {/* Lining row (Design Blouse only) */}
+            {/* Lining row */}
             {meta.hasLining && (item.details?.liningSource || item.details?.liningMeter) && (
               <div className="tp-lining-row">
                 <strong>Lining:</strong>{' '}
                 {item.details.liningSource === 'SHOP'
                   ? 'Shop purchase (Inside)'
                   : item.details.liningSource === 'CUSTOMER'
-                  ? 'Customer purchased(outside)'
+                  ? 'Customer purchased (outside)'
                   : item.details.liningSource || ''}
                 {item.details.liningMeter ? `  ·  ${item.details.liningMeter} m` : ''}
-                {item.details.liningPrice  ? `  ·  ₹ ${item.details.liningPrice}` : ''}
+                {showPrices && item.details.liningPrice ? `  ·  ₹ ${item.details.liningPrice}` : ''}
               </div>
             )}
 
@@ -144,37 +177,64 @@ export function TailorPrintContent({ order, customer }) {
               </div>
             )}
 
+            {/* Blouse Type & Notes (item-level) */}
+            {meta.hasBlouseType && item.details?.blouseType && (
+              <div className="tp-lining-row" style={{ marginTop: '2px' }}>
+                <strong>Blouse Type:</strong> {item.details.blouseType === 'MEASUREMENT' ? 'Measurement Blouse' : 'Sample Blouse'}
+                {item.details?.blouseNotes && <>&nbsp;·&nbsp;<strong>Notes:</strong> {item.details.blouseNotes}</>}
+              </div>
+            )}
+
+            {/* Sample Blouse Image */}
+            {item.details?.blouseType === 'SAMPLE' && item.details?.sampleBlouseImageUrl && (
+              <div className="tp-ref-image-block">
+                <div className="tp-img-caption">Sample Blouse Image:</div>
+                <img
+                  src={`${API_BASE}${item.details.sampleBlouseImageUrl}`}
+                  alt="Sample Blouse"
+                  className="tp-ref-img"
+                />
+              </div>
+            )}
+
             {/* Per-quantity sub-items */}
             {subs.map((sub, si) => (
               <div key={si} className="tp-subitem">
+
                 {/* Sub-item header — only if more than 1 */}
                 {item.quantity > 1 && (
                   <div className="tp-subitem-header">Item {si + 1}</div>
                 )}
 
-                {/* Blouse Type & Notes */}
-                {meta.hasBlouseType && (
-                  <div className="tp-field" style={{ marginBottom: '4px' }}>
-                    <strong>Blouse Type:</strong> {item.details?.blouseType === 'MEASUREMENT' ? 'Measurement Blouse' : 'Sample Blouse'}
-                    {item.details?.blouseNotes ? <><br/><strong>Notes:</strong> {item.details.blouseNotes}</> : ''}
+                {/* Meter / Source / Price row */}
+                {(meta.hasMeter || meta.hasSource || meta.isSaree || (showPrices && sub.price)) && (
+                  <div className="tp-fields-row">
+                    {meta.hasMeter && sub.meter && (
+                      <span><strong>Meter:</strong> {sub.meter} m</span>
+                    )}
+                    {meta.hasSource && sub.source && (
+                      <span><strong>Source:</strong> {sub.source === 'SHOP' ? 'Shop purchase (Inside)' : 'Customer purchased (outside)'}</span>
+                    )}
+                    {showPrices && meta.hasSource && sub.source !== 'CUSTOMER' && sub.sourcePrice && (
+                      <span><strong>Src Price:</strong> ₹ {sub.sourcePrice}</span>
+                    )}
+                    {showPrices && sub.price && (
+                      <span><strong>Stitching:</strong> ₹ {sub.price}</span>
+                    )}
+                    {meta.isSaree && sub.numberOfSarees && (
+                      <span><strong>Sarees:</strong> {sub.numberOfSarees}</span>
+                    )}
+                    {meta.isSaree && sub.numberOfFalls && (
+                      <span><strong>Falls:</strong> {sub.numberOfFalls}</span>
+                    )}
+                    {meta.isSaree && sub.sareeColour && (
+                      <span><strong>Colour:</strong> {sub.sareeColour}</span>
+                    )}
                   </div>
                 )}
 
-                {/* Basic fields row */}
-                <div className="tp-fields-row">
-                  {meta.hasMeter && sub.meter && (
-                    <span><strong>Meter:</strong> {sub.meter} m</span>
-                  )}
-                  {meta.hasSource && sub.source && (
-                    <span><strong>Source:</strong> {sub.source === 'SHOP' ? 'Shop purchase (Inside)' : 'Customer purchased(outside)'}</span>
-                  )}
-                  {meta.isSaree && sub.numberOfSarees && (
-                    <span><strong>Sarees:</strong> {sub.numberOfSarees}</span>
-                  )}
-                  {meta.isSaree && sub.numberOfFalls && (
-                    <span><strong>Falls:</strong> {sub.numberOfFalls}</span>
-                  )}
-                </div>
+                {/* Measurements grid */}
+                {meta.hasMeasurements && <MeasurementGrid sub={sub} />}
 
                 {/* Description */}
                 {sub.description && (
@@ -183,7 +243,7 @@ export function TailorPrintContent({ order, customer }) {
 
                 {/* Reason for Edit */}
                 {sub.editReason && (
-                  <div className="tp-field text-amber-700"><strong>Reason for Edit:</strong> {sub.editReason}</div>
+                  <div className="tp-field tp-edit-reason"><strong>Reason for Edit:</strong> {sub.editReason}</div>
                 )}
 
                 {/* Aari work notes */}
@@ -194,7 +254,7 @@ export function TailorPrintContent({ order, customer }) {
                   </div>
                 )}
 
-                {/* Reference image — large, high quality */}
+                {/* Reference image */}
                 {sub.referenceImageUrl && (
                   <div className="tp-ref-image-block">
                     <div className="tp-img-caption">Reference Image:</div>
@@ -206,19 +266,7 @@ export function TailorPrintContent({ order, customer }) {
                   </div>
                 )}
 
-                {/* Sample Blouse Image */}
-                {item.details?.blouseType === 'SAMPLE' && item.details?.sampleBlouseImageUrl && (
-                  <div className="tp-ref-image-block">
-                    <div className="tp-img-caption">Sample Blouse Image:</div>
-                    <img
-                      src={`${API_BASE}${item.details.sampleBlouseImageUrl}`}
-                      alt="Sample Blouse"
-                      className="tp-ref-img"
-                    />
-                  </div>
-                )}
-
-                {/* Design sections — always show Front / Back / Sleeve for design items */}
+                {/* Design sections — Front / Back / Sleeve */}
                 {meta.hasDesign && (
                   <div className="tp-design-row">
                     {['front', 'back', 'sleeve'].map(section => (
@@ -240,6 +288,13 @@ export function TailorPrintContent({ order, customer }) {
         );
       })}
 
+      {/* Grand total (preview only) */}
+      {showPrices && grandTotal > 0 && (
+        <div className="tp-grand-total">
+          <strong>Grand Total: ₹ {grandTotal.toFixed(0)}</strong>
+        </div>
+      )}
+
       {/* General notes */}
       {order?.notes && (
         <div className="tp-general-notes">
@@ -247,12 +302,14 @@ export function TailorPrintContent({ order, customer }) {
         </div>
       )}
 
-      {/* Footer */}
-      <div className="tp-footer">
-        <div>Tailor Sign: _________________________________</div>
-        <div>Date Completed: _______________</div>
-        <div>Checked by: _____________________</div>
-      </div>
+      {/* Footer (print only) */}
+      {!showPrices && (
+        <div className="tp-footer">
+          <div>Tailor Sign: _________________________________</div>
+          <div>Date Completed: _______________</div>
+          <div>Checked by: _____________________</div>
+        </div>
+      )}
     </div>
   );
 }
@@ -261,7 +318,7 @@ export default function TailorPrintout({ order, customer }) {
   if (!order) return null;
   return createPortal(
     <div className="tailor-print-only">
-      <TailorPrintContent order={order} customer={customer} />
+      <TailorPrintContent order={order} customer={customer} showPrices={false} />
     </div>,
     document.body
   );

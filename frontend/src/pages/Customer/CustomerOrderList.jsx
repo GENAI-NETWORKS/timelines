@@ -138,7 +138,7 @@ export default function CustomerOrderList() {
                </button>
             </div>
             <div className="p-2">
-              <TailorPrintContent order={previewOrder} customer={previewOrder.customer} />
+              <TailorPrintContent order={previewOrder} customer={previewOrder.customer} showPrices={true} />
             </div>
           </div>
         </div>
