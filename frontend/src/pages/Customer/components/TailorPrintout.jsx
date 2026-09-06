@@ -112,6 +112,7 @@ export function TailorPrintContent({ order, customer }) {
       {items.map((item, idx) => {
         const rawSubs = Array.isArray(item.subItems) ? item.subItems : [];
         const subs = rawSubs.slice(0, Math.max(1, item.quantity || 1));
+        const meta = getItemMeta(item.itemType);
 
         return (
           <div key={item.id} className="tp-item">
