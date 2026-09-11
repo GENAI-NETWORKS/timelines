@@ -109,7 +109,7 @@ export default function Inventory() {
     <div className="space-y-5 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div>
-          <h1 className="font-display font-bold text-2xl text-white">Stocks & Inventory</h1>
+          <h1 className="font-display font-bold text-2xl text-gray-900">Stocks & Inventory</h1>
           <p className="text-sm text-gray-500">Manage raw materials and stock levels</p>
         </div>
         <button onClick={() => { setEditData(EMPTY); setModal('create'); }} className="btn-primary sm:ml-auto">
@@ -142,7 +142,7 @@ export default function Inventory() {
               {!loading && filtered.length === 0 && <tr><td colSpan={6} className="text-center py-10 text-gray-500">No items found.</td></tr>}
               {filtered.map(item => (
                 <tr key={item.id}>
-                  <td className="font-medium text-white">
+                  <td className="font-medium text-gray-900">
                     <div className="flex items-center gap-2">
                       <Package className="w-4 h-4 text-gray-500" />
                       {item.name}
@@ -150,7 +150,7 @@ export default function Inventory() {
                   </td>
                   <td><span className="badge badge-staff">{item.category}</span></td>
                   <td className="font-mono text-brand-400">{item.quantity}</td>
-                  <td className="text-gray-400">{item.unit}</td>
+                  <td className="text-gray-600">{item.unit}</td>
                   <td>
                     {item.quantity <= item.minStockLevel ? (
                       <span className="badge badge-pending">Low Stock</span>

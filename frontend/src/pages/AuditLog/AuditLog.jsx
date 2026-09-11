@@ -39,7 +39,7 @@ export default function AuditLog() {
   return (
     <div className="space-y-5 animate-fade-in">
       <div>
-        <h1 className="font-display font-bold text-2xl text-white">Audit Log</h1>
+        <h1 className="font-display font-bold text-2xl text-gray-900">Audit Log</h1>
         <p className="text-sm text-gray-500">{total} total log entries - every change tracked</p>
       </div>
 
@@ -80,16 +80,16 @@ export default function AuditLog() {
               {logs.map((log, i) => (
                 <>
                   <tr key={log.id} className="cursor-pointer" onClick={() => setExpanded(expanded === log.id ? null : log.id)}>
-                    <td className="text-gray-400 text-xs whitespace-nowrap">
+                    <td className="text-gray-600 text-xs whitespace-nowrap">
                       {format(new Date(log.timestamp), 'dd MMM yy, hh:mm a')}
                     </td>
                     <td><span className={ACTION_STYLES[log.action]}>{log.action}</span></td>
                     <td><span className="badge badge-staff">{log.recordType}</span></td>
                     <td>
-                      <div className="text-sm text-white">{log.changedByName || log.changedBy?.name}</div>
+                      <div className="text-sm text-gray-900">{log.changedByName || log.changedBy?.name}</div>
                       <div className="text-xs text-gray-500">{log.changedBy?.role}</div>
                     </td>
-                    <td className="text-gray-400 text-xs">
+                    <td className="text-gray-600 text-xs">
                       {log.changes?.length > 0 ? `${log.changes.length} field(s) changed` : log.action === 'create' ? 'Record created' : 'Record deleted'}
                     </td>
                   </tr>
@@ -99,7 +99,7 @@ export default function AuditLog() {
                         <div className="space-y-1.5">
                           {log.changes.map((c, j) => (
                             <div key={j} className="flex items-start gap-2 text-xs bg-surface rounded-lg px-3 py-2">
-                              <span className="text-gray-400 font-medium min-w-[120px]">{c.field}:</span>
+                              <span className="text-gray-600 font-medium min-w-[120px]">{c.field}:</span>
                               <span className="text-rose-400 line-through">{JSON.stringify(c.oldValue)}</span>
                               <span className="text-gray-500 mx-1">→</span>
                               <span className="text-green-400">{JSON.stringify(c.newValue)}</span>

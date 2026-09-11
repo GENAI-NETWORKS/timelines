@@ -29,9 +29,9 @@ function ProtectedRoute({ children, adminOnly = false }) {
       <div className="min-h-screen bg-surface flex items-center justify-center">
         <div className="text-center space-y-3">
           <div className="w-12 h-12 rounded-2xl bg-gradient-brand flex items-center justify-center mx-auto animate-pulse">
-            <span className="text-white text-xl">✂</span>
+            <span className="text-gray-900 text-xl">✂</span>
           </div>
-          <p className="text-gray-400 text-sm">Loading Timelines…</p>
+          <p className="text-gray-600 text-sm">Loading Timelines…</p>
         </div>
       </div>
     );

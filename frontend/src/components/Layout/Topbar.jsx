@@ -1,4 +1,4 @@
-import { Menu, Bell } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 
 const pageTitles = {
@@ -20,11 +20,12 @@ export default function Topbar({ onMenuClick }) {
 
   return (
     <header className="h-16 bg-surface-card border-b border-surface-border flex items-center px-4 gap-4 sticky top-0 z-20">
-      <button onClick={onMenuClick} className="btn-icon lg:hidden">
+      {/* Menu toggle — visible on ALL screen sizes */}
+      <button onClick={onMenuClick} className="btn-icon">
         <Menu className="w-5 h-5" />
       </button>
       <div>
-        <h2 className="font-display font-semibold text-white text-lg leading-tight">{title}</h2>
+        <h2 className="font-display font-semibold text-gray-900 text-lg leading-tight">{title}</h2>
         <p className="text-xs text-gray-500 hidden sm:block">
           {new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
         </p>

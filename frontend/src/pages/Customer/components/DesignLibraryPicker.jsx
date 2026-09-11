@@ -101,11 +101,11 @@ export default function DesignLibraryPicker({ itemType, section, onSelect, onClo
               <Image className="w-4 h-4 text-brand-400" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-display font-bold text-white text-sm">
+              <h3 className="font-display font-bold text-gray-900 text-sm">
                 {sectionLabel} Design Library
               </h3>
               <p className="text-xs text-gray-500 mt-0.5">
-                {images.length}/20 images &middot; Click a thumbnail to select
+                {images.length}/20 images · Click to select or <strong>drag</strong> onto canvas
               </p>
             </div>
 
@@ -128,7 +128,7 @@ export default function DesignLibraryPicker({ itemType, section, onSelect, onClo
 
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-surface-elevated transition-colors"
+              className="p-1.5 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-surface-elevated transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -145,7 +145,7 @@ export default function DesignLibraryPicker({ itemType, section, onSelect, onClo
                 <div className="w-16 h-16 rounded-2xl bg-surface-elevated flex items-center justify-center mb-4">
                   <Image className="w-8 h-8 text-gray-500" />
                 </div>
-                <p className="font-semibold text-gray-300 mb-1">No images yet</p>
+                <p className="font-semibold text-gray-700 mb-1">No images yet</p>
                 <p className="text-sm text-gray-500 mb-4">
                   Upload up to 20 default reference images for {sectionLabel} design
                 </p>
@@ -160,10 +160,18 @@ export default function DesignLibraryPicker({ itemType, section, onSelect, onClo
                 {images.map(img => (
                   <div
                     key={img.id}
-                    className="relative group rounded-xl overflow-hidden border-2 border-surface-border hover:border-brand-400/50 transition-all aspect-square"
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData('text/plain', img.url);
+                      e.dataTransfer.effectAllowed = 'copy';
+                    }}
+                    className="relative group rounded-xl overflow-hidden border-2 border-surface-border hover:border-brand-400/50 transition-all aspect-square cursor-grab active:cursor-grabbing"
                   >
-                    <img src={thumb(img.url)} alt={`${sectionLabel} ref`} className="w-full h-full object-cover" />
-
+                    <img src={thumb(img.url)} alt={`${sectionLabel} ref`} className="w-full h-full object-cover" draggable={false} />
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onSelect?.(img); onClose(); }}
+                      className="absolute inset-0 bg-brand-600/0 group-hover:bg-brand-600/20 transition-colors" title="Click to add to canvas"
+                    />
                     <button
                       onClick={(e) => handleDelete(e, img.id)}
                       className="absolute top-1 right-1 w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow"
@@ -171,6 +179,9 @@ export default function DesignLibraryPicker({ itemType, section, onSelect, onClo
                     >
                       <X className="w-3 h-3" />
                     </button>
+                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity py-1">
+                      <p className="text-[8px] text-white text-center font-semibold">Drag to canvas</p>
+                    </div>
                   </div>
                 ))}
 
@@ -195,7 +206,7 @@ export default function DesignLibraryPicker({ itemType, section, onSelect, onClo
             <div className="flex items-center gap-2">
               <button
                 onClick={onClose}
-                className="px-4 py-1.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-surface-elevated transition-colors"
+                className="px-4 py-1.5 rounded-lg text-sm text-gray-600 hover:text-gray-900 hover:bg-surface-elevated transition-colors"
               >
                 Cancel
               </button>

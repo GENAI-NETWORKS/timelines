@@ -70,8 +70,8 @@ export default function CustomerPicker({ value, onChange, disabled }) {
             {value.name?.[0]?.toUpperCase() || '?'}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-white text-sm truncate">{value.name}</p>
-            <p className="text-xs text-gray-400 truncate">{value.customerId} · {value.phone}</p>
+            <p className="font-semibold text-gray-900 text-sm truncate">{value.name}</p>
+            <p className="text-xs text-gray-600 truncate">{value.customerId} · {value.phone}</p>
             {value.address && <p className="text-xs text-gray-500 truncate">{value.address}</p>}
           </div>
           <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0" />
@@ -115,14 +115,14 @@ export default function CustomerPicker({ value, onChange, disabled }) {
                       <button
                         key={c.customerId}
                         onClick={() => selectCustomer(c)}
-                        className="w-full text-left px-4 py-3 hover:bg-surface-elevated transition-colors flex items-center gap-3 border-b border-surface-border/50 last:border-0"
+                        className="w-full text-left px-4 py-3 hover:bg-surface-elevated transition-colors flex items-center gap-3 border-b border-surface-border last:border-0"
                       >
                         <div className="w-8 h-8 rounded-full bg-gradient-brand flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
                           {c.name?.[0]?.toUpperCase()}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-white">{c.name}</p>
-                          <p className="text-xs text-gray-400">{c.customerId} · {c.phone}</p>
+                          <p className="text-sm font-medium text-gray-900">{c.name}</p>
+                          <p className="text-xs text-gray-600">{c.customerId} · {c.phone}</p>
                         </div>
                       </button>
                     ))
@@ -153,7 +153,7 @@ export default function CustomerPicker({ value, onChange, disabled }) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <UserPlus className="w-4 h-4 text-brand-400" />
-                  <span className="text-sm font-semibold text-white">New Customer</span>
+                  <span className="text-sm font-semibold text-gray-900">New Customer</span>
                   <span className="badge badge-pending text-xs">Will be created on save</span>
                 </div>
                 <button onClick={clearSelection} className="btn-icon text-gray-500">
@@ -180,7 +180,7 @@ export default function CustomerPicker({ value, onChange, disabled }) {
               </div>
               <button
                 onClick={() => { setShowNewForm(false); setQuery(''); }}
-                className="text-sm text-gray-500 hover:text-gray-300 flex items-center gap-1 transition-colors"
+                className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1 transition-colors"
               >
                 <ChevronDown className="w-3 h-3 rotate-90" /> Switch to search existing
               </button>

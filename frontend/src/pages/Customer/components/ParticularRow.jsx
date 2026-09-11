@@ -16,16 +16,13 @@ import ImageUploadSlot from './ImageUploadSlot';
 import toast from 'react-hot-toast';
 import { uploadItemImage, saveItemCanvas } from '../../../api/tailoringOrders';
 
-// ─── Product type metadata ────────────────────────────────────────────────
 export const ITEM_TYPES = [
-  { value: 'DESIGN_BLOUSE',     label: 'Design Blouse',       hasMeter: true,  hasSource: false, hasDesign: true,  hasLining: true,  hasMeasurements: true,  hasBlouseType: true },
-  { value: 'LINING_BLOUSE',     label: 'Lining Blouse',       hasMeter: true,  hasSource: true,  hasDesign: true,  hasLining: false, hasMeasurements: true,  hasBlouseType: true },
-  { value: 'SILK_COTTON_BLOUSE',label: 'Silk Cotton Blouse',  hasMeter: true,  hasSource: true,  hasDesign: false, hasLining: false, hasMeasurements: false },
-  { value: 'SAREE_FALLS',       label: 'Saree Falls',         hasMeter: false, hasSource: true,  hasDesign: false, hasLining: false, isSaree: true },
-  { value: 'SAREE_BORDER',      label: 'Saree Border / Ooram',hasMeter: false, hasSource: false, hasDesign: false, hasLining: false, isSaree: true },
-  { value: 'ARYA_WORK_BLOUSE',  label: 'Aari Work Blouse',    hasMeter: true,  hasSource: false, hasDesign: true,  hasLining: false, hasMeasurements: true,  isArya: true, hasBlouseType: true },
-  { value: 'AARI_WORK_BLOUSE_STITCHING', label: 'Aari Work Blouse Stitching', hasMeter: true, hasSource: false, hasDesign: true, hasLining: true, hasMeasurements: true, isArya: true, hasBlouseType: true },
-
+  { value: 'DESIGN_BLOUSE',     label: 'Design Blouse',       hasMeter: true,  hasSource: false, hasDesign: true,  hasLining: true,  hasMeasurements: true,  hasBlouseType: true, hasReferenceImage: true },
+  { value: 'LINING_BLOUSE',     label: 'Lining Blouse',       hasMeter: true,  hasSource: false, hasDesign: true,  hasLining: true,  hasMeasurements: true,  hasBlouseType: true, hasReferenceImage: true },
+  { value: 'SAREE_FALLS',       label: 'Saree Falls',         hasMeter: false, hasSource: true,  hasDesign: false, hasLining: false, isSaree: true, hasReferenceImage: true },
+  { value: 'SAREE_BORDER',      label: 'Saree Border / Ooram',hasMeter: false, hasSource: false, hasDesign: false, hasLining: false, isSaree: true, hasReferenceImage: true },
+  { value: 'ARYA_WORK_BLOUSE',  label: 'Aari Work',           hasMeter: true,  hasSource: false, hasDesign: true,  hasLining: false, hasMeasurements: true,  isArya: true, hasBlouseType: true, hasReferenceImage: true },
+  { value: 'CUSTOM_ITEM',       label: 'Custom Item',         hasMeter: false, hasSource: false, hasDesign: false, hasLining: false, hasMeasurements: false, hasNotes: true, hasReferenceImage: false, isCustom: true },
 ];
 
 export function getItemMeta(itemType) {
@@ -87,11 +84,11 @@ function SubItemPanel({ sub, itemNumber, meta, orderId, itemId, onChange, onImag
   const toggleCanvas = (section) => setCanvasOpen(s => ({ ...s, [section]: !s[section] }));
 
   return (
-    <div className="border border-surface-border/50 rounded-xl overflow-hidden bg-surface-elevated/10">
+    <div className="border border-surface-border rounded-xl overflow-hidden bg-slate-50">
       {/* Sub-item header */}
-      <div className="flex items-center gap-2 px-3 py-2 bg-surface-elevated/30 border-b border-surface-border/30">
+      <div className="flex items-center gap-2 px-3 py-2 bg-surface-elevated/30 border-b border-surface-border">
         <span className="w-6 h-6 rounded-full bg-gradient-brand text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{itemNumber}</span>
-        <span className="text-sm font-medium text-gray-300 flex-1">Item {itemNumber}</span>
+        <span className="text-sm font-medium text-gray-700 flex-1">Item {itemNumber}</span>
         {canCopy && (
           <button onClick={onCopyFrom} className="flex items-center gap-1 text-xs text-brand-400 hover:text-brand-300 transition-colors px-2 py-1 rounded-lg hover:bg-brand-900/20">
             <Copy className="w-3 h-3" /> Same as Item 1
@@ -157,9 +154,9 @@ function SubItemPanel({ sub, itemNumber, meta, orderId, itemId, onChange, onImag
         {meta.hasMeasurements && (
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-semibold text-gray-300">Measurements (inches/cm)</span>
+              <span className="text-xs font-semibold text-gray-700">Measurements (inches/cm)</span>
             </div>
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 border border-surface-border/30 rounded-lg p-2 bg-surface-elevated/10">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 border border-surface-border rounded-lg p-2 bg-slate-50">
               {[
                 { key: 'SL', label: 'SL' },
                 { key: 'SA', label: 'SA' },
@@ -174,7 +171,7 @@ function SubItemPanel({ sub, itemNumber, meta, orderId, itemId, onChange, onImag
                 { key: 'FRONT_LEN', label: 'FRONT LEN' },
               ].map(m => (
                 <div key={m.key} className="flex flex-col">
-                  <label className="text-[10px] text-gray-400 mb-0.5 uppercase">{m.label}</label>
+                  <label className="text-[10px] text-gray-600 mb-0.5 uppercase">{m.label}</label>
                   <input
                     className="input text-sm py-1 px-1.5"
                     placeholder="—"
@@ -211,7 +208,7 @@ function SubItemPanel({ sub, itemNumber, meta, orderId, itemId, onChange, onImag
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Layers className="w-3.5 h-3.5 text-pink-400" />
-              <span className="text-xs font-semibold text-gray-300">Design</span>
+              <span className="text-xs font-semibold text-gray-700">Design</span>
             </div>
             {['front', 'back', 'sleeve'].map(section => {
               const noteKey    = `${section}DesignNotes`;
@@ -221,7 +218,7 @@ function SubItemPanel({ sub, itemNumber, meta, orderId, itemId, onChange, onImag
               const SectionLabel = section.charAt(0).toUpperCase() + section.slice(1);
 
               return (
-                <div key={section} className="rounded-xl border border-surface-border/50 overflow-hidden">
+                <div key={section} className="rounded-xl border border-surface-border overflow-hidden">
                   {/* Section header */}
                   <button
                     type="button"
@@ -229,13 +226,13 @@ function SubItemPanel({ sub, itemNumber, meta, orderId, itemId, onChange, onImag
                     className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-elevated/40 transition-colors"
                   >
                     <span className={`w-2 h-2 rounded-full flex-shrink-0 ${section === 'front' ? 'bg-blue-400' : section === 'back' ? 'bg-purple-400' : 'bg-pink-400'}`} />
-                    <span className="text-xs font-semibold text-gray-300 flex-1">{SectionLabel} Design</span>
+                    <span className="text-xs font-semibold text-gray-700 flex-1">{SectionLabel} Design</span>
                     {sub[canvasImgKey] && <span className="badge badge-ready text-xs">Saved</span>}
-                    {canvasOpen[section] ? <ChevronUp className="w-3.5 h-3.5 text-gray-400" /> : <ChevronDown className="w-3.5 h-3.5 text-gray-400" />}
+                    {canvasOpen[section] ? <ChevronUp className="w-3.5 h-3.5 text-gray-600" /> : <ChevronDown className="w-3.5 h-3.5 text-gray-600" />}
                   </button>
 
                   {canvasOpen[section] && (
-                    <div className="p-3 space-y-3 border-t border-surface-border/30 animate-fade-in">
+                    <div className="p-3 space-y-3 border-t border-surface-border animate-fade-in">
                       {/* Notes */}
                       <div>
                         <label className="label text-xs">{SectionLabel} Design Notes</label>
@@ -345,16 +342,16 @@ export default function ParticularRow({
   return (
     <div className="rounded-xl border border-surface-border overflow-hidden bg-surface-card">
       {/* ── Header row ──────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-2 px-4 py-3 bg-surface-elevated/50 border-b border-surface-border">
+      <div className="flex items-center gap-2 px-4 py-3 bg-slate-200 border-b border-surface-border">
         {/* Row number */}
         <span className="text-xs font-mono text-gray-500 w-5">{rowIndex})</span>
 
         {/* Product type badge */}
         <div className="flex-1 flex items-center gap-2 min-w-0">
-          <span className="font-semibold text-white text-sm truncate">{meta.label}</span>
+          <span className="font-semibold text-gray-900 text-sm truncate">{meta.label}</span>
           {meta.hasMeter    && <span className="badge badge-pending text-xs hidden sm:inline">Meter</span>}
           {meta.hasDesign   && <span className="badge badge-progress text-xs hidden sm:inline">Canvas</span>}
-          {meta.hasSource   && <span className="badge text-xs bg-surface-elevated text-gray-400 border border-surface-border hidden sm:inline">Source</span>}
+          {meta.hasSource   && <span className="badge text-xs bg-surface-elevated text-gray-600 border border-surface-border hidden sm:inline">Source</span>}
         </div>
 
         {/* Qty control */}
@@ -374,7 +371,7 @@ export default function ParticularRow({
           ) : (
             <button
               onClick={() => setEditingQty(true)}
-              className="font-bold text-white text-sm px-2 py-0.5 rounded-lg hover:bg-surface-elevated transition-colors"
+              className="font-bold text-gray-900 text-sm px-2 py-0.5 rounded-lg hover:bg-surface-elevated transition-colors"
             >
               {item.quantity}
             </button>
@@ -385,7 +382,7 @@ export default function ParticularRow({
         <div className="flex items-center gap-1">
           <button
             onClick={() => setExpanded(e => !e)}
-            className="btn-icon text-gray-400"
+            className="btn-icon text-gray-600"
             title={expanded ? 'Collapse' : 'Expand'}
           >
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -399,7 +396,7 @@ export default function ParticularRow({
         <div className="p-3 space-y-3 animate-fade-in">
           {/* Lining sub-row for Design Blouse */}
           {meta.hasLining && (
-            <div className="flex flex-wrap gap-3 px-1 pb-2 border-b border-surface-border/40">
+            <div className="flex flex-wrap gap-3 px-1 pb-2 border-b border-surface-border">
               <div>
                 <label className="label text-xs">Lining Source</label>
                 <select
@@ -435,7 +432,7 @@ export default function ParticularRow({
           )}
 
           {/* ── Bag No + Bag Colour (all item types) ─────────────────────── */}
-          <div className="flex flex-wrap gap-3 px-1 pb-2 border-b border-surface-border/40">
+          <div className="flex flex-wrap gap-3 px-1 pb-2 border-b border-surface-border">
             <div>
               <label className="label text-xs">Bag No</label>
               <input

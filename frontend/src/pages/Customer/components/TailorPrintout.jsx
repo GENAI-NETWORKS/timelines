@@ -94,6 +94,11 @@ export function TailorPrintContent({ order, customer, showPrices = false }) {
   return (
     <div className="tp-wrapper">
 
+      {/* ── Fixed header for every printed page ─────────────────────── */}
+      <div className="tp-page-header">
+        {custName} | ID: {order?.customer?.customerId || order?.customerId || '—'}
+      </div>
+
       {/* ── Shop header ─────────────────────────────────────────────── */}
       <div className="tp-header">
         <div className="tp-shop-name">TIMELINES COSTUME DESIGNERS</div>
@@ -105,9 +110,7 @@ export function TailorPrintContent({ order, customer, showPrices = false }) {
         <tbody>
           <tr>
             <td className="tp-label-cell">Customer Name</td>
-            <td className="tp-value-cell">{custName}</td>
-            <td className="tp-label-cell">Phone</td>
-            <td className="tp-value-cell">{custPhone}</td>
+            <td className="tp-value-cell" colSpan={3}>{custName}</td>
           </tr>
           <tr>
             <td className="tp-label-cell">Order Date</td>
@@ -137,10 +140,10 @@ export function TailorPrintContent({ order, customer, showPrices = false }) {
           subs.forEach(sub => {
             itemTotal += parseFloat(sub.price || 0);
             if (sub.source !== 'CUSTOMER') itemTotal += parseFloat(sub.sourcePrice || 0);
+            if (meta.hasLining && sub.liningSource !== 'CUSTOMER') {
+              itemTotal += parseFloat(sub.liningPrice || 0);
+            }
           });
-          if (meta.hasLining && item.details?.liningSource !== 'CUSTOMER') {
-            itemTotal += parseFloat(item.details?.liningPrice || 0);
-          }
           grandTotal += itemTotal;
         }
 
@@ -156,19 +159,7 @@ export function TailorPrintContent({ order, customer, showPrices = false }) {
               )}
             </div>
 
-            {/* Lining row */}
-            {meta.hasLining && (item.details?.liningSource || item.details?.liningMeter) && (
-              <div className="tp-lining-row">
-                <strong>Lining:</strong>{' '}
-                {item.details.liningSource === 'SHOP'
-                  ? 'Shop purchase (Inside)'
-                  : item.details.liningSource === 'CUSTOMER'
-                  ? 'Customer purchased (outside)'
-                  : item.details.liningSource || ''}
-                {item.details.liningMeter ? `  ·  ${item.details.liningMeter} m` : ''}
-                {showPrices && item.details.liningPrice ? `  ·  ₹ ${item.details.liningPrice}` : ''}
-              </div>
-            )}
+
 
             {/* Bag row */}
             {(item.details?.bagNo || item.details?.bagColour) && (
@@ -230,6 +221,20 @@ export function TailorPrintContent({ order, customer, showPrices = false }) {
                     {meta.isSaree && sub.sareeColour && (
                       <span><strong>Colour:</strong> {sub.sareeColour}</span>
                     )}
+                  </div>
+                )}
+
+                {/* Lining row */}
+                {meta.hasLining && (sub.liningSource || sub.liningMeter) && (
+                  <div className="tp-fields-row" style={{ marginTop: '4px' }}>
+                    <span><strong>Lining:</strong>{' '}
+                    {sub.liningSource === 'SHOP'
+                      ? 'Shop purchase (Inside)'
+                      : sub.liningSource === 'CUSTOMER'
+                      ? 'Customer purchased (outside)'
+                      : sub.liningSource || ''}</span>
+                    {sub.liningMeter ? <span><strong>Lining Meter:</strong> {sub.liningMeter} m</span> : ''}
+                    {showPrices && sub.liningPrice ? <span><strong>Lining Price:</strong> ₹ {sub.liningPrice}</span> : ''}
                   </div>
                 )}
 

@@ -32,7 +32,7 @@ function FieldRow({ field, onChange, onRemove, index }) {
           <label className="label">Required</label>
           <label className="flex items-center gap-2 cursor-pointer mt-2">
             <input type="checkbox" checked={field.required} onChange={e => onChange({ ...field, required: e.target.checked })} className="w-4 h-4 rounded accent-brand-500" />
-            <span className="text-xs text-gray-400">Required</span>
+            <span className="text-xs text-gray-600">Required</span>
           </label>
         </div>
       </div>
@@ -58,14 +58,14 @@ function TemplateForm({ value, onChange, onSubmit, loading, onCancel, title }) {
         <div className="flex items-end gap-3">
           <label className="flex items-center gap-2 cursor-pointer mb-2">
             <input type="checkbox" checked={value.isActive} onChange={e => onChange({ ...value, isActive: e.target.checked })} className="w-4 h-4 rounded accent-brand-500" />
-            <span className="text-sm text-gray-300">Active</span>
+            <span className="text-sm text-gray-700">Active</span>
           </label>
         </div>
       </div>
 
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h4 className="text-sm font-semibold text-gray-300">Measurement Fields</h4>
+          <h4 className="text-sm font-semibold text-gray-700">Measurement Fields</h4>
           <button type="button" onClick={addField} className="btn-secondary text-xs py-1.5 px-3">
             <Plus className="w-3 h-3" /> Add Field
           </button>
@@ -128,7 +128,7 @@ export default function GarmentTemplates() {
     <div className="space-y-5 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display font-bold text-2xl text-white">Garment Templates</h1>
+          <h1 className="font-display font-bold text-2xl text-gray-900">Garment Templates</h1>
           <p className="text-sm text-gray-500">Configure measurement fields per garment type</p>
         </div>
         <button onClick={() => { setEditData(EMPTY_TPL); setModal('create'); }} className="btn-primary">
@@ -150,14 +150,14 @@ export default function GarmentTemplates() {
                   {tpl.garmentType.slice(0, 2).toUpperCase()}
                 </div>
                 <div>
-                  <h3 className="font-display font-semibold text-white">{tpl.garmentType}</h3>
+                  <h3 className="font-display font-semibold text-gray-900">{tpl.garmentType}</h3>
                   <p className="text-xs text-gray-500">{tpl.fields.length} measurement fields · {tpl.isActive ? 'Active' : 'Inactive'}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={e => { e.stopPropagation(); setEditId(tpl.id); setEditData({ garmentType: tpl.garmentType, fields: tpl.fields, isActive: tpl.isActive }); setModal('edit'); }} className="btn-icon text-blue-400"><Edit2 className="w-4 h-4" /></button>
                 <button onClick={e => { e.stopPropagation(); setDeleteId(tpl.id); }} className="btn-icon text-rose-400"><Trash2 className="w-4 h-4" /></button>
-                {expanded === tpl.id ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+                {expanded === tpl.id ? <ChevronUp className="w-5 h-5 text-gray-600" /> : <ChevronDown className="w-5 h-5 text-gray-600" />}
               </div>
             </div>
             {expanded === tpl.id && (
@@ -165,7 +165,7 @@ export default function GarmentTemplates() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                   {[...tpl.fields].sort((a, b) => a.order - b.order).map((f, i) => (
                     <div key={i} className="bg-surface-elevated rounded-lg px-3 py-2 text-xs flex items-center justify-between gap-2">
-                      <span className="text-gray-300">{f.label}</span>
+                      <span className="text-gray-700">{f.label}</span>
                       <div className="flex gap-1">
                         <span className="text-gray-600">{f.unit}</span>
                         {f.required && <span className="text-rose-400">*</span>}

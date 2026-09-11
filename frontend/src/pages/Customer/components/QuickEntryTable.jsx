@@ -1,16 +1,68 @@
 /**
  * QuickEntryTable.jsx
  *
- * Spreadsheet-style table for fast particular data entry.
- *  - Each row = one particular with inline editable cells
- *  - Lining sub-row for Design Blouse / Aari Blouse Stitching
- *  - Quick-add chips at the bottom for instant row creation
- *  - Details (📋) button opens slide-in panel for measurements / canvas
+ * A spreadsheet-style table for entering order particulars quickly.
+ * Supports multiple sub-items (quantity > 1) with per-item theming.
  */
-import { FileText, Trash2, Plus, Loader } from 'lucide-react';
-import { ITEM_TYPES, getItemMeta } from './ParticularRow';
+import React, { useState, useEffect, useRef } from 'react';
+import { Trash2, Plus, ChevronDown, ChevronUp, FileText, Image as ImageIcon, Ruler, Scissors, Copy, Layers, Text, Palette } from 'lucide-react';
+import ParticularRow, { getItemMeta, ITEM_TYPES } from './ParticularRow';
+import ImageUploadSlot from './ImageUploadSlot';
+import toast from 'react-hot-toast';
+const THEMES = [
+  {
+    name: 'pink',
+    tabActive: 'bg-pink-600 text-white shadow-lg shadow-pink-500/20 border-pink-500',
+    tabInactive: 'bg-pink-50 text-pink-700 hover:bg-pink-100 hover:text-pink-800 border-pink-200',
+    rowBg: 'bg-pink-50/50',
+    text: 'text-pink-700',
+    border: 'border-pink-200',
+    focusBorder: 'focus:border-pink-400',
+    focusRing: 'focus:ring-pink-500/20'
+  },
+  {
+    name: 'amber',
+    tabActive: 'bg-amber-600 text-white shadow-lg shadow-amber-500/20 border-amber-500',
+    tabInactive: 'bg-amber-50 text-amber-700 hover:bg-amber-100 hover:text-amber-800 border-amber-200',
+    rowBg: 'bg-amber-50/50',
+    text: 'text-amber-700',
+    border: 'border-amber-200',
+    focusBorder: 'focus:border-amber-400',
+    focusRing: 'focus:ring-amber-500/20'
+  },
+  {
+    name: 'emerald',
+    tabActive: 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 border-emerald-500',
+    tabInactive: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 border-emerald-200',
+    rowBg: 'bg-emerald-50/50',
+    text: 'text-emerald-700',
+    border: 'border-emerald-200',
+    focusBorder: 'focus:border-emerald-400',
+    focusRing: 'focus:ring-emerald-500/20'
+  },
+  {
+    name: 'cyan',
+    tabActive: 'bg-cyan-600 text-white shadow-lg shadow-cyan-500/20 border-cyan-500',
+    tabInactive: 'bg-cyan-50 text-cyan-700 hover:bg-cyan-100 hover:text-cyan-800 border-cyan-200',
+    rowBg: 'bg-cyan-50/50',
+    text: 'text-cyan-700',
+    border: 'border-cyan-200',
+    focusBorder: 'focus:border-cyan-400',
+    focusRing: 'focus:ring-cyan-500/20'
+  },
+  {
+    name: 'indigo',
+    tabActive: 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 border-indigo-500',
+    tabInactive: 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-800 border-indigo-200',
+    rowBg: 'bg-indigo-50/50',
+    text: 'text-indigo-700',
+    border: 'border-indigo-200',
+    focusBorder: 'focus:border-indigo-400',
+    focusRing: 'focus:ring-indigo-500/20'
+  }
+];
 
-// ─── helpers ──────────────────────────────────────────────────────────────────
+// ── Blank sub-item factory ────────────────────────────────────────────────────
 function makeBlankSub(base = {}) {
   return {
     number: 1,
@@ -18,267 +70,634 @@ function makeBlankSub(base = {}) {
     meter: base.meter || '',
     source: base.source || 'SHOP',
     sourcePrice: base.sourcePrice || '',
-    sareeColour: '',
-    description: '',
-    referenceImageUrl: null,
-    frontDesignNotes: '', backDesignNotes: '', sleeveDesignNotes: '',
-    frontCanvasJSON: null, backCanvasJSON: null, sleeveCanvasJSON: null,
-    frontCanvasImageUrl: null, backCanvasImageUrl: null, sleeveCanvasImageUrl: null,
-    frontDesignImageUrl: null, backDesignImageUrl: null, sleeveDesignImageUrl: null,
-    aryaWorkNotes: '',
+    description: base.description || '',
+    liningSource: base.liningSource || 'SHOP',
+    liningMeter: base.liningMeter || '',
+    liningPrice: base.liningPrice || '',
+    // blouse mode toggle: 'measurement' | 'sample'
+    blouseMode: base.blouseMode || 'measurement',
+    sampleBlouseImageUrl: null,
+    sampleBlouseDescription: '',
+    // measurements
     measurement_SL: '', measurement_SA: '', measurement_ARM: '',
     measurement_BACK_L: '', measurement_HIP: '', measurement_PAKKA: '',
     measurement_SHOULDER: '', measurement_BACKNECK: '', measurement_CHEST: '',
     measurement_FRONT_NECK: '', measurement_FRONT_LEN: '',
+    // design
+    frontDesignNotes: '', backDesignNotes: '', sleeveDesignNotes: '',
+    frontCanvasJSON: null, backCanvasJSON: null, sleeveCanvasJSON: null,
+    frontCanvasImageUrl: null, backCanvasImageUrl: null, sleeveCanvasImageUrl: null,
+    frontCanvasDataUrl: null, backCanvasDataUrl: null, sleeveCanvasDataUrl: null,
+    // saree
+    numberOfSarees: '', numberOfFalls: '', sareeColour: '', fallsSource: 'SHOP',
+    // arya
+    aryaWorkNotes: '', aryaWorkPrice: '',
+    frontDesignImageUrl: null, backDesignImageUrl: null, sleeveDesignImageUrl: null,
+    editReason: '',
   };
 }
 
-// ─── Single item row ──────────────────────────────────────────────────────────
-function ItemRow({ item, rowIndex, onUpdate, onDelete, onOpenDetail }) {
-  const meta = getItemMeta(item.itemType);
-  const sub0 = item.subItems?.[0] || {};
+// ── Single item card ──────────────────────────────────────────────────────────
+const ItemCard = React.memo(function ItemCard({ item, rowIndex, theme, onUpdate, onDelete, onOpenDesignModal, onImageUpload, orderId, measOrder, setMeasOrder }) {
+  let meta = getItemMeta(item.itemType);
+  if (item.customConfig) {
+    meta = { ...meta, ...item.customConfig };
+  }
+  
+  const [activeSub, setActiveSub] = useState(0);
+  const [expanded, setExpanded] = useState(true);
 
-  const updateSub0 = (field, val) => {
-    const base = item.subItems?.length ? item.subItems : [makeBlankSub()];
-    const newSubs = [{ ...base[0], [field]: val }, ...base.slice(1)];
-    onUpdate({ ...item, subItems: newSubs });
+  const subItems = item.subItems?.length ? item.subItems : [makeBlankSub()];
+  const [localSub, setLocalSub] = useState(subItems[activeSub] || makeBlankSub());
+  const lastSentSub = useRef(subItems[activeSub] || makeBlankSub());
+
+  // Sync local state when parent props change from an external source (like API load)
+  useEffect(() => {
+    const parentSub = item.subItems?.[activeSub] || makeBlankSub();
+    if (JSON.stringify(parentSub) !== JSON.stringify(lastSentSub.current)) {
+      setLocalSub(parentSub);
+      lastSentSub.current = parentSub;
+    }
+  }, [item.subItems, activeSub]);
+
+  // Debounce updates to parent
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const parentSub = item.subItems?.[activeSub] || makeBlankSub();
+      if (JSON.stringify(parentSub) !== JSON.stringify(localSub)) {
+        const newSubs = subItems.map((s, i) => i === activeSub ? localSub : s);
+        lastSentSub.current = localSub;
+        onUpdate({ ...item, subItems: newSubs });
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [localSub, activeSub]);
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  const updateSub = (field, val) => {
+    setLocalSub(prev => ({ ...prev, [field]: val }));
   };
 
   const updateQty = (val) => {
     const q = Math.max(1, parseInt(val) || 1);
-    let subs = [...(item.subItems?.length ? item.subItems : [makeBlankSub()])];
+    let subs = [...subItems];
     while (subs.length < q) subs.push({ ...makeBlankSub(subs[0]), number: subs.length + 1 });
     subs = subs.slice(0, q).map((s, i) => ({ ...s, number: i + 1 }));
+    if (activeSub >= q) setActiveSub(q - 1);
     onUpdate({ ...item, quantity: q, subItems: subs });
   };
 
-  const hasDetail = true; // All items have extras: ref image, saree colour, notes, etc.
+  const toggleCustomField = (field) => {
+    const config = item.customConfig || {
+      hasMeter: false, hasSource: false, hasDesign: false, hasLining: false, hasMeasurements: false, hasNotes: true, hasReferenceImage: false
+    };
+    onUpdate({ ...item, customConfig: { ...config, [field]: !config[field] } });
+  };
 
-  const inp = 'w-full bg-surface-elevated border border-surface-border/60 rounded-lg px-2 py-1.5 text-sm text-white placeholder-gray-600 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500/30 transition-colors';
-  const na  = <span className="text-gray-600 text-sm px-2 select-none">—</span>;
+  const handleImageUpload = async (field, file) => {
+    if (!orderId || !item.id) { toast.error('Save the order first.'); return; }
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+      fd.append('subItemNumber', String(activeSub + 1));
+      fd.append('field', field);
+      await onImageUpload(item.id, fd);
+    } catch { toast.error('Image upload failed.'); }
+  };
+
+  const handleDeleteSubItem = () => {
+    if (subItems.length <= 1) {
+      onDelete();
+      return;
+    }
+    const newSubs = subItems.filter((_, i) => i !== activeSub);
+    const renumbered = newSubs.map((s, i) => ({ ...s, number: i + 1 }));
+    const newActive = activeSub >= renumbered.length ? renumbered.length - 1 : activeSub;
+    setActiveSub(newActive);
+    onUpdate({ ...item, quantity: renumbered.length, subItems: renumbered });
+  };
+
+  const inp = `w-full bg-white border rounded-lg px-3 py-2 text-base text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 transition-colors ${theme.border} ${theme.focusBorder} ${theme.focusRing}`;
 
   return (
-    <>
-      {/* ── Main row ──────────────────────────────────────────────────────── */}
-      <tr className="border-b border-surface-border/40 hover:bg-surface-elevated/10 transition-colors">
-
-        <td className="px-3 py-2 text-xs text-gray-500 font-mono w-8 text-center">{rowIndex}</td>
-
-        {/* Item type — label only, set at creation */}
-        <td className="px-2 py-2 min-w-[160px]">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-white truncate">{meta.label}</span>
-            {meta.hasDesign && (
-              <span className="hidden lg:inline px-1.5 py-0.5 rounded-full text-[10px] bg-brand-900/40 text-brand-300 border border-brand-500/20">Canvas</span>
-            )}
-          </div>
-        </td>
+    <div className={`rounded-2xl border-2 ${theme.border} shadow-sm overflow-hidden`}>
+      {/* ── Card header ── */}
+      <div className={`flex items-center justify-between px-4 py-3 ${theme.rowBg} border-b ${theme.border}`}>
+        <div className="flex items-center gap-3">
+          <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white bg-gradient-to-br ${
+            theme.name === 'pink' ? 'from-pink-500 to-rose-600' :
+            theme.name === 'amber' ? 'from-amber-500 to-orange-600' :
+            theme.name === 'emerald' ? 'from-emerald-500 to-teal-600' :
+            theme.name === 'cyan' ? 'from-cyan-500 to-blue-600' :
+            'from-indigo-500 to-purple-600'
+          }`}>{rowIndex + 1}</span>
+          {meta.isCustom ? (
+            <input
+              type="text"
+              placeholder="Enter custom item name..."
+              className={`font-bold text-base bg-transparent border-b border-dashed focus:outline-none focus:border-brand-500 w-40 sm:w-56 ${theme.text}`}
+              value={item.customName || ''}
+              onChange={(e) => onUpdate({ ...item, customName: e.target.value })}
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <span className={`font-bold text-base ${theme.text}`}>
+              {item.customName || meta.label}
+            </span>
+          )}
+        </div>
 
         {/* Qty */}
-        <td className="px-2 py-1.5 w-16">
-          <input type="number" min="1" max="20" className={inp + ' text-center'}
-            value={item.quantity || 1} onChange={e => updateQty(e.target.value)} />
-        </td>
+        <div className="flex items-center gap-1.5 ml-2">
+          <span className="text-xs text-gray-500">Qty:</span>
+          <input type="number" min="1" max="20"
+            className={`w-16 text-center text-base border rounded-lg px-2 py-1.5 bg-white text-gray-800 focus:outline-none focus:ring-2 ${theme.border} ${theme.focusBorder} ${theme.focusRing}`}
+            value={item.quantity || 1}
+            onChange={e => updateQty(e.target.value)} />
+        </div>
 
-        {/* Price */}
-        <td className="px-2 py-1.5 w-28">
-          <input type="number" min="0" className={inp} placeholder="₹ 0"
-            value={sub0.price || ''} onChange={e => updateSub0('price', e.target.value)} />
-        </td>
+        <button onClick={() => setExpanded(e => !e)} className={`ml-auto p-1 rounded-lg ${theme.text} hover:bg-white/60 transition-colors`}>
+          {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </button>
+        <button onClick={onDelete} className="p-1 rounded-lg text-rose-400 hover:bg-rose-50 transition-colors" title="Remove">
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
 
-        {/* Meter */}
-        <td className="px-2 py-1.5 w-24">
-          {meta.hasMeter
-            ? <input type="text" className={inp} placeholder="1.5"
-                value={sub0.meter || ''} onChange={e => updateSub0('meter', e.target.value)} />
-            : na}
-        </td>
+      {expanded && (
+        <div className="bg-white">
+          {/* Customizer Toolbar */}
+          {meta.isCustom && (
+            <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex flex-wrap gap-2 items-center">
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider mr-2">Customize:</span>
+              <button onClick={() => toggleCustomField('hasNotes')} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors ${meta.hasNotes ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}><Text className="w-3.5 h-3.5" /> Notes</button>
+              <button onClick={() => toggleCustomField('hasMeasurements')} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors ${meta.hasMeasurements ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}><Ruler className="w-3.5 h-3.5" /> Meas.</button>
+              <button onClick={() => toggleCustomField('hasDesign')} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors ${meta.hasDesign ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}><Palette className="w-3.5 h-3.5" /> Canvas</button>
+              <button onClick={() => toggleCustomField('hasReferenceImage')} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors ${meta.hasReferenceImage ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}><ImageIcon className="w-3.5 h-3.5" /> Ref Image</button>
+              <button onClick={() => toggleCustomField('hasLining')} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors ${meta.hasLining ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}><Layers className="w-3.5 h-3.5" /> Lining</button>
+              <button onClick={() => { toggleCustomField('hasMeter'); toggleCustomField('hasSource'); }} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors ${meta.hasMeter ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}><Scissors className="w-3.5 h-3.5" /> Meter</button>
+            </div>
+          )}
 
-        {/* Source */}
-        <td className="px-2 py-1.5 w-40">
-          {meta.hasSource
-            ? <select className={inp}
-                value={sub0.source || 'SHOP'} onChange={e => updateSub0('source', e.target.value)}>
-                <option value="SHOP">Shop (Inside)</option>
-                <option value="CUSTOMER">Customer (Out)</option>
-              </select>
-            : na}
-        </td>
+          {/* ── Sub-item tabs (if qty > 1) ── */}
+          {item.quantity > 1 && (
+            <div className={`flex gap-1.5 px-4 pt-3 flex-wrap border-b ${theme.border} pb-3 relative`}>
+              {subItems.map((sub, i) => (
+                <button key={i} onClick={() => setActiveSub(i)}
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${i === activeSub ? `bg-gradient-to-r ${theme.tabActive} shadow-sm border border-transparent` : `bg-surface-elevated text-gray-500 border border-surface-border hover:bg-gray-100`}`}>
+                  Item {i + 1}
+                </button>
+              ))}
+              <div className="ml-auto flex items-center">
+                <button onClick={handleDeleteSubItem} className="flex items-center gap-1 text-xs text-rose-500 hover:text-rose-600 font-semibold px-2 py-1 rounded hover:bg-rose-50 transition-colors">
+                  <Trash2 className="w-3.5 h-3.5" /> Delete Item {activeSub + 1}
+                </button>
+              </div>
+            </div>
+          )}
 
-        {/* Source Price */}
-        <td className="px-2 py-1.5 w-28">
-          {meta.hasSource && sub0.source !== 'CUSTOMER'
-            ? <input type="number" min="0" className={inp} placeholder="₹ 0"
-                value={sub0.sourcePrice || ''} onChange={e => updateSub0('sourcePrice', e.target.value)} />
-            : na}
-        </td>
+          {/* ── Main Content Area (Fields + Ref Image) ── */}
+          <div className="flex flex-col lg:flex-row gap-4 px-4 pt-3 pb-4">
+            
+            {/* Left Column: Fields & Lining */}
+            <div className="flex-1 space-y-4">
+              
+              {/* ── Fields grid ── */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
 
-        {/* Notes */}
-        <td className="px-2 py-1.5 min-w-[120px]">
-          <input type="text" className={inp} placeholder="Quick notes…"
-            value={sub0.description || ''} onChange={e => updateSub0('description', e.target.value)} />
-        </td>
+            {/* Stitching Price */}
+            <div>
+              <label className={`block text-sm font-semibold mb-1 ${theme.text}`}>Stitching ₹</label>
+              <input type="number" min="0" className={inp} placeholder="₹ 0"
+                value={localSub.price || ''} onChange={e => updateSub('price', e.target.value)} />
+            </div>
 
-        {/* Actions */}
-        <td className="px-2 py-1.5 w-20">
-          <div className="flex items-center gap-1 justify-center">
-            {hasDetail && (
-              <button onClick={() => onOpenDetail(item)}
-                className="p-1.5 rounded-lg text-brand-400 hover:bg-brand-900/30 hover:text-brand-300 transition-colors"
-                title="Measurements, design canvas & more">
-                <FileText className="w-4 h-4" />
-              </button>
+            {/* Meter */}
+            {meta.hasMeter && (
+              <div>
+                <label className={`block text-sm font-semibold mb-1 ${theme.text}`}>Meter</label>
+                <input type="text" className={inp} placeholder="1.5"
+                  value={localSub.meter || ''} onChange={e => updateSub('meter', e.target.value)} />
+              </div>
             )}
-            <button onClick={onDelete}
-              className="p-1.5 rounded-lg text-rose-400 hover:bg-rose-900/30 hover:text-rose-300 transition-colors"
-              title="Remove item">
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
-        </td>
-      </tr>
 
-      {/* ── Lining sub-row ──────────────────────────────────────────────────── */}
-      {meta.hasLining && (
-        <tr className="border-b border-surface-border/30 bg-violet-950/20">
-          <td className="px-3 py-1.5" />
-          <td className="px-2 py-1.5">
-            <span className="text-[11px] text-violet-400 font-semibold uppercase tracking-wider">↳ Lining</span>
-          </td>
-          <td colSpan={5} className="px-2 py-1.5">
-            <div className="flex flex-wrap gap-3 items-center">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] text-gray-500 whitespace-nowrap">Source:</span>
-                <select
-                  className="bg-surface-elevated border border-violet-500/30 rounded-lg px-2 py-1 text-xs text-white focus:border-violet-400 focus:outline-none transition-colors"
-                  value={item.details?.liningSource || 'SHOP'}
-                  onChange={e => onUpdate({ ...item, details: { ...item.details, liningSource: e.target.value } })}>
+            {/* Source */}
+            {meta.hasSource && (
+              <div>
+                <label className={`block text-sm font-semibold mb-1 ${theme.text}`}>Source</label>
+                <select className={inp}
+                  value={localSub.source || 'SHOP'} onChange={e => updateSub('source', e.target.value)}>
                   <option value="SHOP">Shop (Inside)</option>
                   <option value="CUSTOMER">Customer (Out)</option>
                 </select>
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] text-gray-500">Meter:</span>
-                <input type="text" placeholder="1.5"
-                  className="bg-surface-elevated border border-violet-500/30 rounded-lg px-2 py-1 text-xs text-white w-16 focus:border-violet-400 focus:outline-none transition-colors"
-                  value={item.details?.liningMeter || ''}
-                  onChange={e => onUpdate({ ...item, details: { ...item.details, liningMeter: e.target.value } })} />
+            )}
+
+            {/* Source Price */}
+            {meta.hasSource && localSub.source !== 'CUSTOMER' && (
+              <div>
+                <label className={`block text-sm font-semibold mb-1 ${theme.text}`}>Material ₹</label>
+                <input type="number" min="0" className={inp} placeholder="₹ 0"
+                  value={localSub.sourcePrice || ''} onChange={e => updateSub('sourcePrice', e.target.value)} />
               </div>
-              {item.details?.liningSource !== 'CUSTOMER' && (
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] text-gray-500">Price (₹):</span>
-                  <input type="number" min="0" placeholder="0"
-                    className="bg-surface-elevated border border-violet-500/30 rounded-lg px-2 py-1 text-xs text-white w-20 focus:border-violet-400 focus:outline-none transition-colors"
-                    value={item.details?.liningPrice || ''}
-                    onChange={e => onUpdate({ ...item, details: { ...item.details, liningPrice: e.target.value } })} />
+            )}
+
+            {/* Notes */}
+            {meta.hasNotes !== false && (
+              <div className="col-span-2 sm:col-span-3 lg:col-span-2">
+                <label className={`block text-sm font-semibold mb-1 ${theme.text}`}>Notes</label>
+                <input type="text" className={inp} placeholder="Quick notes…"
+                  value={localSub.description || ''} onChange={e => updateSub('description', e.target.value)} />
+              </div>
+            )}
+
+            {/* Saree specific */}
+            {meta.isSaree && (
+              <>
+                <div>
+                  <label className={`block text-sm font-semibold mb-1 ${theme.text}`}># Sarees</label>
+                  <input type="number" min="0" className={inp} placeholder="1"
+                    value={localSub.numberOfSarees || ''} onChange={e => updateSub('numberOfSarees', e.target.value)} />
                 </div>
-              )}
-            </div>
-          </td>
-          <td colSpan={2} />
-        </tr>
-      )}
+                <div>
+                  <label className={`block text-sm font-semibold mb-1 ${theme.text}`}># Falls</label>
+                  <input type="number" min="0" className={inp} placeholder="1"
+                    value={localSub.numberOfFalls || ''} onChange={e => updateSub('numberOfFalls', e.target.value)} />
+                </div>
+                <div>
+                  <label className={`block text-sm font-semibold mb-1 ${theme.text}`}>Colour</label>
+                  <input type="text" className={inp} placeholder="e.g. Red"
+                    value={localSub.sareeColour || ''} onChange={e => updateSub('sareeColour', e.target.value)} />
+                </div>
+              </>
+            )}
 
-      {/* ── Bag sub-row (all items) ──────────────────────────────────────────── */}
-      <tr className="border-b border-surface-border/30 bg-amber-950/10">
-        <td className="px-3 py-1.5" />
-        <td className="px-2 py-1.5">
-          <span className="text-[11px] text-amber-400 font-semibold uppercase tracking-wider">↳ Bag</span>
-        </td>
-        <td colSpan={5} className="px-2 py-1.5">
-          <div className="flex flex-wrap gap-3 items-center">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] text-gray-500 whitespace-nowrap">Bag No:</span>
-              <input
-                type="text"
-                placeholder="e.g. B001"
-                className="bg-surface-elevated border border-amber-500/30 rounded-lg px-2 py-1 text-xs text-white w-24 focus:border-amber-400 focus:outline-none transition-colors"
-                value={item.details?.bagNo || ''}
-                onChange={e => onUpdate({ ...item, details: { ...item.details, bagNo: e.target.value } })}
-              />
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] text-gray-500 whitespace-nowrap">Bag Colour:</span>
-              <input
-                type="text"
-                placeholder="e.g. Red, Blue…"
-                className="bg-surface-elevated border border-amber-500/30 rounded-lg px-2 py-1 text-xs text-white w-32 focus:border-amber-400 focus:outline-none transition-colors"
-                value={item.details?.bagColour || ''}
-                onChange={e => onUpdate({ ...item, details: { ...item.details, bagColour: e.target.value } })}
-              />
-            </div>
+            {/* Aari specific */}
+            {meta.isArya && (
+              <>
+                <div className="col-span-2 sm:col-span-3 lg:col-span-2">
+                  <label className={`block text-sm font-semibold mb-1 ${theme.text}`}>Aari Details</label>
+                  <textarea className={`${inp} min-h-[50px] resize-none`} placeholder="Aari work details, colors…"
+                    value={localSub.aryaWorkNotes || ''} onChange={e => updateSub('aryaWorkNotes', e.target.value)} />
+                </div>
+                <div>
+                  <label className={`block text-sm font-semibold mb-1 ${theme.text}`}>Aari Price ₹</label>
+                  <input type="number" min="0" className={inp} placeholder="0"
+                    value={localSub.aryaWorkPrice || ''} onChange={e => updateSub('aryaWorkPrice', e.target.value)} />
+                </div>
+                <div className="col-span-2 sm:col-span-1 flex items-center mt-6">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" className="w-5 h-5 rounded text-brand-500 border-gray-300 focus:ring-brand-500"
+                      checked={localSub.includeStitching || false}
+                      onChange={e => updateSub('includeStitching', e.target.checked)} />
+                    <span className={`text-sm font-semibold ${theme.text}`}>Include Stitching</span>
+                  </label>
+                </div>
+              </>
+            )}
           </div>
-        </td>
-        <td colSpan={2} />
-      </tr>
 
-    </>
+              {/* ── Lining section ── */}
+              {(meta.hasLining || (meta.isArya && localSub.includeStitching)) && (
+                <div className={`rounded-xl border px-4 py-3 bg-violet-50/60 border-violet-200`}>
+              <div className="text-xs md:text-sm text-violet-700 font-bold uppercase tracking-wider mb-3">↳ Lining (Item {activeSub + 1})</div>
+              <div className="flex flex-wrap gap-4 items-end">
+                <div className="flex-1 min-w-[140px]">
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Source</label>
+                  <select
+                    className="w-full bg-white border border-violet-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:border-violet-400 focus:outline-none transition-colors"
+                    value={localSub.liningSource || 'SHOP'}
+                    onChange={e => updateSub('liningSource', e.target.value)}>
+                    <option value="SHOP">Shop (Inside)</option>
+                    <option value="CUSTOMER">Customer (Out)</option>
+                  </select>
+                </div>
+                <div className="flex-1 min-w-[100px]">
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Meter</label>
+                  <input type="text" placeholder="1.5"
+                    className="w-full bg-white border border-violet-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:border-violet-400 focus:outline-none transition-colors"
+                    value={localSub.liningMeter || ''}
+                    onChange={e => updateSub('liningMeter', e.target.value)} />
+                </div>
+                {localSub.liningSource !== 'CUSTOMER' && (
+                  <div className="flex-1 min-w-[120px]">
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">Price (₹)</label>
+                    <input type="number" min="0" placeholder="0"
+                      className="w-full bg-white border border-violet-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:border-violet-400 focus:outline-none transition-colors"
+                      value={localSub.liningPrice || ''}
+                      onChange={e => updateSub('liningPrice', e.target.value)} />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+            </div> {/* End Left Column */}
+
+            {/* ── Reference Image section (Right Column) ── */}
+            {meta.hasReferenceImage && (
+              <div className="w-full lg:w-48 xl:w-56 shrink-0 rounded-xl border px-4 py-3 bg-gray-50 border-gray-200 h-fit">
+                <div className="text-xs md:text-sm text-gray-700 font-bold uppercase tracking-wider mb-3">Reference Image</div>
+                <ImageUploadSlot
+                  imageUrl={localSub.referenceImageUrl}
+                  onUpload={(file) => handleImageUpload('referenceImageUrl', file)}
+                  onRemove={() => updateSub('referenceImageUrl', null)}
+                  label="Reference Photo"
+                  small={false}
+                />
+              </div>
+            )}
+          </div> {/* End Main Content Area */}
+
+          {/* ── Blouse Mode Toggle + Measurements/Sample section ── */}
+          {meta.hasMeasurements && (() => {
+            const blouseMode = localSub.blouseMode || 'measurement';
+            const isBlouseItem = ['DESIGN_BLOUSE', 'LINING_BLOUSE', 'ARYA_WORK_BLOUSE'].includes(item.itemType);
+            return (
+              <div className={`mx-4 mb-4 rounded-xl border overflow-hidden ${theme.border}`}>
+                {/* Toggle Header */}
+                {isBlouseItem && (
+                  <div className={`flex border-b ${theme.border} ${theme.rowBg}`}>
+                    <button
+                      onClick={() => updateSub('blouseMode', 'measurement')}
+                      className={`flex-1 py-2.5 text-xs font-bold uppercase tracking-wider transition-all ${
+                        blouseMode === 'measurement'
+                          ? `bg-white ${theme.text} border-b-2 ${theme.border.replace('border-', 'border-b-')} shadow-sm`
+                          : 'text-gray-400 hover:text-gray-600'
+                      }`}>
+                      📏 Measurement Blouse
+                    </button>
+                    <div className={`w-px ${theme.border} bg-current opacity-20`} />
+                    <button
+                      onClick={() => updateSub('blouseMode', 'sample')}
+                      className={`flex-1 py-2.5 text-xs font-bold uppercase tracking-wider transition-all ${
+                        blouseMode === 'sample'
+                          ? `bg-white ${theme.text} border-b-2 ${theme.border.replace('border-', 'border-b-')} shadow-sm`
+                          : 'text-gray-400 hover:text-gray-600'
+                      }`}>
+                      👗 Sample Blouse
+                    </button>
+                  </div>
+                )}
+
+                {/* Measurement Blouse Mode */}
+                {blouseMode === 'measurement' && (
+                  <div className={`px-4 py-3 ${theme.rowBg}`}>
+                    <div className={`flex items-center justify-between mb-3`}>
+                      <div className={`text-xs md:text-sm font-bold uppercase tracking-wider ${theme.text}`}>Measurements (Item {activeSub + 1})</div>
+                      <div className="text-[10px] text-gray-400 font-semibold">Drag labels to rearrange</div>
+                    </div>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+                      {measOrder.map((m, index) => (
+                        <div
+                          key={m.key}
+                          draggable
+                          onDragStart={(e) => {
+                            if (e.target.tagName === 'INPUT') { e.preventDefault(); return; }
+                            e.dataTransfer.setData('text/plain', index.toString());
+                            e.dataTransfer.effectAllowed = 'move';
+                          }}
+                          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+                            const toIndex = index;
+                            if (fromIndex === toIndex || isNaN(fromIndex)) return;
+                            const newOrder = [...measOrder];
+                            const [moved] = newOrder.splice(fromIndex, 1);
+                            newOrder.splice(toIndex, 0, moved);
+                            setMeasOrder(newOrder);
+                          }}
+                          className="flex flex-col group cursor-move hover:bg-white/50 p-1 -m-1 rounded transition-colors"
+                        >
+                          <label className={`block text-[10px] sm:text-xs font-semibold mb-1 truncate ${theme.text} flex items-center justify-between`}>
+                            {m.label} <span className="opacity-0 group-hover:opacity-100 text-gray-400 cursor-grab">⋮⋮</span>
+                          </label>
+                          <input type="text" placeholder="—"
+                            className="w-full bg-white border border-surface-border rounded-lg px-2 py-1.5 text-sm text-gray-800 focus:outline-none focus:ring-1 focus:ring-brand-400 transition-colors"
+                            value={localSub[`measurement_${m.key}`] || ''}
+                            onChange={e => updateSub(`measurement_${m.key}`, e.target.value)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    {/* Measurement description */}
+                    <div className="mt-3">
+                      <label className={`block text-xs font-semibold mb-1 ${theme.text}`}>Description / Notes</label>
+                      <textarea
+                        className="w-full bg-white border border-surface-border rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-1 focus:ring-brand-400 resize-none min-h-[50px]"
+                        placeholder="Any extra measurement notes…"
+                        value={localSub.sampleBlouseDescription || ''}
+                        onChange={e => updateSub('sampleBlouseDescription', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Sample Blouse Mode */}
+                {blouseMode === 'sample' && (
+                  <div className="px-4 py-4 bg-amber-50/60 flex flex-col sm:flex-row gap-5 items-start">
+                    {/* Upload slot */}
+                    <div className="flex flex-col items-center gap-2 shrink-0">
+                      <div className="text-xs font-bold text-amber-700 uppercase tracking-wider mb-1">Sample Photo</div>
+                      <div className="w-32 h-36">
+                        <ImageUploadSlot
+                          imageUrl={localSub.sampleBlouseImageUrl}
+                          onUpload={(file) => handleImageUpload('sampleBlouseImageUrl', file)}
+                          onRemove={() => updateSub('sampleBlouseImageUrl', null)}
+                          label="Upload Sample"
+                          small={false}
+                        />
+                      </div>
+                    </div>
+                    <div className="w-px bg-amber-200 self-stretch hidden sm:block" />
+                    {/* Description */}
+                    <div className="flex-1 min-w-0">
+                      <label className="block text-xs font-bold text-amber-700 uppercase tracking-wider mb-2">Description</label>
+                      <textarea
+                        className="w-full bg-white border border-amber-300 rounded-xl px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-amber-300 resize-none min-h-[120px]"
+                        placeholder="Describe the sample blouse — style, design details, special instructions for the tailor…"
+                        value={localSub.sampleBlouseDescription || ''}
+                        onChange={e => updateSub('sampleBlouseDescription', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* ── Design canvas buttons ── */}
+          {meta.hasDesign && (
+            <div className="mx-4 mb-4 flex flex-col sm:flex-row flex-wrap gap-4">
+              {['front', 'back', 'sleeve'].map(section => {
+                const hasSaved = !!(localSub[`${section}CanvasImageUrl`] || localSub[`${section}CanvasDataUrl`]);
+                return (
+                  <div key={section} className={`flex items-center gap-3 p-2 pr-4 rounded-xl border bg-gray-50/50 ${theme.border}`}>
+                    <button
+                      onClick={() => onOpenDesignModal(item, activeSub, section)}
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border transition-all ${
+                        hasSaved
+                          ? `${theme.tabActive} shadow-sm`
+                          : `bg-white ${theme.text} ${theme.border} hover:bg-gray-50`
+                      }`}>
+                      <FileText className="w-3.5 h-3.5" />
+                      {section.charAt(0).toUpperCase() + section.slice(1)} Design
+                      {hasSaved && <span className="ml-1 text-[10px] opacity-80">✓</span>}
+                    </button>
+                    
+                    <div className="w-px h-8 bg-gray-200"></div>
+
+                    <div className="w-16">
+                      <ImageUploadSlot
+                        imageUrl={localSub[`${section}DesignImageUrl`]}
+                        onUpload={(file) => handleImageUpload(`${section}DesignImageUrl`, file)}
+                        onRemove={() => updateSub(`${section}DesignImageUrl`, null)}
+                        label={`${section.charAt(0).toUpperCase() + section.slice(1)} Ref`}
+                        small={true}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
+});
+
+// ── Global Measurement Order ────────────────────────────────────────────────
+const DEFAULT_MEAS = [
+  { key: 'SL', label: 'SL' }, { key: 'SA', label: 'SA' }, { key: 'ARM', label: 'ARM' },
+  { key: 'BACK_L', label: 'Back L' }, { key: 'HIP', label: 'HIP' }, { key: 'PAKKA', label: 'Pakka' },
+  { key: 'SHOULDER', label: 'Shoulder' }, { key: 'BACKNECK', label: 'Back Neck' }, { key: 'CHEST', label: 'Chest' },
+  { key: 'FRONT_NECK', label: 'Front Neck' }, { key: 'FRONT_LEN', label: 'Front Len' },
+];
+
+function useMeasurementOrder() {
+  const [measOrder, setMeasOrderState] = useState(() => {
+    const saved = localStorage.getItem('measurementOrder');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        const validKeys = new Set(DEFAULT_MEAS.map(m => m.key));
+        const filtered = parsed.filter(m => validKeys.has(m.key));
+        const missing = DEFAULT_MEAS.filter(m => !parsed.find(p => p.key === m.key));
+        return [...filtered, ...missing];
+      } catch (e) { return DEFAULT_MEAS; }
+    }
+    return DEFAULT_MEAS;
+  });
+
+  const setMeasOrder = (newOrder) => {
+    setMeasOrderState(newOrder);
+    localStorage.setItem('measurementOrder', JSON.stringify(newOrder));
+  };
+
+  return [measOrder, setMeasOrder];
 }
 
-// ─── QuickEntryTable ──────────────────────────────────────────────────────────
-export default function QuickEntryTable({ items, onAdd, onUpdate, onDelete, onOpenDetail, adding }) {
+// ── Main QuickEntryTable ────────────────────────────────────────────────────
+export default function QuickEntryTable({ orderId, items = [], onAdd, onUpdate, onDelete, onOpenDesignModal, onImageUpload, adding }) {
+  const [measOrder, setMeasOrder] = useMeasurementOrder();
+
+  const handleKeyDown = (e) => {
+    if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+    const el = e.target;
+    const tag = el.tagName;
+    if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') return;
+
+    const isUpDown = e.key === 'ArrowUp' || e.key === 'ArrowDown';
+    const isLeftRight = e.key === 'ArrowLeft' || e.key === 'ArrowRight';
+
+    // For textarea: Up/Down should only navigate fields when cursor is at very start/end line
+    if (tag === 'TEXTAREA' && isUpDown) {
+      const val = el.value || '';
+      const pos = el.selectionStart;
+      if (e.key === 'ArrowUp' && pos !== 0) return;      // not at top
+      if (e.key === 'ArrowDown' && pos !== val.length) return; // not at bottom
+    }
+
+    // For Left/Right, only navigate to next field when cursor is at text boundary
+    if (isLeftRight) {
+      if (e.key === 'ArrowLeft' && el.selectionStart > 0) return;
+      if (e.key === 'ArrowRight' && el.selectionEnd < (el.value || '').length) return;
+    }
+
+    // Collect ALL focusable inputs/textareas/selects in the whole container (in DOM order)
+    const all = Array.from(
+      document.querySelectorAll('.quick-entry-container input:not([disabled]):not([type="file"]):not([type="checkbox"]), .quick-entry-container textarea:not([disabled]), .quick-entry-container select:not([disabled])')
+    );
+    const index = all.indexOf(el);
+    if (index === -1) return;
+
+    let nextIndex = index;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') nextIndex = index + 1;
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') nextIndex = index - 1;
+
+    if (nextIndex !== index && nextIndex >= 0 && nextIndex < all.length) {
+      e.preventDefault();
+      const nextEl = all[nextIndex];
+      nextEl.focus();
+      // Select content for inputs so you can type immediately
+      if (nextEl.tagName === 'INPUT' || nextEl.tagName === 'TEXTAREA') {
+        try { nextEl.select(); } catch (_) {}
+      }
+    }
+  };
+
   return (
-    <div className="rounded-xl border border-surface-border overflow-hidden bg-surface-card">
-
-      {items.length === 0 ? (
-        <div className="p-12 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-surface-elevated flex items-center justify-center mx-auto mb-4">
-            <Plus className="w-8 h-8 text-gray-500" />
-          </div>
-          <p className="font-semibold text-gray-300 mb-1">No particulars yet</p>
-          <p className="text-sm text-gray-500">Click any type below to add the first row instantly</p>
+    <div className="space-y-5 quick-entry-container" onKeyDown={handleKeyDown}>
+      {/* ── Add item panel (always at top) ── */}
+      <div className="card p-4">
+        <div className="flex items-center gap-4 mb-3">
+          <button 
+            onClick={() => onAdd('CUSTOM_ITEM')} 
+            disabled={adding}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-50 border border-brand-200 text-brand-700 hover:bg-brand-100 hover:border-brand-300 transition-all font-bold text-sm disabled:opacity-50"
+          >
+            <Plus className="w-4 h-4" />
+            {adding ? 'Adding…' : 'Add Item'}
+          </button>
+          <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Or select preset:</span>
         </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse" style={{ minWidth: 780 }}>
-            <thead>
-              <tr className="bg-surface-elevated/60 border-b border-surface-border">
-                <th className="px-3 py-2.5 text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-8">#</th>
-                <th className="px-2 py-2.5 text-left   text-[11px] font-semibold text-gray-400 uppercase tracking-wider min-w-[160px]">Item Type</th>
-                <th className="px-2 py-2.5 text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-16">Qty</th>
-                <th className="px-2 py-2.5 text-left   text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-28">Stitching Price</th>
-                <th className="px-2 py-2.5 text-left   text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-24">Meter</th>
-                <th className="px-2 py-2.5 text-left   text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-40">Source</th>
-                <th className="px-2 py-2.5 text-left   text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-28">Src Price</th>
-                <th className="px-2 py-2.5 text-left   text-[11px] font-semibold text-gray-400 uppercase tracking-wider min-w-[120px]">Notes</th>
-                <th className="px-2 py-2.5 text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-20">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item, idx) => (
-                <ItemRow
-                  key={item.id}
-                  item={item}
-                  rowIndex={idx + 1}
-                  onUpdate={onUpdate}
-                  onDelete={() => onDelete(item.id)}
-                  onOpenDetail={onOpenDetail}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* ── Quick-add chip bar ────────────────────────────────────────────── */}
-      <div className="px-4 py-3 border-t border-surface-border/50 bg-surface-elevated/10">
-        <div className="flex items-center flex-wrap gap-2">
-          <span className="text-[11px] text-gray-500 font-semibold uppercase tracking-wider whitespace-nowrap">+ Add:</span>
-          {ITEM_TYPES.map(t => (
-            <button
-              key={t.value}
+        <div className="flex flex-wrap gap-2">
+          {ITEM_TYPES.filter(t => t.value !== 'CUSTOM_ITEM').map(t => (
+            <button key={t.value}
               onClick={() => onAdd(t.value)}
               disabled={adding}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-surface-elevated border border-surface-border text-gray-300 hover:border-brand-500/70 hover:text-white hover:bg-brand-900/20 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <Plus className="w-3 h-3 flex-shrink-0" />
+              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-surface-elevated border border-surface-border text-gray-700 hover:bg-brand-50 hover:border-brand-300 hover:text-brand-700 transition-all disabled:opacity-50">
               {t.label}
             </button>
           ))}
-          {adding && <Loader className="w-4 h-4 text-brand-400 animate-spin" />}
         </div>
       </div>
+
+      {/* ── Item cards ── */}
+      {items.length === 0 && (
+        <div className="card p-8 text-center text-gray-400">
+          <p className="text-sm">No items added yet. Click an item type above to start.</p>
+        </div>
+      )}
+      {items.map((item, idx) => {
+        const theme = THEMES[idx % THEMES.length];
+        return (
+          <ItemCard
+            key={item.id}
+            item={item}
+            rowIndex={idx + 1}
+            theme={theme}
+            onUpdate={onUpdate}
+            onDelete={onDelete}
+            onOpenDesignModal={onOpenDesignModal}
+            onImageUpload={onImageUpload}
+            orderId={orderId}
+            measOrder={measOrder}
+            setMeasOrder={setMeasOrder}
+          />
+        );
+      })}
     </div>
   );
 }

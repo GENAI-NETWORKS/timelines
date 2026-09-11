@@ -44,16 +44,16 @@ export default function Sidebar({ open, onClose }) {
       {/* Sidebar */}
       <aside className={`
         fixed top-0 left-0 h-full w-64 bg-surface-card border-r border-surface-border z-40
-        flex flex-col transition-transform duration-300
-        ${open ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:static lg:z-auto
+        flex flex-col transition-all duration-300
+        ${open ? 'translate-x-0 lg:ml-0' : '-translate-x-full lg:ml-[-16rem]'} lg:static lg:z-auto
       `}>
         {/* Logo */}
         <div className="flex items-center gap-3 px-5 py-5 border-b border-surface-border">
           <div className="w-9 h-9 rounded-xl bg-gradient-brand flex items-center justify-center shadow-brand">
-            <Scissors className="w-5 h-5 text-white" />
+            <Scissors className="w-5 h-5 text-gray-900" />
           </div>
           <div>
-            <h1 className="font-display font-bold text-white text-sm leading-tight">Timelines</h1>
+            <h1 className="font-display font-bold text-gray-900 text-sm leading-tight">Timelines</h1>
             <p className="text-xs text-gray-500">Costume Designers</p>
           </div>
           <button onClick={onClose} className="ml-auto btn-icon lg:hidden">
@@ -79,14 +79,14 @@ export default function Sidebar({ open, onClose }) {
 
         {/* User info + logout */}
         <div className="px-3 py-4 border-t border-surface-border space-y-2">
-          <div className="px-3 py-2.5 rounded-lg bg-surface-elevated/50">
-            <p className="text-sm font-medium text-white truncate">{user?.name}</p>
+          <div className="px-3 py-2.5 rounded-lg bg-slate-200">
+            <p className="text-sm font-medium text-gray-900 truncate">{user?.name}</p>
             <p className="text-xs text-gray-500 truncate">{user?.email}</p>
             <span className={`badge mt-1 ${user?.role === 'admin' ? 'badge-admin' : 'badge-staff'}`}>
               {user?.role}
             </span>
           </div>
-          <button onClick={handleLogout} className="nav-item w-full text-rose-400 hover:text-rose-300 hover:bg-rose-900/20">
+          <button onClick={handleLogout} className="nav-item w-full text-rose-600 hover:text-rose-700 hover:bg-rose-50">
             <LogOut className="w-4 h-4" />
             <span>Logout</span>
           </button>

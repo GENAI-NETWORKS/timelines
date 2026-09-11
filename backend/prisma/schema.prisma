@@ -216,6 +216,8 @@ model TailoringOrder {
   deliveryDate DateTime?
   status       String               @default("Draft")
   notes        String               @default("") @db.Text
+  bagNo        String               @default("")
+  bagName      String               @default("")
   createdAt    DateTime             @default(now())
   updatedAt    DateTime             @updatedAt
   customer     Customer             @relation(fields: [customerId], references: [customerId])

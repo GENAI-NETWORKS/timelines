@@ -49,7 +49,7 @@ export default function Customers() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div>
-          <h1 className="font-display font-bold text-2xl text-white">Customers</h1>
+          <h1 className="font-display font-bold text-2xl text-gray-900">Customers</h1>
           <p className="text-sm text-gray-500">{total} total records</p>
         </div>
       </div>
@@ -90,9 +90,9 @@ export default function Customers() {
               {customers.map((c) => (
                 <tr key={c.customerId}>
                   <td><span className="font-mono text-xs text-brand-400">{c.customerId}</span></td>
-                  <td className="font-medium text-white">{c.name}</td>
+                  <td className="font-medium text-gray-900">{c.name}</td>
                   <td>
-                    <a href={`tel:${c.phone}`} className="flex items-center gap-1 text-gray-300 hover:text-brand-400 transition-colors">
+                    <a href={`tel:${c.phone}`} className="flex items-center gap-1 text-gray-700 hover:text-brand-400 transition-colors">
                       <Phone className="w-3 h-3" />{c.phone}
                     </a>
                   </td>

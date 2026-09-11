@@ -114,7 +114,7 @@ export default function Payments() {
     <div className="space-y-5 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div>
-          <h1 className="font-display font-bold text-2xl text-white">Customer Payments</h1>
+          <h1 className="font-display font-bold text-2xl text-gray-900">Customer Payments</h1>
           <p className="text-sm text-gray-500">Manage all customer payment records</p>
         </div>
         <button onClick={() => { setEditData(EMPTY); setModal('create'); }} className="btn-primary sm:ml-auto">
@@ -148,9 +148,9 @@ export default function Payments() {
               {!loading && filtered.length === 0 && <tr><td colSpan={7} className="text-center py-10 text-gray-500">No payments found.</td></tr>}
               {filtered.map(payment => (
                 <tr key={payment.id}>
-                  <td className="text-gray-400">{payment.paymentDate ? format(new Date(payment.paymentDate), 'dd MMM yyyy') : '-'}</td>
+                  <td className="text-gray-600">{payment.paymentDate ? format(new Date(payment.paymentDate), 'dd MMM yyyy') : '-'}</td>
                   <td>
-                    <div className="font-medium text-white">{payment.customer?.name}</div>
+                    <div className="font-medium text-gray-900">{payment.customer?.name}</div>
                     <div className="text-xs text-gray-500">{payment.customerId}</div>
                   </td>
                   <td>
@@ -159,7 +159,7 @@ export default function Payments() {
                     ) : '-'}
                   </td>
                   <td className="font-mono text-green-400 font-medium">₹{payment.amount}</td>
-                  <td className="text-gray-400">{payment.paymentMethod}</td>
+                  <td className="text-gray-600">{payment.paymentMethod}</td>
                   <td>
                     <span className={payment.status === 'Completed' ? 'badge-active' : 'badge-pending'}>
                       {payment.status}

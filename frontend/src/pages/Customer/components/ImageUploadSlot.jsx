@@ -33,7 +33,7 @@ export default function ImageUploadSlot({ imageUrl, onUpload, onRemove, label = 
         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
           <button
             onClick={() => window.open(`${API_BASE}${imageUrl}`, '_blank')}
-            className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/40"
+            className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-gray-900 hover:bg-white/40"
             title="View"
           >
             <Eye className="w-3 h-3" />

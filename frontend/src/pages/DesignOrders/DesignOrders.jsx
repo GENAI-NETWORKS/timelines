@@ -63,7 +63,7 @@ export default function DesignOrders() {
     <div className="space-y-5 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div>
-          <h1 className="font-display font-bold text-2xl text-white">Design Orders</h1>
+          <h1 className="font-display font-bold text-2xl text-gray-900">Design Orders</h1>
           <p className="text-sm text-gray-500">{total} total orders</p>
         </div>
         {isAdmin && (
@@ -106,13 +106,13 @@ export default function DesignOrders() {
                 <tr key={order.orderId}>
                   <td><span className="font-mono text-xs text-brand-400">{order.orderId}</span></td>
                   <td>
-                    {isAdmin && <div className="font-medium text-white text-sm">{order.customer?.name || order.customerId?.name}</div>}
-                    <div className={isAdmin ? "text-xs text-gray-500" : "font-medium text-white text-sm"}>
+                    {isAdmin && <div className="font-medium text-gray-900 text-sm">{order.customer?.name || order.customerId?.name}</div>}
+                    <div className={isAdmin ? "text-xs text-gray-500" : "font-medium text-gray-900 text-sm"}>
                       {order.customer?.customerId || order.customerId?.customerId || order.customerId}
                     </div>
                   </td>
                   <td>{order.garmentType}</td>
-                  <td className="text-gray-400 text-sm">{order.tailor?.name || order.assignedTailorId?.name || <span className="text-gray-600 italic">Unassigned</span>}</td>
+                  <td className="text-gray-600 text-sm">{order.tailor?.name || order.assignedTailorId?.name || <span className="text-gray-600 italic">Unassigned</span>}</td>
                   <td>
                     {isAdmin ? (
                       <select
@@ -126,7 +126,7 @@ export default function DesignOrders() {
                       <span className={statusBadge[order.status] || 'badge'}>{order.status}</span>
                     )}
                   </td>
-                  <td className="text-gray-400 text-xs">{order.deliveryDate ? format(new Date(order.deliveryDate), 'dd MMM yy') : '-'}</td>
+                  <td className="text-gray-600 text-xs">{order.deliveryDate ? format(new Date(order.deliveryDate), 'dd MMM yy') : '-'}</td>
                   <td>
                     {order.designSketchUrl ? (
                       <span className="badge badge-ready">✓ Sketch</span>

@@ -20,7 +20,7 @@ import {
 import { searchCustomers } from '../../api/customers';
 
 import QuickEntryTable from './components/QuickEntryTable';
-import DetailSidePanel from './components/DetailSidePanel';
+import DesignModal from './components/DesignModal';
 import TailorPrintout from './components/TailorPrintout';
 
 // ─── Customer step ────────────────────────────────────────────────────────
@@ -30,7 +30,7 @@ function CustomerStep({ onOrderCreated }) {
   const [results, setResults]   = useState([]);
   const [searching, setSearching] = useState(false);
   const [selected, setSelected] = useState(null);
-  const [newForm, setNewForm]   = useState({ name: '', phone: '', orderDate: new Date().toISOString().slice(0, 10), deliveryDate: '' });
+  const [newForm, setNewForm]   = useState({ name: '', phone: '', orderDate: new Date().toISOString().slice(0, 10), deliveryDate: '', bagNo: '', bagName: '' });
   const [creating, setCreating] = useState(false);
   const debounceRef = useRef(null);
   const wrapperRef  = useRef(null);
@@ -70,6 +70,8 @@ function CustomerStep({ onOrderCreated }) {
       const payload = {
         orderDate:    od,
         deliveryDate: dd,
+        bagNo:        newForm.bagNo,
+        bagName:      newForm.bagName,
         ...(mode === 'search' && selected ? { customerId: selected.customerId } : { customerName: name, customerPhone: phone }),
       };
       const res = await createTailoringOrder(payload);
@@ -81,36 +83,50 @@ function CustomerStep({ onOrderCreated }) {
   };
 
   const orderFields = (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 pt-4 border-t border-surface-border">
-      <div>
-        <label className="label">Order Date *</label>
-        <input id="order-date" className="input" type="date" value={newForm.orderDate}
-          onChange={e => setNewForm(f => ({ ...f, orderDate: e.target.value }))} />
+    <>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 pt-4 border-t border-surface-border">
+        <div>
+          <label className="label">Order Date *</label>
+          <input id="order-date" className="input" type="date" value={newForm.orderDate}
+            onChange={e => setNewForm(f => ({ ...f, orderDate: e.target.value }))} />
+        </div>
+        <div>
+          <label className="label">Expected Stitching / Delivery Date *</label>
+          <input id="delivery-date" className="input" type="date" value={newForm.deliveryDate}
+            onChange={e => setNewForm(f => ({ ...f, deliveryDate: e.target.value }))} />
+        </div>
       </div>
-      <div>
-        <label className="label">Expected Stitching / Delivery Date *</label>
-        <input id="delivery-date" className="input" type="date" value={newForm.deliveryDate}
-          onChange={e => setNewForm(f => ({ ...f, deliveryDate: e.target.value }))} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+        <div>
+          <label className="label">Bag No</label>
+          <input id="bag-no" className="input" placeholder="e.g. B001" value={newForm.bagNo}
+            onChange={e => setNewForm(f => ({ ...f, bagNo: e.target.value }))} />
+        </div>
+        <div>
+          <label className="label uppercase">Bag Name</label>
+          <input id="bag-name" className="input" placeholder="e.g. Red Bag, Cover..." value={newForm.bagName}
+            onChange={e => setNewForm(f => ({ ...f, bagName: e.target.value }))} />
+        </div>
       </div>
-    </div>
+    </>
   );
 
   return (
     <div className="card p-6 max-w-2xl mx-auto space-y-5">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-brand flex items-center justify-center"><UserPlus className="w-5 h-5 text-white" /></div>
+        <div className="w-10 h-10 rounded-xl bg-gradient-brand flex items-center justify-center"><UserPlus className="w-5 h-5 text-gray-900" /></div>
         <div>
-          <h2 className="font-display font-bold text-xl text-white">Customer Details</h2>
+          <h2 className="font-display font-bold text-xl text-gray-900">Customer Details</h2>
           <p className="text-sm text-gray-500">Step 1 - Find existing or create new customer</p>
         </div>
       </div>
 
       {/* Mode toggle */}
       <div className="flex gap-2">
-        <button onClick={() => { setMode('search'); setSelected(null); }} className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${mode === 'search' ? 'bg-gradient-brand text-white' : 'bg-surface-elevated text-gray-400 hover:text-white'}`}>
+        <button onClick={() => { setMode('search'); setSelected(null); }} className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${mode === 'search' ? 'bg-gradient-brand text-white' : 'bg-surface-elevated text-gray-600 hover:text-gray-900'}`}>
           Search Existing
         </button>
-        <button onClick={() => { setMode('new'); setSelected(null); setResults([]); }} className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${mode === 'new' ? 'bg-gradient-brand text-white' : 'bg-surface-elevated text-gray-400 hover:text-white'}`}>
+        <button onClick={() => { setMode('new'); setSelected(null); setResults([]); }} className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${mode === 'new' ? 'bg-gradient-brand text-white' : 'bg-surface-elevated text-gray-600 hover:text-gray-900'}`}>
           + New Customer
         </button>
       </div>
@@ -121,8 +137,8 @@ function CustomerStep({ onOrderCreated }) {
             <div className="flex items-center gap-3 p-3 bg-green-900/20 border border-green-700/40 rounded-xl">
               <div className="w-9 h-9 rounded-full bg-gradient-brand flex items-center justify-center text-white font-bold">{selected.name?.[0]}</div>
               <div className="flex-1">
-                <p className="font-semibold text-white">{selected.name}</p>
-                <p className="text-xs text-gray-400">{selected.customerId} · {selected.phone}</p>
+                <p className="font-semibold text-gray-900">{selected.name}</p>
+                <p className="text-xs text-gray-600">{selected.customerId} · {selected.phone}</p>
               </div>
               <CheckCircle2 className="w-5 h-5 text-green-400" />
               <button onClick={() => setSelected(null)} className="btn-icon text-gray-500"><X className="w-4 h-4" /></button>
@@ -137,9 +153,9 @@ function CustomerStep({ onOrderCreated }) {
                 <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-surface-card border border-surface-border rounded-xl shadow-2xl overflow-hidden">
                   {results.map(c => (
                     <button key={c.customerId} onClick={() => { setSelected(c); setQuery(''); setResults([]); }}
-                      className="w-full text-left px-4 py-3 hover:bg-surface-elevated transition-colors flex items-center gap-3 border-b border-surface-border/40 last:border-0">
+                      className="w-full text-left px-4 py-3 hover:bg-surface-elevated transition-colors flex items-center gap-3 border-b border-surface-border last:border-0">
                       <div className="w-8 h-8 rounded-full bg-gradient-brand flex items-center justify-center text-white text-xs font-bold">{c.name?.[0]}</div>
-                      <div><p className="text-sm font-medium text-white">{c.name}</p><p className="text-xs text-gray-400">{c.phone}</p></div>
+                      <div><p className="text-sm font-medium text-gray-900">{c.name}</p><p className="text-xs text-gray-600">{c.phone}</p></div>
                     </button>
                   ))}
                 </div>
@@ -186,7 +202,7 @@ export default function CustomerOrderPage() {
   const [adding,    setAdding]    = useState(false);
   const [submitting,setSubmitting]= useState(false);
   const [savingAll, setSavingAll] = useState(false);
-  const [detailItemId, setDetailItemId] = useState(null); // which item has details panel open
+  const [designModalState, setDesignModalState] = useState(null); // { item, activeSub, section }
   const saveTimers  = useRef({});
 
   // Load existing order
@@ -194,7 +210,17 @@ export default function CustomerOrderPage() {
     if (!editId) return;
     setLoading(true);
     getTailoringOrder(editId)
-      .then(r => { setOrder(r.data); setItems(r.data.items || []); })
+      .then(r => {
+        setOrder(r.data);
+        const loadedItems = (r.data.items || []).map(i => {
+          let details = i.details;
+          if (typeof details === 'string') {
+            try { details = JSON.parse(details); } catch(e) { details = {}; }
+          }
+          return { ...i, details, customConfig: details?.customConfig || null };
+        });
+        setItems(loadedItems);
+      })
       .catch(() => { toast.error('Order not found.'); navigate('/customer'); })
       .finally(() => setLoading(false));
   }, [editId]);
@@ -273,9 +299,11 @@ export default function CustomerOrderPage() {
 
       await Promise.all(currentItems.map(async (item) => {
         // 1) Save text fields / subItems JSON to server
+        // Make sure we include customConfig inside details!
+        const savedDetails = { ...item.details, customConfig: item.customConfig };
         const savedItem = await updateOrderItem(order.id, item.id, {
           quantity: item.quantity,
-          details:  item.details || {},
+          details:  savedDetails,
           subItems: item.subItems || [],
         });
 
@@ -319,7 +347,17 @@ export default function CustomerOrderPage() {
             sleeveCanvasDataUrl: ls.sleeveCanvasDataUrl || ss.sleeveCanvasDataUrl,
           };
         });
-        return { ...si, subItems: mergedSubs };
+        // Map customConfig back out
+        let details = si.details;
+        if (typeof details === 'string') {
+          try { details = JSON.parse(details); } catch(e) { details = {}; }
+        }
+        return {
+          ...si,
+          details,
+          customConfig: details?.customConfig || null,
+          subItems: mergedSubs
+        };
       }));
 
       toast.success('All changes saved!', { id: toastId });
@@ -358,7 +396,7 @@ export default function CustomerOrderPage() {
             </button>
           )}
           <div>
-            <h1 className="font-display font-bold text-2xl text-white">
+            <h1 className="font-display font-bold text-2xl text-gray-900">
               {order ? `Order - ${order.customer?.name || ''}` : 'New Customer Order'}
             </h1>
             <p className="text-sm text-gray-500">
@@ -401,11 +439,18 @@ export default function CustomerOrderPage() {
                 {order.customer?.name?.[0]?.toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-white">{order.customer?.name}</p>
+                <p className="font-semibold text-gray-900">{order.customer?.name}</p>
                 <p className="text-xs text-gray-500">
                   Order: {format(new Date(order.orderDate), 'dd MMM yyyy')}
                   {order.deliveryDate && ` · Delivery: ${format(new Date(order.deliveryDate), 'dd MMM yyyy')}`}
                 </p>
+                {(order.bagNo || order.bagName) && (
+                  <p className="text-xs text-amber-400 mt-0.5">
+                    {order.bagNo && `Bag No: ${order.bagNo}`}
+                    {order.bagNo && order.bagName && ' · '}
+                    {order.bagName && `Bag Name: ${order.bagName}`}
+                  </p>
+                )}
               </div>
               {/* Count badge */}
               {items.length > 0 && (
@@ -417,11 +462,19 @@ export default function CustomerOrderPage() {
 
             {/* Quick-entry spreadsheet table */}
             <QuickEntryTable
+              orderId={order.id}
               items={items}
               onAdd={handleAddItem}
               onUpdate={handleUpdateItem}
               onDelete={handleDeleteItem}
-              onOpenDetail={(item) => setDetailItemId(item.id)}
+              onOpenDesignModal={(item, activeSub, section) => setDesignModalState({ item, activeSub, section })}
+              onImageUpload={async (itemId, fd) => {
+                const { uploadItemImage } = await import('../../api/tailoringOrders');
+                await uploadItemImage(order.id, itemId, fd);
+                const res = await getTailoringOrder(order.id);
+                setOrder(res.data);
+                setItems(res.data.items || []);
+              }}
               adding={adding}
             />
 
@@ -459,19 +512,17 @@ export default function CustomerOrderPage() {
           </div>
         )}
 
-        {/* Detail side panel — opens when user clicks 📋 on a row */}
-        {detailItemId && (() => {
-          const detailItem = items.find(i => i.id === detailItemId);
-          return detailItem ? (
-            <DetailSidePanel
-              item={detailItem}
-              orderId={order?.id}
-              isEditing={order?.status !== 'Draft'}
-              onUpdate={handleUpdateItem}
-              onClose={() => setDetailItemId(null)}
-            />
-          ) : null;
-        })()}
+        {/* Design Modal — opens when user clicks 🎨 on a subItem */}
+        {designModalState && (
+          <DesignModal
+            orderId={order?.id}
+            item={designModalState.item}
+            activeSub={designModalState.activeSub}
+            section={designModalState.section}
+            onUpdate={handleUpdateItem}
+            onClose={() => setDesignModalState(null)}
+          />
+        )}
       </div>
     </>
   );

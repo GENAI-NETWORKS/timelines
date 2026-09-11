@@ -23,11 +23,11 @@ function StatCard({ icon: Icon, label, value, sub, color, to }) {
   const content = (
     <div className="stat-card group">
       <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${color}`}>
-        <Icon className="w-4 h-4 text-white" />
+        <Icon className="w-4 h-4 text-gray-900" />
       </div>
       <div>
-        <p className="text-gray-400 text-[10px] uppercase tracking-wider leading-none">{label}</p>
-        <p className="font-display font-bold text-lg text-white mt-0.5 leading-none">{value ?? '-'}</p>
+        <p className="text-gray-600 text-[10px] uppercase tracking-wider leading-none">{label}</p>
+        <p className="font-display font-bold text-lg text-gray-900 mt-0.5 leading-none">{value ?? '-'}</p>
         {sub && <p className="text-[10px] text-gray-500 mt-0.5">{sub}</p>}
       </div>
     </div>
@@ -93,10 +93,10 @@ export default function Dashboard() {
     <div className="space-y-6 animate-fade-in">
       {/* Welcome */}
       <div className="card-glass p-6 border border-brand-800/40">
-        <h2 className="font-display font-bold text-2xl text-white">
+        <h2 className="font-display font-bold text-2xl text-gray-900">
           Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 17 ? 'Afternoon' : 'Evening'}, {user?.name?.split(' ')[0]}
         </h2>
-        <p className="text-gray-400 mt-1 text-sm">Here's what's happening at Timelines today.</p>
+        <p className="text-gray-600 mt-1 text-sm">Here's what's happening at Timelines today.</p>
       </div>
 
       {/* Admin View: Stats grid & Global Recent Orders */}
@@ -121,7 +121,7 @@ export default function Dashboard() {
 
           <div className="card mt-6">
             <div className="px-5 py-4 border-b border-surface-border flex items-center justify-between">
-              <h3 className="font-display font-semibold text-white">Recent Customer Orders</h3>
+              <h3 className="font-display font-semibold text-gray-900">Recent Customer Orders</h3>
               <Link to="/customer/list" className="text-sm text-brand-400 hover:text-brand-300 transition-colors">View all →</Link>
             </div>
             <div className="table-wrapper rounded-t-none border-0">
@@ -142,17 +142,17 @@ export default function Dashboard() {
                   {recentOrders.map((order) => (
                     <tr key={order.id}>
                       <td>
-                        <div className="font-medium text-white">{order.customer?.name}</div>
+                        <div className="font-medium text-gray-900">{order.customer?.name}</div>
                         {order.customer?.phone && <div className="text-xs text-gray-500 mt-0.5">{order.customer.phone}</div>}
                       </td>
-                      <td className="text-gray-400 text-xs">
+                      <td className="text-gray-600 text-xs">
                         {order.orderDate ? format(new Date(order.orderDate), 'dd MMM yy') : '-'}
                       </td>
-                      <td className="text-gray-400 text-xs">
+                      <td className="text-gray-600 text-xs">
                         {order.deliveryDate ? format(new Date(order.deliveryDate), 'dd MMM yy') : '-'}
                       </td>
                       <td><span className={statusColors[order.status] || 'badge'}>{order.status}</span></td>
-                      <td className="text-gray-400 text-xs">
+                      <td className="text-gray-600 text-xs">
                         {order._count?.items ?? order.items?.length ?? '-'}
                       </td>
                     </tr>
@@ -162,27 +162,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* System Login Credentials Widget */}
-          <div className="card mt-6">
-            <div className="px-5 py-4 border-b border-surface-border">
-              <h3 className="font-display font-semibold text-white">System Login Credentials</h3>
-              <p className="text-xs text-gray-400 mt-1">For demo & admin purposes only.</p>
-            </div>
-            <div className="p-5">
-              <div className="bg-surface-elevated rounded-lg p-4 space-y-2 text-sm text-gray-300">
-                {credentials.map(cred => (
-                  <div key={cred.id} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                    <span className="capitalize font-semibold text-gray-400 w-16">{cred.role}:</span>
-                    <span>
-                      <span className="text-brand-400 font-medium">{cred.email}</span>
-                      <span className="text-gray-500 mx-2">/</span>
-                      <span className="text-white">{cred.plainPassword || 'timelines123'}</span>
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
         </>
       )}
 
@@ -193,7 +172,7 @@ export default function Dashboard() {
         ) : (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h3 className="font-display font-semibold text-xl text-white">My Assigned Tasks</h3>
+              <h3 className="font-display font-semibold text-xl text-gray-900">My Assigned Tasks</h3>
             </div>
             {recentOrders.length === 0 ? (
               <div className="card p-10 text-center text-gray-500">No tasks assigned to you right now.</div>
@@ -204,14 +183,14 @@ export default function Dashboard() {
                     <div className="flex justify-between items-start mb-4">
                       <div>
                         <span className="text-xs text-gray-500 uppercase tracking-wider">{order.id}</span>
-                        <h4 className="font-bold text-white text-lg mt-0.5">{order.customer?.name}</h4>
+                        <h4 className="font-bold text-gray-900 text-lg mt-0.5">{order.customer?.name}</h4>
                       </div>
                       <span className={statusColors[order.status] || 'badge'}>{order.status}</span>
                     </div>
                     
                     <div className="mb-4">
-                      <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Order Items</p>
-                      <div className="text-sm text-gray-300">
+                      <p className="text-xs text-gray-600 uppercase tracking-wider mb-2">Order Items</p>
+                      <div className="text-sm text-gray-700">
                         {order._count?.items ?? order.items?.length ?? 0} item(s)
                       </div>
                     </div>
@@ -219,15 +198,15 @@ export default function Dashboard() {
                     <div className="space-y-3 mb-4">
                       {order.notes && (
                         <div>
-                          <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Notes</p>
-                          <p className="text-sm text-gray-200">{order.notes}</p>
+                          <p className="text-xs text-gray-600 uppercase tracking-wider mb-1">Notes</p>
+                          <p className="text-sm text-gray-800">{order.notes}</p>
                         </div>
                       )}
                     </div>
                     
                     <div className="pt-4 border-t border-surface-border flex justify-between items-center">
                       <div className="text-xs text-gray-500">
-                        Delivery: <span className="text-gray-300 font-medium">{order.deliveryDate ? format(new Date(order.deliveryDate), 'dd MMM yyyy') : '-'}</span>
+                        Delivery: <span className="text-gray-700 font-medium">{order.deliveryDate ? format(new Date(order.deliveryDate), 'dd MMM yyyy') : '-'}</span>
                       </div>
                       <Link to={`/customer/${order.id}`} className="btn-secondary py-1.5 px-3 text-xs">
                         View Order

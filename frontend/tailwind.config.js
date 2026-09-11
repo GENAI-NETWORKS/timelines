@@ -23,10 +23,10 @@ export default {
           600: '#e11d48',
         },
         surface: {
-          DEFAULT: '#0f0a1a',
-          card: '#1a1228',
-          elevated: '#231b35',
-          border: '#2e2240',
+          DEFAULT: '#f8fafc',
+          card: '#ffffff',
+          elevated: '#f1f5f9',
+          border: '#e2e8f0',
         },
       },
       fontFamily: {
@@ -35,13 +35,13 @@ export default {
       },
       backgroundImage: {
         'gradient-brand': 'linear-gradient(135deg, #be4bf4 0%, #f43f5e 100%)',
-        'gradient-dark': 'linear-gradient(180deg, #1a1228 0%, #0f0a1a 100%)',
-        'gradient-card': 'linear-gradient(135deg, rgba(190,75,244,0.1) 0%, rgba(244,63,94,0.05) 100%)',
+        'gradient-dark': 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
+        'gradient-card': 'linear-gradient(135deg, rgba(190,75,244,0.05) 0%, rgba(244,63,94,0.02) 100%)',
       },
       boxShadow: {
         brand: '0 4px 32px rgba(190,75,244,0.25)',
-        card: '0 2px 16px rgba(0,0,0,0.4)',
-        glow: '0 0 20px rgba(190,75,244,0.4)',
+        card: '0 2px 8px rgba(0,0,0,0.08)',
+        glow: '0 0 20px rgba(190,75,244,0.3)',
       },
       animation: {
         'fade-in': 'fadeIn 0.2s ease-out',

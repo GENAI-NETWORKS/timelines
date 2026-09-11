@@ -40,7 +40,7 @@ export default function DesignSection({
           <Pencil className="w-4 h-4 text-brand-300" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-white text-sm">{meta.label}</p>
+          <p className="font-semibold text-gray-900 text-sm">{meta.label}</p>
           <p className="text-xs text-gray-500 truncate">
             {hasNotes ? notes.slice(0, 60) + (notes.length > 60 ? '…' : '') : 'No notes yet'}
           </p>
@@ -48,7 +48,7 @@ export default function DesignSection({
         <div className="flex items-center gap-2 flex-shrink-0">
           {hasSketch && <span className="badge badge-ready text-xs flex items-center gap-1"><ImageIcon className="w-3 h-3" /> Sketch</span>}
           {hasNotes  && <span className="badge badge-progress text-xs">Notes</span>}
-          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`w-5 h-5 text-gray-600 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
         </div>
       </button>
 
@@ -65,8 +65,8 @@ export default function DesignSection({
                   className="w-28 h-20 object-contain rounded-lg border border-surface-border bg-[#0f0a1a]"
                 />
               </div>
-              <div className="text-xs text-gray-400">
-                <p className="font-medium text-gray-300 mb-1">Current saved sketch</p>
+              <div className="text-xs text-gray-600">
+                <p className="font-medium text-gray-700 mb-1">Current saved sketch</p>
                 <p>Draw below to update it.</p>
               </div>
             </div>

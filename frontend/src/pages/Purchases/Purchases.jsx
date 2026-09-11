@@ -98,7 +98,7 @@ export default function Purchases() {
     <div className="space-y-5 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div>
-          <h1 className="font-display font-bold text-2xl text-white">Items Purchased</h1>
+          <h1 className="font-display font-bold text-2xl text-gray-900">Items Purchased</h1>
           <p className="text-sm text-gray-500">Log purchases and track expenses</p>
         </div>
         <button onClick={() => { setEditData(EMPTY); setModal('create'); }} className="btn-primary sm:ml-auto">
@@ -131,9 +131,9 @@ export default function Purchases() {
               {!loading && filtered.length === 0 && <tr><td colSpan={6} className="text-center py-10 text-gray-500">No purchases found.</td></tr>}
               {filtered.map(purchase => (
                 <tr key={purchase.id}>
-                  <td className="text-gray-400">{purchase.purchaseDate ? format(new Date(purchase.purchaseDate), 'dd MMM yyyy') : '-'}</td>
-                  <td className="font-medium text-white">{purchase.item?.name}</td>
-                  <td className="text-gray-400">{purchase.supplier || '-'}</td>
+                  <td className="text-gray-600">{purchase.purchaseDate ? format(new Date(purchase.purchaseDate), 'dd MMM yyyy') : '-'}</td>
+                  <td className="font-medium text-gray-900">{purchase.item?.name}</td>
+                  <td className="text-gray-600">{purchase.supplier || '-'}</td>
                   <td><span className="badge badge-staff">{purchase.quantity} {purchase.item?.unit}</span></td>
                   <td className="font-mono text-brand-400">₹{purchase.totalCost}</td>
                   <td>

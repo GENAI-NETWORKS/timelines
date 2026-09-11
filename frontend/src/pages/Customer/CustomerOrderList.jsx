@@ -5,6 +5,8 @@ import { getTailoringOrders, getTailoringOrder, deleteTailoringOrder } from '../
 import TailorPrintout, { TailorPrintContent } from './components/TailorPrintout';
 import ConfirmModal from '../../components/UI/ConfirmModal';
 import Pagination from '../../components/UI/Pagination';
+import StickyNotesModal from './components/StickyNotesModal';
+import { FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 
@@ -25,6 +27,7 @@ export default function CustomerOrderList() {
   const [deleteId,setDeleteId]= useState(null);
   const [previewOrder, setPreviewOrder] = useState(null);
   const [printOrder, setPrintOrder] = useState(null);
+  const [showStickyNotes, setShowStickyNotes] = useState(false);
   const LIMIT = 20;
 
   const load = useCallback(async () => {
@@ -66,12 +69,17 @@ export default function CustomerOrderList() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div>
-          <h1 className="font-display font-bold text-2xl text-white">Customer Orders</h1>
+          <h1 className="font-display font-bold text-2xl text-gray-900">Customer Orders</h1>
           <p className="text-sm text-gray-500">{total} total orders</p>
         </div>
-        <button onClick={() => navigate('/customer')} className="btn-primary sm:ml-auto">
-          <Plus className="w-4 h-4" /> New Order
-        </button>
+        <div className="sm:ml-auto flex gap-2">
+          <button onClick={() => setShowStickyNotes(true)} className="btn-secondary">
+            <FileText className="w-4 h-4" /> Print Sticky Notes
+          </button>
+          <button onClick={() => navigate('/customer')} className="btn-primary">
+            <Plus className="w-4 h-4" /> New Order
+          </button>
+        </div>
       </div>
 
       {/* Search */}
@@ -87,7 +95,7 @@ export default function CustomerOrderList() {
             <thead className="bg-surface-elevated border-b border-surface-border">
               <tr>
                 {['Customer', 'Order Date', 'Delivery Date', 'Items', 'Status', 'Actions'].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">{h}</th>
+                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -97,14 +105,14 @@ export default function CustomerOrderList() {
               ) : orders.length === 0 ? (
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-500">No orders found.</td></tr>
               ) : orders.map(o => (
-                <tr key={o.id} className="border-b border-surface-border/50 hover:bg-surface-elevated/30 transition-colors">
+                <tr key={o.id} className="border-b border-surface-border hover:bg-surface-elevated/30 transition-colors">
                   <td className="px-4 py-3">
-                    <div className="font-medium text-white">{o.customer?.name}</div>
+                    <div className="font-medium text-gray-900">{o.customer?.name}</div>
                     {o.customer?.phone && <div className="text-xs text-gray-500 mt-0.5">{o.customer.phone}</div>}
                   </td>
-                  <td className="px-4 py-3 text-gray-400">{format(new Date(o.orderDate), 'dd MMM yy')}</td>
-                  <td className="px-4 py-3 text-gray-400">{o.deliveryDate ? format(new Date(o.deliveryDate), 'dd MMM yy') : '—'}</td>
-                  <td className="px-4 py-3 text-gray-400">{o._count?.items ?? '—'}</td>
+                  <td className="px-4 py-3 text-gray-600">{format(new Date(o.orderDate), 'dd MMM yy')}</td>
+                  <td className="px-4 py-3 text-gray-600">{o.deliveryDate ? format(new Date(o.deliveryDate), 'dd MMM yy') : '—'}</td>
+                  <td className="px-4 py-3 text-gray-600">{o._count?.items ?? '—'}</td>
                   <td className="px-4 py-3"><span className={`badge ${statusBadge[o.status] || 'badge-pending'}`}>{o.status}</span></td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
@@ -142,6 +150,11 @@ export default function CustomerOrderList() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Sticky Notes Modal */}
+      {showStickyNotes && (
+        <StickyNotesModal onClose={() => setShowStickyNotes(false)} />
       )}
     </div>
   );

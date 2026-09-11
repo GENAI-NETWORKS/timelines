@@ -55,6 +55,9 @@ function buildDefaultSubItems(quantity, itemType) {
     sleeveDesignImageUrl: null,
     // Lining / source specific
     source: 'SHOP',
+    liningSource: 'SHOP',
+    liningMeter: '',
+    liningPrice: '',
     description: '',
     // Saree specific
     numberOfSarees: '',
@@ -113,7 +116,7 @@ router.get('/:id', protect, async (req, res, next) => {
 // OR { customerId } to link existing customer
 router.post('/', protect, adminOnly, async (req, res, next) => {
   try {
-    const { customerId, customerName, customerPhone, orderDate, deliveryDate, notes } = req.body;
+    const { customerId, customerName, customerPhone, orderDate, deliveryDate, notes, bagNo, bagName } = req.body;
     let resolvedCustomerId = customerId;
 
     if (!customerId && customerName) {
@@ -132,6 +135,8 @@ router.post('/', protect, adminOnly, async (req, res, next) => {
         orderDate: orderDate ? new Date(orderDate) : new Date(),
         deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
         notes: notes || '',
+        bagNo: bagNo || '',
+        bagName: bagName || '',
       },
       include: { customer: true, items: true },
     });
@@ -142,13 +147,13 @@ router.post('/', protect, adminOnly, async (req, res, next) => {
 // ── PUT /api/tailoring-orders/:id ─────────────────────────────────────────
 router.put('/:id', protect, adminOnly, async (req, res, next) => {
   try {
-    const { orderDate, deliveryDate, status, notes } = req.body;
+    const { orderDate, deliveryDate, status, notes, bagNo, bagName } = req.body;
     const order = await prisma.tailoringOrder.update({
       where: { id: req.params.id },
       data: {
         orderDate: orderDate ? new Date(orderDate) : undefined,
         deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
-        status, notes,
+        status, notes, bagNo, bagName,
       },
       include: { customer: true, items: { orderBy: { sortOrder: 'asc' } } },
     });

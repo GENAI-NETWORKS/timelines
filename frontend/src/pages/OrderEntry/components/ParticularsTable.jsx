@@ -30,10 +30,10 @@ export default function ParticularsTable({ particulars, onChange, threadColors, 
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-surface-elevated border-b border-surface-border">
-              <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider w-8">#</th>
-              <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Item / Work</th>
-              <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider w-24">Qty</th>
-              <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Notes / Cost</th>
+              <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-8">#</th>
+              <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Item / Work</th>
+              <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-24">Qty</th>
+              <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Notes / Cost</th>
               {!disabled && <th className="px-3 py-2.5 w-10" />}
             </tr>
           </thead>
@@ -46,7 +46,7 @@ export default function ParticularsTable({ particulars, onChange, threadColors, 
               </tr>
             )}
             {particulars.map((row, i) => (
-              <tr key={i} className="border-b border-surface-border/50 hover:bg-surface-elevated/40 transition-colors">
+              <tr key={i} className="border-b border-surface-border hover:bg-surface-elevated/40 transition-colors">
                 <td className="px-3 py-2 text-gray-600 text-xs font-mono">{i + 1}</td>
                 <td className="px-3 py-1.5">
                   <input

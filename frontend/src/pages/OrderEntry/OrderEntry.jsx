@@ -64,9 +64,9 @@ function Section({ id, label, icon: Icon, color, open, onToggle, children, badge
         <div className={`w-8 h-8 rounded-lg bg-surface-elevated border border-surface-border flex items-center justify-center flex-shrink-0`}>
           <Icon className={`w-4 h-4 ${color}`} />
         </div>
-        <span className="font-semibold text-white flex-1 text-sm">{label}</span>
+        <span className="font-semibold text-gray-900 flex-1 text-sm">{label}</span>
         {badge && <span className="badge badge-ready text-xs">{badge}</span>}
-        {open ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+        {open ? <ChevronUp className="w-4 h-4 text-gray-600" /> : <ChevronDown className="w-4 h-4 text-gray-600" />}
       </button>
       {open && <div className="p-5 animate-fade-in">{children}</div>}
     </div>
@@ -361,7 +361,7 @@ export default function OrderEntry() {
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center space-y-3">
           <Loader className="w-8 h-8 text-brand-400 animate-spin mx-auto" />
-          <p className="text-gray-400 text-sm">Loading order…</p>
+          <p className="text-gray-600 text-sm">Loading order…</p>
         </div>
       </div>
     );
@@ -381,7 +381,7 @@ export default function OrderEntry() {
               <ArrowLeft className="w-4 h-4" />
             </button>
             <div>
-              <h1 className="font-display font-bold text-2xl text-white">
+              <h1 className="font-display font-bold text-2xl text-gray-900">
                 {isEdit ? `Edit Order — ${orderId}` : 'New Order'}
               </h1>
               <p className="text-sm text-gray-500 flex items-center gap-2">
@@ -511,7 +511,7 @@ export default function OrderEntry() {
                 >
                   <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${form.isSample ? 'translate-x-4' : 'translate-x-0'}`} />
                 </div>
-                <span className="text-sm text-gray-300">Sample Order</span>
+                <span className="text-sm text-gray-700">Sample Order</span>
               </label>
             </div>
             <div className="sm:col-span-2 lg:col-span-3">
@@ -608,7 +608,7 @@ export default function OrderEntry() {
               <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${form.customerConfirmedAt ? 'translate-x-4' : 'translate-x-0'}`} />
             </div>
             <div>
-              <p className="text-sm font-medium text-white">Customer Confirmed</p>
+              <p className="text-sm font-medium text-gray-900">Customer Confirmed</p>
               {form.customerConfirmedAt ? (
                 <p className="text-xs text-green-400 flex items-center gap-1">
                   <CheckSquare className="w-3 h-3" />

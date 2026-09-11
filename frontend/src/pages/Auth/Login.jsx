@@ -39,15 +39,15 @@ export default function Login() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 rounded-2xl bg-gradient-brand flex items-center justify-center mx-auto mb-4 shadow-brand">
-            <Scissors className="w-8 h-8 text-white" />
+            <Scissors className="w-8 h-8 text-gray-900" />
           </div>
-          <h1 className="font-display font-bold text-3xl text-white">Timelines</h1>
-          <p className="text-gray-400 mt-1">Costume Designers - Admin Panel</p>
+          <h1 className="font-display font-bold text-3xl text-gray-900">Timelines</h1>
+          <p className="text-gray-600 mt-1">Costume Designers - Admin Panel</p>
         </div>
 
         {/* Form card */}
         <div className="card p-8">
-          <h2 className="font-display font-semibold text-xl text-white mb-6">Sign in to continue</h2>
+          <h2 className="font-display font-semibold text-xl text-gray-900 mb-6">Sign in to continue</h2>
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="label" htmlFor="email">Email Address</label>
@@ -82,7 +82,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => setShow(!show)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                 >
                   {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>

@@ -123,7 +123,7 @@ export default function Employees() {
     <div className="space-y-5 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div>
-          <h1 className="font-display font-bold text-2xl text-white">Employees</h1>
+          <h1 className="font-display font-bold text-2xl text-gray-900">Employees</h1>
           <p className="text-sm text-gray-500">{total} total employees</p>
         </div>
         {isAdmin && (
@@ -170,11 +170,11 @@ export default function Employees() {
               {employees.map(emp => (
                 <tr key={emp.employeeId}>
                   <td><span className="font-mono text-xs text-brand-400">{emp.employeeId}</span></td>
-                  <td className="font-medium text-white">{emp.name}</td>
+                  <td className="font-medium text-gray-900">{emp.name}</td>
                   <td>
                     <span className="badge badge-staff">{emp.role}</span>
                   </td>
-                  <td className="text-gray-400">{emp.phone || '-'}</td>
+                  <td className="text-gray-600">{emp.phone || '-'}</td>
                   <td className="text-gray-500 text-xs">{emp.joiningDate ? format(new Date(emp.joiningDate), 'dd MMM yyyy') : '-'}</td>
                   <td><span className={emp.status === 'active' ? 'badge-active' : 'badge-inactive'}>{emp.status}</span></td>
                   <td>

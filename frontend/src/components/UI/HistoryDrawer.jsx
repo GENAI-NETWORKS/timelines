@@ -15,7 +15,7 @@ export default function HistoryDrawer({ title, logs = [], onClose, loading }) {
       <div className="drawer" style={{ animation: 'slideIn 0.25s ease-out' }}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-surface-border">
           <div>
-            <h3 className="font-display font-bold text-white text-lg">Edit History</h3>
+            <h3 className="font-display font-bold text-gray-900 text-lg">Edit History</h3>
             <p className="text-xs text-gray-500">{title}</p>
           </div>
           <button onClick={onClose} className="btn-icon"><X className="w-5 h-5" /></button>
@@ -38,7 +38,7 @@ export default function HistoryDrawer({ title, logs = [], onClose, loading }) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-white text-sm capitalize">{log.action}</span>
+                      <span className="font-medium text-gray-900 text-sm capitalize">{log.action}</span>
                       <span className="text-xs text-gray-500">by</span>
                       <span className="text-xs text-brand-300">{log.changedByName || 'Unknown'}</span>
                     </div>
@@ -53,11 +53,11 @@ export default function HistoryDrawer({ title, logs = [], onClose, loading }) {
                   <div className="space-y-1.5 ml-10">
                     {log.changes.map((c, j) => (
                       <div key={j} className="bg-surface-elevated rounded-lg px-3 py-2 text-xs">
-                        <span className="text-gray-400 font-medium">{c.field}:</span>{' '}
+                        <span className="text-gray-600 font-medium">{c.field}:</span>{' '}
                         <span className="text-rose-400 line-through mr-1">
                           {JSON.stringify(c.oldValue) ?? '-'}
                         </span>
-                        <span className="text-gray-400">→</span>{' '}
+                        <span className="text-gray-600">→</span>{' '}
                         <span className="text-green-400">
                           {JSON.stringify(c.newValue) ?? '-'}
                         </span>

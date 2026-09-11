@@ -59,7 +59,7 @@ function SalaryForm({ value, onChange, onSubmit, loading, onCancel, title, emplo
         </div>
       </div>
       <div className="card-glass p-3 flex items-center justify-between">
-        <span className="text-gray-400 text-sm">Net Payable:</span>
+        <span className="text-gray-600 text-sm">Net Payable:</span>
         <span className={`font-display font-bold text-xl ${net >= 0 ? 'text-green-400' : 'text-rose-400'}`}>
           ₹{net.toLocaleString('en-IN')}
         </span>
@@ -147,7 +147,7 @@ export default function Salary() {
     <div className="space-y-5 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div>
-          <h1 className="font-display font-bold text-2xl text-white">Salary Management</h1>
+          <h1 className="font-display font-bold text-2xl text-gray-900">Salary Management</h1>
           <p className="text-sm text-gray-500">{total} records · Total payable: <span className="text-green-400 font-medium">₹{totalPayable.toLocaleString('en-IN')}</span></p>
         </div>
         <button onClick={() => { setEditData(EMPTY); setModal('create'); }} className="btn-primary sm:ml-auto">
@@ -191,7 +191,7 @@ export default function Salary() {
               {records.map(r => (
                 <tr key={r.id}>
                   <td>
-                    <div className="font-medium text-white">{r.employee?.name}</div>
+                    <div className="font-medium text-gray-900">{r.employee?.name}</div>
                     <div className="text-xs text-gray-500">{r.employee?.role}</div>
                   </td>
                   <td className="font-medium">{MONTHS[r.month - 1]} {r.year}</td>
@@ -199,7 +199,7 @@ export default function Salary() {
                   <td className="text-green-400">+₹{r.bonus || 0}</td>
                   <td className="text-amber-400">-₹{r.advances || 0}</td>
                   <td className="text-rose-400">-₹{r.deductions || 0}</td>
-                  <td className="font-bold text-white">₹{r.netPaid?.toLocaleString('en-IN')}</td>
+                  <td className="font-bold text-gray-900">₹{r.netPaid?.toLocaleString('en-IN')}</td>
                   <td><span className={`badge-${r.paidStatus}`}>{r.paidStatus}</span></td>
                   <td>
                     <div className="flex items-center gap-1">

@@ -90,7 +90,7 @@ export default function Services() {
     <div className="space-y-5 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div>
-          <h1 className="font-display font-bold text-2xl text-white">Services List</h1>
+          <h1 className="font-display font-bold text-2xl text-gray-900">Services List</h1>
           <p className="text-sm text-gray-500">Manage offered services and pricing</p>
         </div>
         <button onClick={() => { setEditData(EMPTY); setModal('create'); }} className="btn-primary sm:ml-auto">
@@ -122,14 +122,14 @@ export default function Services() {
               {!loading && filtered.length === 0 && <tr><td colSpan={5} className="text-center py-10 text-gray-500">No services found.</td></tr>}
               {filtered.map(service => (
                 <tr key={service.id}>
-                  <td className="font-medium text-white">
+                  <td className="font-medium text-gray-900">
                     <div className="flex items-center gap-2">
                       <Scissors className="w-4 h-4 text-brand-400" />
                       {service.name}
                     </div>
                   </td>
-                  <td className="text-gray-400 text-sm max-w-[200px] truncate" title={service.description}>{service.description || '-'}</td>
-                  <td className="font-mono text-white">₹{service.basePrice}</td>
+                  <td className="text-gray-600 text-sm max-w-[200px] truncate" title={service.description}>{service.description || '-'}</td>
+                  <td className="font-mono text-gray-900">₹{service.basePrice}</td>
                   <td>
                     <span className={service.isActive ? 'badge-active' : 'badge-inactive'}>
                       {service.isActive ? 'Active' : 'Inactive'}
