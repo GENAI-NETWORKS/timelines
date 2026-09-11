@@ -263,7 +263,7 @@ const ItemCard = React.memo(function ItemCard({ item, rowIndex, theme, onUpdate,
             <div className="flex-1 space-y-4">
               
               {/* ── Fields grid ── */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div className="flex flex-col sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
 
             {/* Stitching Price */}
             <div>
