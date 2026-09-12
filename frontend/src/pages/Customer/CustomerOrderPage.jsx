@@ -491,18 +491,20 @@ export default function CustomerOrderPage() {
                 )}
 
                 {/* Action buttons */}
-                <div className="flex gap-2 ml-auto flex-wrap">
-                  <button onClick={handleSaveAll} disabled={savingAll} className="btn-secondary">
-                    {savingAll ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    {savingAll ? 'Saving…' : 'Save Changes'}
+                <div className="flex gap-2 ml-auto flex-wrap justify-end">
+                  <button onClick={handleSaveAll} disabled={savingAll} className="btn-secondary text-xs px-3 py-1.5 sm:text-sm sm:px-4 sm:py-2">
+                    {savingAll ? <Loader className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" /> : <Save className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+                    <span className="hidden sm:inline">{savingAll ? 'Saving…' : 'Save Changes'}</span>
+                    <span className="sm:hidden">{savingAll ? 'Saving…' : 'Save'}</span>
                   </button>
-                  <button onClick={handlePrint} className="btn-secondary">
-                    <Printer className="w-4 h-4" /> Print
+                  <button onClick={handlePrint} className="btn-secondary text-xs px-3 py-1.5 sm:text-sm sm:px-4 sm:py-2">
+                    <Printer className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Print
                   </button>
                   {!isSubmitted && (
-                    <button onClick={handleSubmit} disabled={submitting} className="btn-primary">
-                      {submitting ? <Loader className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                      {submitting ? 'Submitting…' : 'Submit Order'}
+                    <button onClick={handleSubmit} disabled={submitting} className="btn-primary text-xs px-3 py-1.5 sm:text-sm sm:px-4 sm:py-2">
+                      {submitting ? <Loader className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+                      <span className="hidden sm:inline">{submitting ? 'Submitting…' : 'Submit Order'}</span>
+                      <span className="sm:hidden">{submitting ? 'Submitting…' : 'Submit'}</span>
                     </button>
                   )}
                 </div>

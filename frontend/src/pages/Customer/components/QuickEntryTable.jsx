@@ -141,7 +141,7 @@ const ItemCard = React.memo(function ItemCard({ item, rowIndex, theme, onUpdate,
   const updateQty = (val) => {
     const q = Math.max(1, parseInt(val) || 1);
     let subs = [...subItems];
-    while (subs.length < q) subs.push({ ...makeBlankSub(subs[0]), number: subs.length + 1 });
+    while (subs.length < q) subs.push({ ...makeBlankSub(), number: subs.length + 1 });
     subs = subs.slice(0, q).map((s, i) => ({ ...s, number: i + 1 }));
     if (activeSub >= q) setActiveSub(q - 1);
     onUpdate({ ...item, quantity: q, subItems: subs });
@@ -175,6 +175,23 @@ const ItemCard = React.memo(function ItemCard({ item, rowIndex, theme, onUpdate,
     const newActive = activeSub >= renumbered.length ? renumbered.length - 1 : activeSub;
     setActiveSub(newActive);
     onUpdate({ ...item, quantity: renumbered.length, subItems: renumbered });
+  };
+
+  const handleCopyFrom = (fromIndex) => {
+    const source = subItems[fromIndex];
+    if (!source) return;
+    
+    // Clone the source object
+    const copied = JSON.parse(JSON.stringify(source));
+    copied.number = activeSub + 1; // Preserve current item number
+    
+    setLocalSub(copied);
+    lastSentSub.current = copied;
+    
+    // Update parent immediately
+    const newSubs = subItems.map((s, i) => i === activeSub ? copied : s);
+    onUpdate({ ...item, subItems: newSubs });
+    toast.success(`Copied details from Item ${fromIndex + 1}`);
   };
 
   const inp = `w-full bg-white border rounded-lg px-3 py-2 text-base text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 transition-colors ${theme.border} ${theme.focusBorder} ${theme.focusRing}`;
@@ -248,7 +265,21 @@ const ItemCard = React.memo(function ItemCard({ item, rowIndex, theme, onUpdate,
                   Item {i + 1}
                 </button>
               ))}
-              <div className="ml-auto flex items-center">
+              <div className="ml-auto flex items-center gap-3">
+                {subItems.length > 1 && (
+                  <select 
+                    className={`text-xs bg-white border ${theme.border} rounded-md px-2 py-1 font-semibold text-gray-600 focus:outline-none ${theme.focusBorder}`}
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value) handleCopyFrom(parseInt(e.target.value));
+                    }}
+                  >
+                    <option value="" disabled>Copy from...</option>
+                    {subItems.map((_, i) => i !== activeSub && (
+                      <option key={i} value={i}>Item {i + 1}</option>
+                    ))}
+                  </select>
+                )}
                 <button onClick={handleDeleteSubItem} className="flex items-center gap-1 text-xs text-rose-500 hover:text-rose-600 font-semibold px-2 py-1 rounded hover:bg-rose-50 transition-colors">
                   <Trash2 className="w-3.5 h-3.5" /> Delete Item {activeSub + 1}
                 </button>

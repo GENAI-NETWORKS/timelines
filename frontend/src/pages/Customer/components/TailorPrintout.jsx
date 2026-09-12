@@ -31,14 +31,13 @@ const MEAS_FIELDS = [
 ];
 
 function MeasurementGrid({ sub }) {
-  const filled = MEAS_FIELDS.filter(f => sub[`measurement_${f.key}`]);
-  if (!filled.length) return null;
+  // Always show all measurement fields so they can be written in by hand if empty
   return (
     <div className="tp-meas-grid">
-      {filled.map(f => (
+      {MEAS_FIELDS.map(f => (
         <div key={f.key} className="tp-meas-cell">
           <span className="tp-meas-label">{f.label}</span>
-          <span className="tp-meas-val">{sub[`measurement_${f.key}`]}</span>
+          <span className="tp-meas-val">{sub[`measurement_${f.key}`] || <>&nbsp;</>}</span>
         </div>
       ))}
     </div>
@@ -131,7 +130,11 @@ export function TailorPrintContent({ order, customer, showPrices = false }) {
       {/* ── Per item ─────────────────────────────────────────────────── */}
       {items.map((item, idx) => {
         const rawSubs = Array.isArray(item.subItems) ? item.subItems : [];
-        const subs = rawSubs.slice(0, Math.max(1, item.quantity || 1));
+        const qty = Math.max(1, parseInt(item.quantity) || 1);
+        const subs = [];
+        for (let i = 0; i < qty; i++) {
+          subs.push(rawSubs[i] || {});
+        }
         const meta = getItemMeta(item.itemType);
 
         // Running total for preview
@@ -198,43 +201,39 @@ export function TailorPrintContent({ order, customer, showPrices = false }) {
                 )}
 
                 {/* Meter / Source / Price row */}
-                {(meta.hasMeter || meta.hasSource || meta.isSaree || (showPrices && sub.price)) && (
+                {(meta.hasMeter || meta.hasSource || meta.isSaree || showPrices) && (
                   <div className="tp-fields-row">
-                    {meta.hasMeter && sub.meter && (
-                      <span><strong>Meter:</strong> {sub.meter} m</span>
+                    {meta.hasMeter && (
+                      <span><strong>Meter:</strong> {sub.meter || '________'}</span>
                     )}
-                    {meta.hasSource && sub.source && (
-                      <span><strong>Source:</strong> {sub.source === 'SHOP' ? 'Shop purchase (Inside)' : 'Customer purchased (outside)'}</span>
+                    {meta.hasSource && (
+                      <span><strong>Source:</strong> {sub.source === 'CUSTOMER' ? 'Customer (Outside)' : 'Shop (Inside)'}</span>
                     )}
-                    {showPrices && meta.hasSource && sub.source !== 'CUSTOMER' && sub.sourcePrice && (
-                      <span><strong>Src Price:</strong> ₹ {sub.sourcePrice}</span>
+                    {showPrices && meta.hasSource && sub.source !== 'CUSTOMER' && (
+                      <span><strong>Src Price:</strong> ₹ {sub.sourcePrice || '____'}</span>
                     )}
-                    {showPrices && sub.price && (
-                      <span><strong>Stitching:</strong> ₹ {sub.price}</span>
+                    {showPrices && (
+                      <span><strong>Stitching:</strong> ₹ {sub.price || '____'}</span>
                     )}
-                    {meta.isSaree && sub.numberOfSarees && (
-                      <span><strong>Sarees:</strong> {sub.numberOfSarees}</span>
+                    {meta.isSaree && (
+                      <span><strong>Sarees:</strong> {sub.numberOfSarees || '____'}</span>
                     )}
-                    {meta.isSaree && sub.numberOfFalls && (
-                      <span><strong>Falls:</strong> {sub.numberOfFalls}</span>
+                    {meta.isSaree && (
+                      <span><strong>Falls:</strong> {sub.numberOfFalls || '____'}</span>
                     )}
-                    {meta.isSaree && sub.sareeColour && (
-                      <span><strong>Colour:</strong> {sub.sareeColour}</span>
+                    {meta.isSaree && (
+                      <span><strong>Colour:</strong> {sub.sareeColour || '________'}</span>
                     )}
                   </div>
                 )}
 
                 {/* Lining row */}
-                {meta.hasLining && (sub.liningSource || sub.liningMeter) && (
+                {meta.hasLining && (
                   <div className="tp-fields-row" style={{ marginTop: '4px' }}>
                     <span><strong>Lining:</strong>{' '}
-                    {sub.liningSource === 'SHOP'
-                      ? 'Shop purchase (Inside)'
-                      : sub.liningSource === 'CUSTOMER'
-                      ? 'Customer purchased (outside)'
-                      : sub.liningSource || ''}</span>
-                    {sub.liningMeter ? <span><strong>Lining Meter:</strong> {sub.liningMeter} m</span> : ''}
-                    {showPrices && sub.liningPrice ? <span><strong>Lining Price:</strong> ₹ {sub.liningPrice}</span> : ''}
+                    {sub.liningSource === 'CUSTOMER' ? 'Customer (Outside)' : 'Shop (Inside)'}</span>
+                    <span><strong>Lining Meter:</strong> {sub.liningMeter || '________'}</span>
+                    {showPrices && <span><strong>Lining Price:</strong> ₹ {sub.liningPrice || '____'}</span>}
                   </div>
                 )}
 
@@ -242,8 +241,8 @@ export function TailorPrintContent({ order, customer, showPrices = false }) {
                 {meta.hasMeasurements && <MeasurementGrid sub={sub} />}
 
                 {/* Description */}
-                {sub.description && (
-                  <div className="tp-field"><strong>Notes:</strong> {sub.description}</div>
+                {(meta.hasNotes !== false) && (
+                  <div className="tp-field"><strong>Notes:</strong> {sub.description || '________________________________________________'}</div>
                 )}
 
                 {/* Reason for Edit */}
@@ -252,10 +251,10 @@ export function TailorPrintContent({ order, customer, showPrices = false }) {
                 )}
 
                 {/* Aari work notes */}
-                {meta.isArya && sub.aryaWorkNotes && (
+                {meta.isArya && (
                   <div className="tp-field">
                     <strong>Aari Work Instructions:</strong>
-                    <div className="tp-multiline">{sub.aryaWorkNotes}</div>
+                    <div className="tp-multiline">{sub.aryaWorkNotes || '________________________________________________'}</div>
                   </div>
                 )}
 
