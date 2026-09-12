@@ -402,10 +402,14 @@
   }
   .tp-design-notes.tp-placeholder { color: #aaa; }
 
-  /* Canvas drawing — full column width, high quality */
+  /* Canvas drawing — bound the height and use object-fit to prevent tall mobile screens from destroying the layout */
   .tp-canvas-img {
-    width: 100%; height: auto;
-    display: block; border-top: 1px solid #ddd;
+    width: 100%;
+    height: 160px;
+    object-fit: contain;
+    background-color: #fafafa;
+    display: block; 
+    border-top: 1px solid #ddd;
   }
   .tp-design-ref-img {
     width: 100%; height: 100px;
