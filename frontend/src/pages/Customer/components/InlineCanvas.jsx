@@ -52,7 +52,9 @@ export default function InlineCanvas({ width = 460, height = 280, initialJSON, o
       ? `${(import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace('/api', '')}${url}` 
       : url;
 
-    fabric.FabricImage.fromURL(fullUrl, { crossOrigin: 'anonymous' }).then(img => {
+    const corsUrl = `${fullUrl}?t=${Date.now()}`;
+
+    fabric.FabricImage.fromURL(corsUrl, { crossOrigin: 'anonymous' }).then(img => {
       if (img.width > width * 0.8) img.scaleToWidth(width * 0.8);
       if (img.getScaledHeight() > height * 0.8) img.scaleToHeight(height * 0.8);
       img.set({
@@ -132,7 +134,8 @@ export default function InlineCanvas({ width = 460, height = 280, initialJSON, o
           // Check if library background already exists from JSON
           const prev = cvs.getObjects().find(o => o.data?.isLibraryBg);
           if (!prev) {
-            const img = await fabric.FabricImage.fromURL(backgroundImageUrl, { crossOrigin: 'anonymous' });
+            const corsUrl = `${backgroundImageUrl}?t=${Date.now()}`;
+            const img = await fabric.FabricImage.fromURL(corsUrl, { crossOrigin: 'anonymous' });
             img.scaleToWidth(width);
             if (img.getScaledHeight() < height) img.scaleToHeight(height);
             img.set({
@@ -352,7 +355,7 @@ export default function InlineCanvas({ width = 460, height = 280, initialJSON, o
                 <button key={r.key} title={`Add ${r.label} image to canvas`}
                   onClick={() => handleDropImage(subItem[r.key])}
                   className="group relative w-12 h-12 rounded-lg overflow-hidden border-2 border-dashed border-brand-300 hover:border-brand-500 transition-all shadow-sm hover:shadow-md">
-                  <img src={url} alt={r.label} className="w-full h-full object-cover" />
+                  <img src={url} alt={r.label} crossOrigin="anonymous" className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <span className="text-white text-[9px] font-bold">+ ADD</span>
                   </div>
@@ -381,7 +384,8 @@ export default function InlineCanvas({ width = 460, height = 280, initialJSON, o
           const fullUrl = url.startsWith('/')
             ? `${(import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace('/api', '')}${url}`
             : url;
-          fabric.FabricImage.fromURL(fullUrl, { crossOrigin: 'anonymous' }).then(img => {
+          const corsUrl = `${fullUrl}?t=${Date.now()}`;
+          fabric.FabricImage.fromURL(corsUrl, { crossOrigin: 'anonymous' }).then(img => {
             if (img.width > width * 0.6) img.scaleToWidth(width * 0.6);
             if (img.getScaledHeight() > height * 0.6) img.scaleToHeight(height * 0.6);
             img.set({

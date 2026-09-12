@@ -20,7 +20,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(morgan('dev'));
 
 // Static files for uploads
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', cors({ origin: '*' }), express.static(path.join(__dirname, 'uploads')));
 
 // Routes
 app.use('/api/auth', require('./src/routes/auth'));
