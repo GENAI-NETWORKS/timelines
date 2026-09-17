@@ -83,12 +83,16 @@ const PORT = process.env.PORT || 5000;
 
 async function main() {
   try {
-    await prisma.$connect();
-    console.log('✅ MySQL connected via Prisma (Hostinger)');
+    // Attempt an initial connection, but don't crash if it's slow
+    prisma.$connect().then(() => {
+      console.log('✅ MySQL connected via Prisma');
+    }).catch(err => {
+      console.error('⚠️ Initial DB connect failed (will retry on first query):', err.message);
+    });
+    
     app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
   } catch (err) {
-    console.error('❌ Database connection error:', err.message);
-    process.exit(1);
+    console.error('❌ Server start error:', err.message);
   }
 }
 
