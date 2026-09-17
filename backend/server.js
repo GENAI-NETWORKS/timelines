@@ -57,6 +57,25 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+// ⚠️  TEMPORARY: One-time admin reset — DELETE after use
+app.get('/api/setup-admin', async (req, res) => {
+  const SECRET = 'timelines-reset-2026';
+  if (req.query.token !== SECRET)
+    return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const bcrypt = require('bcryptjs');
+    const hash = await bcrypt.hash('Admin@2026', 12);
+    const user = await prisma.user.upsert({
+      where:  { email: 'admin@timelines.in' },
+      update: { password: hash, isActive: true, role: 'admin' },
+      create: { name: 'Admin User', email: 'admin@timelines.in', password: hash, role: 'admin', isActive: true },
+    });
+    res.json({ success: true, message: 'Admin ready', email: user.email });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Error handler
 app.use(require('./src/middleware/errorHandler'));
 
