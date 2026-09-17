@@ -167,7 +167,7 @@ const ItemCard = React.memo(function ItemCard({ item, rowIndex, theme, onUpdate,
 
   const handleDeleteSubItem = () => {
     if (subItems.length <= 1) {
-      onDelete();
+      onDelete(item.id);
       return;
     }
     const newSubs = subItems.filter((_, i) => i !== activeSub);
@@ -236,7 +236,7 @@ const ItemCard = React.memo(function ItemCard({ item, rowIndex, theme, onUpdate,
         <button onClick={() => setExpanded(e => !e)} className={`ml-auto p-1 rounded-lg ${theme.text} hover:bg-white/60 transition-colors`}>
           {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
-        <button onClick={onDelete} className="p-1 rounded-lg text-rose-400 hover:bg-rose-50 transition-colors" title="Remove">
+        <button onClick={() => onDelete(item.id)} className="p-1 rounded-lg text-rose-400 hover:bg-rose-50 transition-colors" title="Remove">
           <Trash2 className="w-4 h-4" />
         </button>
       </div>
