@@ -103,10 +103,8 @@ const getOrderWithItems = async (id) => {
   const [items] = await db.query(`SELECT * FROM TailoringOrderItem WHERE orderId = ? ORDER BY sortOrder ASC`, [id]);
   
   order.items = items.map(item => {
-    let details = {};
-    let subItems = [];
-    try { details = JSON.parse(item.details); } catch (e) {}
-    try { subItems = JSON.parse(item.subItems); } catch (e) {}
+    let details = typeof item.details === 'string' ? JSON.parse(item.details) : item.details || {};
+    let subItems = typeof item.subItems === 'string' ? JSON.parse(item.subItems) : item.subItems || [];
     return { ...item, details, subItems };
   });
   
@@ -285,8 +283,8 @@ router.post('/:id/items', protect, adminOnly, async (req, res, next) => {
     
     const [rows] = await db.query(`SELECT * FROM TailoringOrderItem WHERE id = ?`, [id]);
     const item = rows[0];
-    item.details = JSON.parse(item.details);
-    item.subItems = JSON.parse(item.subItems);
+    item.details = typeof item.details === 'string' ? JSON.parse(item.details) : item.details || {};
+    item.subItems = typeof item.subItems === 'string' ? JSON.parse(item.subItems) : item.subItems || [];
     res.status(201).json(item);
   } catch (err) { next(err); }
 });
@@ -331,8 +329,8 @@ router.put('/:id/items/:itemId', protect, adminOnly, async (req, res, next) => {
     
     const [newRows] = await db.query(`SELECT * FROM TailoringOrderItem WHERE id = ?`, [req.params.itemId]);
     const updated = newRows[0];
-    updated.details = JSON.parse(updated.details);
-    updated.subItems = JSON.parse(updated.subItems);
+    updated.details = typeof updated.details === 'string' ? JSON.parse(updated.details) : updated.details || {};
+    updated.subItems = typeof updated.subItems === 'string' ? JSON.parse(updated.subItems) : updated.subItems || [];
     res.json(updated);
   } catch (err) { next(err); }
 });
