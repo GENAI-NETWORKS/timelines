@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const prisma = require('../utils/prisma');
+const db = require('../utils/db');
 const { protect, adminOnly } = require('../middleware/auth');
 
 // POST /api/auth/login
@@ -12,7 +12,8 @@ router.post('/login', async (req, res, next) => {
     if (!email || !password)
       return res.status(400).json({ message: 'Email and password are required.' });
 
-    const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+    const [rows] = await db.query(`SELECT * FROM User WHERE email = ?`, [email.toLowerCase()]);
+    const user = rows[0];
     if (!user || !user.isActive)
       return res.status(401).json({ message: 'Invalid credentials.' });
 
@@ -36,17 +37,11 @@ router.get('/me', protect, (req, res) => {
 // GET /api/auth/credentials
 router.get('/credentials', protect, adminOnly, async (req, res, next) => {
   try {
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        plainPassword: true,
-        employeeRef: true,
-        isActive: true
-      },
-      orderBy: { role: 'asc' }
-    });
+    const [users] = await db.query(`
+      SELECT id, email, role, plainPassword, employeeRef, isActive 
+      FROM User 
+      ORDER BY role ASC
+    `);
     res.json(users);
   } catch (err) { next(err); }
 });

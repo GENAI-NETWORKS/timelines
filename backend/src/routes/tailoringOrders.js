@@ -3,8 +3,9 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const prisma = require('../utils/prisma');
+const db = require('../utils/db');
 const { protect, adminOnly } = require('../middleware/auth');
+const { v4: uuidv4 } = require('uuid');
 
 // ── Multer ─────────────────────────────────────────────────────────────────
 const storage = multer.diskStorage({
@@ -23,10 +24,8 @@ const upload = multer({ storage, limits: { fileSize: 15 * 1024 * 1024 } });
 async function generateCustomerId() {
   const year = new Date().getFullYear();
   const prefix = `TC-${year}-`;
-  const last = await prisma.customer.findFirst({
-    where: { customerId: { startsWith: prefix } },
-    orderBy: { customerId: 'desc' },
-  });
+  const [rows] = await db.query(`SELECT customerId FROM Customer WHERE customerId LIKE ? ORDER BY customerId DESC LIMIT 1`, [`${prefix}%`]);
+  const last = rows[0];
   const num = last ? parseInt(last.customerId.split('-')[2], 10) + 1 : 1;
   return `${prefix}${String(num).padStart(4, '0')}`;
 }
@@ -47,24 +46,72 @@ function buildDefaultSubItems(quantity, itemType) {
     frontCanvasImageUrl: null,
     backCanvasImageUrl: null,
     sleeveCanvasImageUrl: null,
-    // Arya Work specific
     aryaWorkNotes: '',
     aryaWorkPrice: '',
     frontDesignImageUrl: null,
     backDesignImageUrl: null,
     sleeveDesignImageUrl: null,
-    // Lining / source specific
     source: 'SHOP',
     liningSource: 'SHOP',
     liningMeter: '',
     liningPrice: '',
     description: '',
-    // Saree specific
     numberOfSarees: '',
     numberOfFalls: '',
     fallsSource: 'SHOP',
   }));
 }
+
+const formatOrderList = (row) => {
+  const formatted = { ...row, customer: null, _count: { items: row.itemCount || 0 } };
+  if (row['customer.customerId']) {
+    formatted.customer = {
+      customerId: row['customer.customerId'],
+      name: row['customer.name'],
+      phone: row['customer.phone']
+    };
+  }
+  delete formatted['customer.customerId'];
+  delete formatted['customer.name'];
+  delete formatted['customer.phone'];
+  delete formatted.itemCount;
+  return formatted;
+};
+
+const getOrderWithItems = async (id) => {
+  const [rows] = await db.query(`
+    SELECT o.*,
+           c.customerId as 'customer.customerId', c.name as 'customer.name', 
+           c.phone as 'customer.phone', c.address as 'customer.address', c.email as 'customer.email',
+           c.notes as 'customer.notes', c.createdAt as 'customer.createdAt', c.updatedAt as 'customer.updatedAt'
+    FROM TailoringOrder o
+    LEFT JOIN Customer c ON o.customerId = c.customerId
+    WHERE o.id = ?
+  `, [id]);
+  
+  if (rows.length === 0) return null;
+  const order = formatOrderList(rows[0]);
+  
+  if (order.customer) {
+    order.customer.address = rows[0]['customer.address'];
+    order.customer.email = rows[0]['customer.email'];
+    order.customer.notes = rows[0]['customer.notes'];
+    order.customer.createdAt = rows[0]['customer.createdAt'];
+    order.customer.updatedAt = rows[0]['customer.updatedAt'];
+  }
+  
+  const [items] = await db.query(`SELECT * FROM TailoringOrderItem WHERE orderId = ? ORDER BY sortOrder ASC`, [id]);
+  
+  order.items = items.map(item => {
+    let details = {};
+    let subItems = [];
+    try { details = JSON.parse(item.details); } catch (e) {}
+    try { subItems = JSON.parse(item.subItems); } catch (e) {}
+    return { ...item, details, subItems };
+  });
+  
+  return order;
+};
 
 // ── GET /api/tailoring-orders ──────────────────────────────────────────────
 router.get('/', protect, async (req, res, next) => {
@@ -72,91 +119,108 @@ router.get('/', protect, async (req, res, next) => {
     const { search = '', status, page = 1, limit = 20 } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const take = parseInt(limit);
-    const where = {};
-    if (status) where.status = status;
+    
+    let whereClauses = [];
+    let params = [];
+    
+    if (status) { whereClauses.push('o.status = ?'); params.push(status); }
     if (search) {
-      where.OR = [
-        { customer: { name: { contains: search } } },
-        { customer: { phone: { contains: search } } },
-      ];
+      whereClauses.push('(c.name LIKE ? OR c.phone LIKE ?)');
+      const likeS = `%${search}%`;
+      params.push(likeS, likeS);
     }
-    const [orders, total] = await Promise.all([
-      prisma.tailoringOrder.findMany({
-        where,
-        include: { 
-          customer: { select: { customerId: true, name: true, phone: true } },
-          _count: { select: { items: true } }
-        },
-        orderBy: { createdAt: 'desc' },
-        skip, take,
-      }),
-      prisma.tailoringOrder.count({ where }),
-    ]);
-    res.json({ orders, total, page: parseInt(page), limit: take });
+    
+    let whereClause = whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : '';
+    
+    const [[{ total }]] = await db.query(`
+      SELECT COUNT(DISTINCT o.id) as total FROM TailoringOrder o
+      LEFT JOIN Customer c ON o.customerId = c.customerId
+      ${whereClause}
+    `, params);
+    
+    const [rows] = await db.query(`
+      SELECT o.*,
+             c.customerId as 'customer.customerId', c.name as 'customer.name', c.phone as 'customer.phone',
+             (SELECT COUNT(*) FROM TailoringOrderItem i WHERE i.orderId = o.id) as itemCount
+      FROM TailoringOrder o
+      LEFT JOIN Customer c ON o.customerId = c.customerId
+      ${whereClause}
+      ORDER BY o.createdAt DESC
+      LIMIT ? OFFSET ?
+    `, [...params, take, skip]);
+    
+    res.json({ orders: rows.map(formatOrderList), total, page: parseInt(page), limit: take });
   } catch (err) { next(err); }
 });
 
 // ── GET /api/tailoring-orders/:id ─────────────────────────────────────────
 router.get('/:id', protect, async (req, res, next) => {
   try {
-    const order = await prisma.tailoringOrder.findUnique({
-      where: { id: req.params.id },
-      include: {
-        customer: true,
-        items: { orderBy: { sortOrder: 'asc' } },
-      },
-    });
+    const order = await getOrderWithItems(req.params.id);
     if (!order) return res.status(404).json({ message: 'Order not found.' });
     res.json(order);
   } catch (err) { next(err); }
 });
 
 // ── POST /api/tailoring-orders ────────────────────────────────────────────
-// Create order. Body: { customerName, customerPhone, orderDate, deliveryDate, notes }
-// OR { customerId } to link existing customer
 router.post('/', protect, adminOnly, async (req, res, next) => {
+  const conn = await db.getConnection();
   try {
+    await conn.beginTransaction();
     const { customerId, customerName, customerPhone, orderDate, deliveryDate, notes, bagNo, bagName } = req.body;
     let resolvedCustomerId = customerId;
 
     if (!customerId && customerName) {
-      // Create new customer
-      const newId = await generateCustomerId();
-      const cust = await prisma.customer.create({
-        data: { customerId: newId, name: customerName, phone: customerPhone || '', email: '', address: '' },
-      });
-      resolvedCustomerId = cust.customerId;
+      const year = new Date().getFullYear();
+      const prefix = `TC-${year}-`;
+      const [lastRows] = await conn.query(`SELECT customerId FROM Customer WHERE customerId LIKE ? ORDER BY customerId DESC LIMIT 1`, [`${prefix}%`]);
+      const last = lastRows[0];
+      const num = last ? parseInt(last.customerId.split('-')[2], 10) + 1 : 1;
+      resolvedCustomerId = `${prefix}${String(num).padStart(4, '0')}`;
+      
+      await conn.execute(
+        `INSERT INTO Customer (customerId, name, phone, email, address, notes, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+        [resolvedCustomerId, customerName, customerPhone || '', '', '', '']
+      );
     }
-    if (!resolvedCustomerId) return res.status(400).json({ message: 'Customer required.' });
+    if (!resolvedCustomerId) {
+      await conn.rollback();
+      return res.status(400).json({ message: 'Customer required.' });
+    }
 
-    const order = await prisma.tailoringOrder.create({
-      data: {
-        customerId: resolvedCustomerId,
-        orderDate: orderDate ? new Date(orderDate) : new Date(),
-        deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
-        notes: notes || '',
-        bagNo: bagNo || '',
-        bagName: bagName || '',
-      },
-      include: { customer: true, items: true },
-    });
+    const id = uuidv4();
+    await conn.execute(
+      `INSERT INTO TailoringOrder (id, customerId, orderDate, deliveryDate, notes, bagNo, bagName, status, createdAt, updatedAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'Draft', NOW(), NOW())`,
+      [id, resolvedCustomerId, orderDate ? new Date(orderDate) : new Date(), deliveryDate ? new Date(deliveryDate) : null, notes || '', bagNo || '', bagName || '']
+    );
+
+    await conn.commit();
+    const order = await getOrderWithItems(id);
     res.status(201).json(order);
-  } catch (err) { next(err); }
+  } catch (err) {
+    await conn.rollback();
+    next(err);
+  } finally {
+    conn.release();
+  }
 });
 
 // ── PUT /api/tailoring-orders/:id ─────────────────────────────────────────
 router.put('/:id', protect, adminOnly, async (req, res, next) => {
   try {
     const { orderDate, deliveryDate, status, notes, bagNo, bagName } = req.body;
-    const order = await prisma.tailoringOrder.update({
-      where: { id: req.params.id },
-      data: {
-        orderDate: orderDate ? new Date(orderDate) : undefined,
-        deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
-        status, notes, bagNo, bagName,
-      },
-      include: { customer: true, items: { orderBy: { sortOrder: 'asc' } } },
-    });
+    
+    let query = `UPDATE TailoringOrder SET status=?, notes=?, bagNo=?, bagName=?, updatedAt=NOW()`;
+    let params = [status, notes, bagNo, bagName];
+    if (orderDate !== undefined) { query += `, orderDate=?`; params.push(orderDate ? new Date(orderDate) : null); }
+    if (deliveryDate !== undefined) { query += `, deliveryDate=?`; params.push(deliveryDate ? new Date(deliveryDate) : null); }
+    query += ` WHERE id=?`;
+    params.push(req.params.id);
+    
+    await db.execute(query, params);
+    
+    const order = await getOrderWithItems(req.params.id);
     res.json(order);
   } catch (err) { next(err); }
 });
@@ -164,59 +228,65 @@ router.put('/:id', protect, adminOnly, async (req, res, next) => {
 // ── PATCH /api/tailoring-orders/:id/submit ────────────────────────────────
 router.patch('/:id/submit', protect, adminOnly, async (req, res, next) => {
   try {
-    const order = await prisma.tailoringOrder.update({
-      where: { id: req.params.id },
-      data: { status: 'Submitted' },
-      include: { customer: true, items: { orderBy: { sortOrder: 'asc' } } },
-    });
+    await db.execute(`UPDATE TailoringOrder SET status=?, updatedAt=NOW() WHERE id=?`, ['Submitted', req.params.id]);
+    const order = await getOrderWithItems(req.params.id);
     res.json(order);
   } catch (err) { next(err); }
 });
 
 // ── DELETE /api/tailoring-orders/:id ──────────────────────────────────────
 router.delete('/:id', protect, adminOnly, async (req, res, next) => {
+  const conn = await db.getConnection();
   try {
-    const order = await prisma.tailoringOrder.findUnique({
-      where: { id: req.params.id },
-      select: { customerId: true }
-    });
-    
-    if (!order) return res.status(404).json({ message: 'Order not found.' });
+    await conn.beginTransaction();
+    const [rows] = await conn.query(`SELECT customerId FROM TailoringOrder WHERE id = ?`, [req.params.id]);
+    const order = rows[0];
+    if (!order) {
+      await conn.rollback();
+      return res.status(404).json({ message: 'Order not found.' });
+    }
 
-    await prisma.tailoringOrder.delete({ where: { id: req.params.id } });
+    await conn.execute(`DELETE FROM TailoringOrder WHERE id = ?`, [req.params.id]);
 
-    // Check if the customer has any other records
     if (order.customerId) {
-      const [tOrders, dOrders, payments] = await Promise.all([
-        prisma.tailoringOrder.count({ where: { customerId: order.customerId } }),
-        prisma.designOrder.count({ where: { customerId: order.customerId } }),
-        prisma.payment.count({ where: { customerId: order.customerId } })
-      ]);
+      const [[{ tOrders }]] = await conn.query(`SELECT COUNT(*) as tOrders FROM TailoringOrder WHERE customerId = ?`, [order.customerId]);
+      const [[{ dOrders }]] = await conn.query(`SELECT COUNT(*) as dOrders FROM DesignOrder WHERE customerId = ?`, [order.customerId]);
+      const [[{ payments }]] = await conn.query(`SELECT COUNT(*) as payments FROM Payment WHERE customerId = ?`, [order.customerId]);
       
       if (tOrders === 0 && dOrders === 0 && payments === 0) {
-        await prisma.customer.delete({ where: { customerId: order.customerId } });
+        await conn.execute(`DELETE FROM Customer WHERE customerId = ?`, [order.customerId]);
       }
     }
 
+    await conn.commit();
     res.json({ message: 'Order and orphaned customer deleted.' });
-  } catch (err) { next(err); }
+  } catch (err) {
+    await conn.rollback();
+    next(err);
+  } finally {
+    conn.release();
+  }
 });
 
 // ── POST /api/tailoring-orders/:id/items ──────────────────────────────────
 router.post('/:id/items', protect, adminOnly, async (req, res, next) => {
   try {
     const { itemType, quantity = 1, details = {}, subItems } = req.body;
-    const count = await prisma.tailoringOrderItem.count({ where: { orderId: req.params.id } });
-    const item = await prisma.tailoringOrderItem.create({
-      data: {
-        orderId: req.params.id,
-        itemType,
-        quantity: parseInt(quantity),
-        sortOrder: count,
-        details: JSON.stringify(details || {}),
-        subItems: JSON.stringify(subItems || buildDefaultSubItems(parseInt(quantity), itemType)),
-      },
-    });
+    const [[{ count }]] = await db.query(`SELECT COUNT(*) as count FROM TailoringOrderItem WHERE orderId = ?`, [req.params.id]);
+    const id = uuidv4();
+    
+    const subItemsData = subItems || buildDefaultSubItems(parseInt(quantity), itemType);
+    
+    await db.execute(
+      `INSERT INTO TailoringOrderItem (id, orderId, itemType, quantity, sortOrder, details, subItems, createdAt, updatedAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      [id, req.params.id, itemType, parseInt(quantity), count, JSON.stringify(details || {}), JSON.stringify(subItemsData)]
+    );
+    
+    const [rows] = await db.query(`SELECT * FROM TailoringOrderItem WHERE id = ?`, [id]);
+    const item = rows[0];
+    item.details = JSON.parse(item.details);
+    item.subItems = JSON.parse(item.subItems);
     res.status(201).json(item);
   } catch (err) { next(err); }
 });
@@ -225,7 +295,8 @@ router.post('/:id/items', protect, adminOnly, async (req, res, next) => {
 router.put('/:id/items/:itemId', protect, adminOnly, async (req, res, next) => {
   try {
     const { quantity, details, subItems, sortOrder } = req.body;
-    const existing = await prisma.tailoringOrderItem.findUnique({ where: { id: req.params.itemId } });
+    const [rows] = await db.query(`SELECT * FROM TailoringOrderItem WHERE id = ?`, [req.params.itemId]);
+    const existing = rows[0];
     if (!existing) return res.status(404).json({ message: 'Item not found.' });
 
     const newQty = quantity !== undefined ? parseInt(quantity) : existing.quantity;
@@ -236,7 +307,6 @@ router.put('/:id/items/:itemId', protect, adminOnly, async (req, res, next) => {
     }
     let updatedSubItems = subItems !== undefined ? subItems : existingSubItemsRaw;
 
-    // Grow/shrink sub-items array if quantity changed
     if (quantity !== undefined && newQty !== existing.quantity) {
       const currentSubs = Array.isArray(updatedSubItems) ? updatedSubItems : [];
       if (newQty > currentSubs.length) {
@@ -248,15 +318,21 @@ router.put('/:id/items/:itemId', protect, adminOnly, async (req, res, next) => {
       }
     }
 
-    const updated = await prisma.tailoringOrderItem.update({
-      where: { id: req.params.itemId },
-      data: {
-        quantity: quantity !== undefined ? parseInt(quantity) : undefined,
-        sortOrder: sortOrder !== undefined ? parseInt(sortOrder) : undefined,
-        ...(details ? { details: JSON.stringify(details) } : {}),
-        ...(subItems ? { subItems: JSON.stringify(subItems) } : {}),
-      },
-    });
+    let query = `UPDATE TailoringOrderItem SET quantity=?, sortOrder=?, details=?, subItems=?, updatedAt=NOW() WHERE id=?`;
+    let params = [
+      newQty, 
+      sortOrder !== undefined ? parseInt(sortOrder) : existing.sortOrder,
+      details ? JSON.stringify(details) : existing.details,
+      JSON.stringify(updatedSubItems),
+      req.params.itemId
+    ];
+    
+    await db.execute(query, params);
+    
+    const [newRows] = await db.query(`SELECT * FROM TailoringOrderItem WHERE id = ?`, [req.params.itemId]);
+    const updated = newRows[0];
+    updated.details = JSON.parse(updated.details);
+    updated.subItems = JSON.parse(updated.subItems);
     res.json(updated);
   } catch (err) { next(err); }
 });
@@ -264,26 +340,24 @@ router.put('/:id/items/:itemId', protect, adminOnly, async (req, res, next) => {
 // ── DELETE /api/tailoring-orders/:id/items/:itemId ────────────────────────
 router.delete('/:id/items/:itemId', protect, adminOnly, async (req, res, next) => {
   try {
-    await prisma.tailoringOrderItem.delete({ where: { id: req.params.itemId } });
+    await db.execute(`DELETE FROM TailoringOrderItem WHERE id = ?`, [req.params.itemId]);
     res.json({ message: 'Item deleted.' });
   } catch (err) { next(err); }
 });
 
 // ── POST /:id/items/:itemId/upload ────────────────────────────────────────
-// Upload a reference/design/sample image for a specific sub-item + field, or item-level details.
-// Body (multipart): field (referenceImageUrl | frontDesignImageUrl | backDesignImageUrl | sleeveDesignImageUrl | sampleBlouseImageUrl), optional subItemNumber (1-based)
 router.post('/:id/items/:itemId/upload', protect, adminOnly, upload.single('image'), async (req, res, next) => {
   try {
     const { subItemNumber, field } = req.body;
     const allowedFields = ['referenceImageUrl', 'frontDesignImageUrl', 'backDesignImageUrl', 'sleeveDesignImageUrl', 'sampleBlouseImageUrl'];
     if (!allowedFields.includes(field)) return res.status(400).json({ message: 'Invalid field.' });
 
-    const item = await prisma.tailoringOrderItem.findUnique({ where: { id: req.params.itemId } });
+    const [rows] = await db.query(`SELECT details, subItems FROM TailoringOrderItem WHERE id = ?`, [req.params.itemId]);
+    const item = rows[0];
     if (!item) return res.status(404).json({ message: 'Item not found.' });
 
     const imageUrl = `/uploads/tailoring/${req.file.filename}`;
 
-    // If no subItemNumber provided, save to item.details
     if (!subItemNumber || subItemNumber === 'null' || subItemNumber === 'undefined') {
       let detailsRaw = item.details;
       if (typeof detailsRaw === 'string') {
@@ -292,11 +366,8 @@ router.post('/:id/items/:itemId/upload', protect, adminOnly, upload.single('imag
       const details = detailsRaw || {};
       details[field] = imageUrl;
 
-      const updated = await prisma.tailoringOrderItem.update({
-        where: { id: req.params.itemId },
-        data: { details: JSON.stringify(details) },
-      });
-      return res.json(updated);
+      await db.execute(`UPDATE TailoringOrderItem SET details=?, updatedAt=NOW() WHERE id=?`, [JSON.stringify(details), req.params.itemId]);
+      return res.json({ message: 'Image uploaded' });
     }
 
     const subNum = parseInt(subItemNumber);
@@ -306,30 +377,25 @@ router.post('/:id/items/:itemId/upload', protect, adminOnly, upload.single('imag
     }
     const subs = Array.isArray(subsRaw) ? [...subsRaw] : [];
     
-    // Find by number field, fall back to array index (0-based: subNum-1)
     let idx = subs.findIndex(s => Number(s.number) === subNum);
-    if (idx === -1) idx = subNum - 1; // fallback to positional index
+    if (idx === -1) idx = subNum - 1; 
     if (idx < 0 || idx >= subs.length) return res.status(404).json({ message: 'Sub-item not found.' });
     subs[idx] = { ...subs[idx], [field]: imageUrl };
 
-    const updated = await prisma.tailoringOrderItem.update({
-      where: { id: req.params.itemId },
-      data: { subItems: JSON.stringify(subs) },
-    });
-    res.json(updated);
+    await db.execute(`UPDATE TailoringOrderItem SET subItems=?, updatedAt=NOW() WHERE id=?`, [JSON.stringify(subs), req.params.itemId]);
+    res.json({ message: 'Image uploaded' });
   } catch (err) { next(err); }
 });
 
 // ── POST /:id/items/:itemId/canvas ────────────────────────────────────────
-// Save canvas PNG + JSON for a specific sub-item + section (front|back|sleeve)
-// Body (multipart): subItemNumber, section (front|back|sleeve)
 router.post('/:id/items/:itemId/canvas', protect, adminOnly, upload.single('canvas'), async (req, res, next) => {
   try {
     const { subItemNumber, section, canvasJSON } = req.body;
     if (!['front', 'back', 'sleeve'].includes(section)) {
       return res.status(400).json({ message: 'section must be front|back|sleeve' });
     }
-    const item = await prisma.tailoringOrderItem.findUnique({ where: { id: req.params.itemId } });
+    const [rows] = await db.query(`SELECT subItems FROM TailoringOrderItem WHERE id = ?`, [req.params.itemId]);
+    const item = rows[0];
     if (!item) return res.status(404).json({ message: 'Item not found.' });
 
     const imageUrl = req.file ? `/uploads/tailoring/${req.file.filename}` : null;
@@ -340,9 +406,8 @@ router.post('/:id/items/:itemId/canvas', protect, adminOnly, upload.single('canv
     }
     const subs = Array.isArray(subsRaw) ? [...subsRaw] : [];
 
-    // Find by number field, fall back to array index (0-based: subNum-1)
     let idx = subs.findIndex(s => Number(s.number) === subNum);
-    if (idx === -1) idx = subNum - 1; // fallback to positional index
+    if (idx === -1) idx = subNum - 1; 
     if (idx < 0 || idx >= subs.length) return res.status(404).json({ message: 'Sub-item not found.' });
 
     subs[idx] = {
@@ -351,10 +416,7 @@ router.post('/:id/items/:itemId/canvas', protect, adminOnly, upload.single('canv
       ...(imageUrl ? { [`${section}CanvasImageUrl`]: imageUrl } : {}),
     };
 
-    const updated = await prisma.tailoringOrderItem.update({
-      where: { id: req.params.itemId },
-      data: { subItems: JSON.stringify(subs) },
-    });
+    await db.execute(`UPDATE TailoringOrderItem SET subItems=?, updatedAt=NOW() WHERE id=?`, [JSON.stringify(subs), req.params.itemId]);
     res.json({ imageUrl, subItems: subs });
   } catch (err) { next(err); }
 });

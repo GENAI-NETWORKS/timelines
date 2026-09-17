@@ -1,16 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const prisma = require('../utils/prisma');
+const db = require('../utils/db');
 const { protect, adminOnly } = require('../middleware/auth');
-const { logCreate, logUpdate, logDelete } = require('../utils/auditLogger');
+const { v4: uuidv4 } = require('uuid');
 
 // GET /api/services
 router.get('/', protect, adminOnly, async (req, res, next) => {
   try {
-    const services = await prisma.service.findMany({
-      orderBy: { name: 'asc' }
-    });
-    res.json(services);
+    const [rows] = await db.query(`SELECT * FROM Service ORDER BY name ASC`);
+    res.json(rows);
   } catch (err) { next(err); }
 });
 
@@ -18,15 +16,16 @@ router.get('/', protect, adminOnly, async (req, res, next) => {
 router.post('/', protect, adminOnly, async (req, res, next) => {
   try {
     const { name, description, basePrice, isActive } = req.body;
-    const service = await prisma.service.create({
-      data: {
-        name,
-        description: description || '',
-        basePrice: parseFloat(basePrice) || 0,
-        isActive: isActive !== undefined ? isActive : true
-      }
-    });
-    res.status(201).json(service);
+    const id = uuidv4();
+    
+    await db.execute(
+      `INSERT INTO Service (id, name, description, basePrice, isActive, createdAt, updatedAt)
+       VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
+      [id, name, description || '', parseFloat(basePrice) || 0, isActive !== undefined ? (isActive ? 1 : 0) : 1]
+    );
+    
+    const [rows] = await db.query(`SELECT * FROM Service WHERE id = ?`, [id]);
+    res.status(201).json(rows[0]);
   } catch (err) { next(err); }
 });
 
@@ -34,29 +33,26 @@ router.post('/', protect, adminOnly, async (req, res, next) => {
 router.put('/:id', protect, adminOnly, async (req, res, next) => {
   try {
     const { name, description, basePrice, isActive } = req.body;
-    const old = await prisma.service.findUnique({ where: { id: req.params.id } });
-    if (!old) return res.status(404).json({ message: 'Service not found' });
+    const [oldRows] = await db.query(`SELECT * FROM Service WHERE id = ?`, [req.params.id]);
+    if (oldRows.length === 0) return res.status(404).json({ message: 'Service not found' });
     
-    const updated = await prisma.service.update({
-      where: { id: req.params.id },
-      data: {
-        name,
-        description,
-        basePrice: parseFloat(basePrice) || 0,
-        isActive
-      }
-    });
-    res.json(updated);
+    await db.execute(
+      `UPDATE Service SET name=?, description=?, basePrice=?, isActive=?, updatedAt=NOW() WHERE id=?`,
+      [name, description, parseFloat(basePrice) || 0, isActive ? 1 : 0, req.params.id]
+    );
+    
+    const [newRows] = await db.query(`SELECT * FROM Service WHERE id = ?`, [req.params.id]);
+    res.json(newRows[0]);
   } catch (err) { next(err); }
 });
 
 // DELETE /api/services/:id
 router.delete('/:id', protect, adminOnly, async (req, res, next) => {
   try {
-    const old = await prisma.service.findUnique({ where: { id: req.params.id } });
-    if (!old) return res.status(404).json({ message: 'Service not found' });
+    const [oldRows] = await db.query(`SELECT * FROM Service WHERE id = ?`, [req.params.id]);
+    if (oldRows.length === 0) return res.status(404).json({ message: 'Service not found' });
     
-    await prisma.service.delete({ where: { id: req.params.id } });
+    await db.execute(`DELETE FROM Service WHERE id = ?`, [req.params.id]);
     res.json({ message: 'Service deleted' });
   } catch (err) { next(err); }
 });

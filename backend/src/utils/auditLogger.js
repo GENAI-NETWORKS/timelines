@@ -1,19 +1,14 @@
-const prisma = require('./prisma');
+const db = require('./db');
+const { v4: uuidv4 } = require('uuid');
 
 const logCreate = async (recordType, recordId, user, snapshot) => {
   if (user?.role !== 'admin') return;
   try {
-    await prisma.auditLog.create({
-      data: {
-        recordType,
-        recordId: String(recordId),
-        action: 'create',
-        changedById: user.id,
-        changedByName: user.name,
-        changes: [],
-        snapshot: snapshot || null,
-      },
-    });
+    await db.execute(
+      `INSERT INTO AuditLog (id, recordType, recordId, action, changedById, changedByName, changes, snapshot)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [uuidv4(), recordType, String(recordId), 'create', user.id, user.name, JSON.stringify([]), JSON.stringify(snapshot || null)]
+    );
   } catch (err) {
     console.error('Audit log error (create):', err.message);
   }
@@ -39,17 +34,11 @@ const logUpdate = async (recordType, recordId, user, oldData, newData) => {
   try {
     const changes = diffObjects(oldData, newData);
     if (changes.length === 0) return;
-    await prisma.auditLog.create({
-      data: {
-        recordType,
-        recordId: String(recordId),
-        action: 'update',
-        changedById: user.id,
-        changedByName: user.name,
-        changes,
-        snapshot: newData || null,
-      },
-    });
+    await db.execute(
+      `INSERT INTO AuditLog (id, recordType, recordId, action, changedById, changedByName, changes, snapshot)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [uuidv4(), recordType, String(recordId), 'update', user.id, user.name, JSON.stringify(changes), JSON.stringify(newData || null)]
+    );
   } catch (err) {
     console.error('Audit log error (update):', err.message);
   }
@@ -58,17 +47,11 @@ const logUpdate = async (recordType, recordId, user, oldData, newData) => {
 const logDelete = async (recordType, recordId, user, snapshot) => {
   if (user?.role !== 'admin') return;
   try {
-    await prisma.auditLog.create({
-      data: {
-        recordType,
-        recordId: String(recordId),
-        action: 'delete',
-        changedById: user.id,
-        changedByName: user.name,
-        changes: [],
-        snapshot: snapshot || null,
-      },
-    });
+    await db.execute(
+      `INSERT INTO AuditLog (id, recordType, recordId, action, changedById, changedByName, changes, snapshot)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [uuidv4(), recordType, String(recordId), 'delete', user.id, user.name, JSON.stringify([]), JSON.stringify(snapshot || null)]
+    );
   } catch (err) {
     console.error('Audit log error (delete):', err.message);
   }

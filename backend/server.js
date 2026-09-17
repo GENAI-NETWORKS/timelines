@@ -4,7 +4,7 @@ const morgan = require('morgan');
 const path = require('path');
 require('dotenv').config();
 
-const prisma = require('./src/utils/prisma');
+const db = require('./src/utils/db');
 const app = express();
 
 // Middleware
@@ -50,48 +50,13 @@ app.use('/api/design-library', require('./src/routes/designLibrary'));
 // Health check
 app.get('/api/health', async (req, res) => {
   try {
-    await prisma.$queryRaw`SELECT 1`;
+    await db.query('SELECT 1');
     res.json({ status: 'ok', db: 'connected', time: new Date() });
   } catch {
     res.status(500).json({ status: 'error', db: 'disconnected' });
   }
 });
 
-// ⚠️  TEMPORARY: One-time admin reset — DELETE after use
-app.get('/api/setup-admin', async (req, res) => {
-  const SECRET = 'timelines-reset-2026';
-  if (req.query.token !== SECRET)
-    return res.status(403).json({ error: 'Forbidden' });
-  try {
-    const bcrypt = require('bcryptjs');
-    const hash = await bcrypt.hash('Admin@2026', 12);
-    const user = await prisma.user.upsert({
-      where:  { email: 'admin@timelines.in' },
-      update: { password: hash, isActive: true, role: 'admin' },
-      create: { name: 'Admin User', email: 'admin@timelines.in', password: hash, role: 'admin', isActive: true },
-    });
-    res.json({ success: true, message: 'Admin ready', email: user.email });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get('/api/test-db', async (req, res) => {
-  try {
-    const mysql = require('mysql2/promise');
-    const conn = await mysql.createConnection({
-      host: 'srv1128.hstgr.io',
-      user: 'u416856653_timelines',
-      password: 'Timelines@2026',
-      database: 'u416856653_timelines',
-      connectTimeout: 5000
-    });
-    await conn.end();
-    res.json({ success: true, message: 'Connected to MySQL using mysql2 successfully!' });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message, stack: err.stack });
-  }
-});
 
 // Error handler
 app.use(require('./src/middleware/errorHandler'));
@@ -100,13 +65,7 @@ const PORT = process.env.PORT || 5000;
 
 async function main() {
   try {
-    // Attempt an initial connection, but don't crash if it's slow
-    prisma.$connect().then(() => {
-      console.log('✅ MySQL connected via Prisma');
-    }).catch(err => {
-      console.error('⚠️ Initial DB connect failed (will retry on first query):', err.message);
-    });
-    
+    // db.js automatically initializes the pool and tests connection
     app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
   } catch (err) {
     console.error('❌ Server start error:', err.message);
@@ -117,7 +76,7 @@ main();
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
-  await prisma.$disconnect();
+  await db.end();
   process.exit(0);
 });
 

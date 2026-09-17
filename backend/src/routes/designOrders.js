@@ -3,9 +3,10 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const prisma = require('../utils/prisma');
+const db = require('../utils/db');
 const { protect, adminOnly } = require('../middleware/auth');
 const { logCreate, logUpdate, logDelete } = require('../utils/auditLogger');
+const { v4: uuidv4 } = require('uuid');
 
 // ─── Multer setup ─────────────────────────────────────────────────────────
 const storage = multer.diskStorage({
@@ -22,61 +23,117 @@ const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 
 // ─── Auto-generate Order ID: ORD-XXXX ────────────────────────────────────
 async function generateOrderId() {
-  const last = await prisma.designOrder.findFirst({ orderBy: { orderId: 'desc' } });
+  const [rows] = await db.query(`SELECT orderId FROM DesignOrder ORDER BY orderId DESC LIMIT 1`);
+  const last = rows[0];
   if (!last) return 'ORD-0001';
   const num = parseInt(last.orderId.split('-')[1], 10) + 1;
   return `ORD-${String(num).padStart(4, '0')}`;
 }
 
 // ─── Helper to shape order response ──────────────────────────────────────
-const orderInclude = {
-  customer: { select: { customerId: true, name: true, phone: true, address: true, email: true } },
-  tailor: { select: { employeeId: true, name: true, role: true } },
+const formatOrderLight = (row) => {
+  const formatted = { ...row, customer: null, tailor: null };
+  if (row['customer.customerId']) {
+    formatted.customer = { 
+      customerId: row['customer.customerId'], name: row['customer.name'], 
+      phone: row['customer.phone'], address: row['customer.address'], email: row['customer.email']
+    };
+  }
+  if (row['tailor.employeeId']) {
+    formatted.tailor = { 
+      employeeId: row['tailor.employeeId'], name: row['tailor.name'], role: row['tailor.role'] 
+    };
+  }
+  
+  // Cleanup flat fields
+  ['customer.customerId', 'customer.name', 'customer.phone', 'customer.address', 'customer.email',
+   'tailor.employeeId', 'tailor.name', 'tailor.role'].forEach(k => delete formatted[k]);
+  
+  if (typeof formatted.measurements === 'string') {
+    try { formatted.measurements = JSON.parse(formatted.measurements); } catch (e) { formatted.measurements = {}; }
+  }
+  
+  return formatted;
 };
 
-const fullOrderInclude = {
-  customer: true,
-  tailor: { select: { employeeId: true, name: true, role: true } },
-  particulars: { orderBy: { sortOrder: 'asc' } },
-  designSections: true,
+const getFullOrder = async (orderId) => {
+  const [rows] = await db.query(`
+    SELECT o.*,
+           c.customerId as 'customer.customerId', c.name as 'customer.name', 
+           c.phone as 'customer.phone', c.address as 'customer.address', c.email as 'customer.email',
+           c.notes as 'customer.notes', c.createdAt as 'customer.createdAt', c.updatedAt as 'customer.updatedAt',
+           t.employeeId as 'tailor.employeeId', t.name as 'tailor.name', t.role as 'tailor.role'
+    FROM DesignOrder o
+    LEFT JOIN Customer c ON o.customerId = c.customerId
+    LEFT JOIN Employee t ON o.assignedTailorId = t.employeeId
+    WHERE o.orderId = ?
+  `, [orderId]);
+  
+  if (!rows.length) return null;
+  const order = formatOrderLight(rows[0]);
+  
+  // Also nest full customer since fullOrderInclude uses full customer
+  if (order.customer) {
+    order.customer.notes = rows[0]['customer.notes'];
+    order.customer.createdAt = rows[0]['customer.createdAt'];
+    order.customer.updatedAt = rows[0]['customer.updatedAt'];
+  }
+
+  const [particulars] = await db.query(`SELECT * FROM OrderParticular WHERE orderId = ? ORDER BY sortOrder ASC`, [orderId]);
+  const [designSections] = await db.query(`SELECT * FROM OrderDesignSection WHERE orderId = ?`, [orderId]);
+  
+  order.particulars = particulars;
+  order.designSections = designSections;
+  
+  return order;
 };
 
 // ─── Helper: upsert particulars ───────────────────────────────────────────
-async function syncParticulars(tx, orderId, particulars = []) {
-  await tx.orderParticular.deleteMany({ where: { orderId } });
+async function syncParticulars(conn, orderId, particulars = []) {
+  await conn.execute(`DELETE FROM OrderParticular WHERE orderId = ?`, [orderId]);
   if (particulars.length > 0) {
-    await tx.orderParticular.createMany({
-      data: particulars.map((p, i) => ({
-        orderId,
-        itemName: p.itemName || '',
-        qty: p.qty || '',
-        notes: p.notes || '',
-        sortOrder: i,
-      })),
-    });
+    for (let i = 0; i < particulars.length; i++) {
+      const p = particulars[i];
+      await conn.execute(
+        `INSERT INTO OrderParticular (id, orderId, itemName, qty, notes, sortOrder) VALUES (?, ?, ?, ?, ?, ?)`,
+        [uuidv4(), orderId, p.itemName || '', p.qty || '', p.notes || '', i]
+      );
+    }
   }
 }
 
 // ─── Helper: upsert design sections ──────────────────────────────────────
-async function syncDesignSections(tx, orderId, designSections = []) {
+async function syncDesignSections(conn, orderId, designSections = []) {
   for (const s of designSections) {
-    await tx.orderDesignSection.upsert({
-      where: { orderId_sectionType: { orderId, sectionType: s.sectionType } },
-      create: {
-        orderId,
-        sectionType: s.sectionType,
-        notes: s.notes || '',
-        sketchImageUrl: s.sketchImageUrl || null,
-        sketchJSON: s.sketchJSON || null,
-      },
-      update: {
-        notes: s.notes || '',
-        sketchImageUrl: s.sketchImageUrl !== undefined ? s.sketchImageUrl : undefined,
-        sketchJSON: s.sketchJSON !== undefined ? s.sketchJSON : undefined,
-      },
-    });
+    const [existing] = await conn.query(
+      `SELECT id FROM OrderDesignSection WHERE orderId = ? AND sectionType = ?`, 
+      [orderId, s.sectionType]
+    );
+    if (existing.length > 0) {
+      let query = `UPDATE OrderDesignSection SET notes = ?`;
+      let params = [s.notes || ''];
+      if (s.sketchImageUrl !== undefined) { query += `, sketchImageUrl = ?`; params.push(s.sketchImageUrl); }
+      if (s.sketchJSON !== undefined) { query += `, sketchJSON = ?`; params.push(s.sketchJSON); }
+      query += ` WHERE orderId = ? AND sectionType = ?`;
+      params.push(orderId, s.sectionType);
+      await conn.execute(query, params);
+    } else {
+      await conn.execute(
+        `INSERT INTO OrderDesignSection (id, orderId, sectionType, notes, sketchImageUrl, sketchJSON) VALUES (?, ?, ?, ?, ?, ?)`,
+        [uuidv4(), orderId, s.sectionType, s.notes || '', s.sketchImageUrl || null, s.sketchJSON || null]
+      );
+    }
   }
 }
+
+const selectOrderLightQuery = `
+  SELECT o.*,
+         c.customerId as 'customer.customerId', c.name as 'customer.name', c.phone as 'customer.phone', c.address as 'customer.address', c.email as 'customer.email',
+         t.employeeId as 'tailor.employeeId', t.name as 'tailor.name', t.role as 'tailor.role'
+  FROM DesignOrder o
+  LEFT JOIN Customer c ON o.customerId = c.customerId
+  LEFT JOIN Employee t ON o.assignedTailorId = t.employeeId
+`;
 
 // GET /api/design-orders
 router.get('/', protect, async (req, res, next) => {
@@ -84,56 +141,60 @@ router.get('/', protect, async (req, res, next) => {
     const { search = '', status, customerId, tailorId, page = 1, limit = 20 } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const take = parseInt(limit);
-    const where = {};
-
-    // Staff only sees their own assigned orders
+    
+    let whereClauses = [];
+    let params = [];
+    
     if (req.user.role === 'staff' && req.user.employeeRef) {
-      where.assignedTailorId = req.user.employeeRef;
+      whereClauses.push('o.assignedTailorId = ?');
+      params.push(req.user.employeeRef);
     }
-    if (status) where.status = status;
-    if (customerId) where.customerId = customerId;
-    if (tailorId) where.assignedTailorId = tailorId;
+    if (status) { whereClauses.push('o.status = ?'); params.push(status); }
+    if (customerId) { whereClauses.push('o.customerId = ?'); params.push(customerId); }
+    if (tailorId) { whereClauses.push('o.assignedTailorId = ?'); params.push(tailorId); }
+    
     if (search) {
-      where.OR = [
-        { orderId: { contains: search } },
-        { garmentType: { contains: search } },
-        { customer: { name: { contains: search } } },
-      ];
+      whereClauses.push('(o.orderId LIKE ? OR o.garmentType LIKE ? OR c.name LIKE ?)');
+      const likeS = `%${search}%`;
+      params.push(likeS, likeS, likeS);
     }
-
-    const [orders, total] = await Promise.all([
-      prisma.designOrder.findMany({
-        where,
-        include: orderInclude,
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take,
-      }),
-      prisma.designOrder.count({ where }),
-    ]);
-    res.json({ orders, total, page: parseInt(page), limit: take });
+    
+    let whereClause = whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : '';
+    
+    const [[{ total }]] = await db.query(`
+      SELECT COUNT(*) as total FROM DesignOrder o 
+      LEFT JOIN Customer c ON o.customerId = c.customerId
+      ${whereClause}
+    `, params);
+    
+    const [rows] = await db.query(`
+      ${selectOrderLightQuery}
+      ${whereClause}
+      ORDER BY o.createdAt DESC
+      LIMIT ? OFFSET ?
+    `, [...params, take, skip]);
+    
+    res.json({ orders: rows.map(formatOrderLight), total, page: parseInt(page), limit: take });
   } catch (err) { next(err); }
 });
 
 // GET /api/design-orders/:id — basic (lightweight)
 router.get('/:id', protect, async (req, res, next) => {
   try {
-    const order = await prisma.designOrder.findUnique({
-      where: { orderId: req.params.id },
-      include: orderInclude,
-    });
-    if (!order) return res.status(404).json({ message: 'Order not found.' });
-    res.json(order);
+    const [rows] = await db.query(`
+      ${selectOrderLightQuery}
+      WHERE o.orderId = ?
+    `, [req.params.id]);
+    
+    if (rows.length === 0) return res.status(404).json({ message: 'Order not found.' });
+    res.json(formatOrderLight(rows[0]));
   } catch (err) { next(err); }
 });
 
 // GET /api/design-orders/:id/full — full order with all nested data
 router.get('/:id/full', protect, async (req, res, next) => {
   try {
-    const order = await prisma.designOrder.findUnique({
-      where: { orderId: req.params.id },
-      include: fullOrderInclude,
-    });
+    const order = await getFullOrder(req.params.id);
     if (!order) return res.status(404).json({ message: 'Order not found.' });
     res.json(order);
   } catch (err) { next(err); }
@@ -141,83 +202,84 @@ router.get('/:id/full', protect, async (req, res, next) => {
 
 // POST /api/design-orders — create order + nested data in one transaction
 router.post('/', protect, adminOnly, async (req, res, next) => {
+  const conn = await db.getConnection();
   try {
+    await conn.beginTransaction();
     const {
       customerId, garmentType, measurements = {}, fabricNotes = '',
       specialInstructions = '', assignedTailorId, deliveryDate, orderDate,
-      // New unified fields
       bagRef, isSample = false, baseDescription = '',
       threadColors = '', buttonsNeeded = '', customerConfirmedAt,
-      // Nested
-      particulars = [], designSections = [],
-      // Optional inline new customer
-      newCustomer,
+      particulars = [], designSections = [], newCustomer,
     } = req.body;
 
     let resolvedCustomerId = customerId;
 
-    // If a new customer is being created inline, do it first
     if (!customerId && newCustomer && newCustomer.name) {
       const year = new Date().getFullYear();
       const prefix = `TC-${year}-`;
-      const last = await prisma.customer.findFirst({
-        where: { customerId: { startsWith: prefix } },
-        orderBy: { customerId: 'desc' },
-      });
+      const [lastRows] = await conn.query(`SELECT customerId FROM Customer WHERE customerId LIKE ? ORDER BY customerId DESC LIMIT 1`, [`${prefix}%`]);
+      const last = lastRows[0];
       const num = last ? parseInt(last.customerId.split('-')[2], 10) + 1 : 1;
       const newCustId = `${prefix}${String(num).padStart(4, '0')}`;
-      const created = await prisma.customer.create({
-        data: {
-          customerId: newCustId,
-          name: newCustomer.name,
-          phone: newCustomer.phone || '',
-          email: newCustomer.email || '',
-          address: newCustomer.address || '',
-          notes: newCustomer.notes || '',
-        },
-      });
-      await logCreate('Customer', created.customerId, req.user, created);
+      
+      await conn.execute(
+        `INSERT INTO Customer (customerId, name, phone, email, address, notes, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+        [newCustId, newCustomer.name, newCustomer.phone || '', newCustomer.email || '', newCustomer.address || '', newCustomer.notes || '']
+      );
       resolvedCustomerId = newCustId;
+      
+      const [custRows] = await conn.query(`SELECT * FROM Customer WHERE customerId = ?`, [newCustId]);
+      await logCreate('Customer', newCustId, req.user, custRows[0]);
     }
 
-    if (!resolvedCustomerId) return res.status(400).json({ message: 'Customer required.' });
+    if (!resolvedCustomerId) {
+      await conn.rollback();
+      return res.status(400).json({ message: 'Customer required.' });
+    }
 
     const orderId = await generateOrderId();
 
-    const order = await prisma.$transaction(async (tx) => {
-      const o = await tx.designOrder.create({
-        data: {
-          orderId, customerId: resolvedCustomerId, garmentType,
-          measurements: measurements || {},
-          fabricNotes, specialInstructions,
-          assignedTailorId: assignedTailorId || null,
-          deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
-          orderDate: orderDate ? new Date(orderDate) : new Date(),
-          createdById: req.user.id,
-          bagRef: bagRef || null,
-          isSample: Boolean(isSample),
-          baseDescription: baseDescription || '',
-          threadColors: threadColors || '',
-          buttonsNeeded: buttonsNeeded || '',
-          customerConfirmedAt: customerConfirmedAt ? new Date(customerConfirmedAt) : null,
-        },
-        include: fullOrderInclude,
-      });
-      await syncParticulars(tx, orderId, particulars);
-      await syncDesignSections(tx, orderId, designSections);
-      return tx.designOrder.findUnique({ where: { orderId }, include: fullOrderInclude });
-    });
+    await conn.execute(
+      `INSERT INTO DesignOrder (
+        orderId, customerId, garmentType, measurements, fabricNotes, specialInstructions,
+        assignedTailorId, deliveryDate, orderDate, createdById, bagRef, isSample,
+        baseDescription, threadColors, buttonsNeeded, customerConfirmedAt, status, createdAt, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', NOW(), NOW())`,
+      [
+        orderId, resolvedCustomerId, garmentType, JSON.stringify(measurements || {}), fabricNotes, specialInstructions,
+        assignedTailorId || null, deliveryDate ? new Date(deliveryDate) : null, orderDate ? new Date(orderDate) : new Date(),
+        req.user.id, bagRef || null, isSample ? 1 : 0, baseDescription || '', threadColors || '', buttonsNeeded || '',
+        customerConfirmedAt ? new Date(customerConfirmedAt) : null
+      ]
+    );
 
-    await logCreate('DesignOrder', order.orderId, req.user, order);
+    await syncParticulars(conn, orderId, particulars);
+    await syncDesignSections(conn, orderId, designSections);
+    
+    await conn.commit();
+    
+    const order = await getFullOrder(orderId);
+    await logCreate('DesignOrder', orderId, req.user, order);
     res.status(201).json(order);
-  } catch (err) { next(err); }
+  } catch (err) {
+    await conn.rollback();
+    next(err);
+  } finally {
+    conn.release();
+  }
 });
 
 // PUT /api/design-orders/:id — update order + nested data in one transaction
 router.put('/:id', protect, adminOnly, async (req, res, next) => {
+  const conn = await db.getConnection();
   try {
-    const old = await prisma.designOrder.findUnique({ where: { orderId: req.params.id } });
-    if (!old) return res.status(404).json({ message: 'Order not found.' });
+    await conn.beginTransaction();
+    const oldOrder = await getFullOrder(req.params.id);
+    if (!oldOrder) {
+      await conn.rollback();
+      return res.status(404).json({ message: 'Order not found.' });
+    }
 
     const {
       customerId, garmentType, measurements, fabricNotes, specialInstructions,
@@ -225,51 +287,59 @@ router.put('/:id', protect, adminOnly, async (req, res, next) => {
       bagRef, isSample, baseDescription, threadColors, buttonsNeeded, customerConfirmedAt,
       particulars, designSections,
     } = req.body;
+    
+    let query = `
+      UPDATE DesignOrder SET 
+        customerId=?, garmentType=?, measurements=?, fabricNotes=?, specialInstructions=?,
+        assignedTailorId=?, status=?, bagRef=?, isSample=?, baseDescription=?, threadColors=?, buttonsNeeded=?,
+        updatedAt=NOW()
+    `;
+    let params = [
+      customerId, garmentType, JSON.stringify(measurements || oldOrder.measurements), fabricNotes, specialInstructions,
+      assignedTailorId || null, status, bagRef !== undefined ? bagRef : oldOrder.bagRef,
+      isSample !== undefined ? (isSample ? 1 : 0) : oldOrder.isSample,
+      baseDescription !== undefined ? baseDescription : oldOrder.baseDescription,
+      threadColors !== undefined ? threadColors : oldOrder.threadColors,
+      buttonsNeeded !== undefined ? buttonsNeeded : oldOrder.buttonsNeeded
+    ];
+    
+    if (deliveryDate !== undefined) { query += `, deliveryDate=?`; params.push(deliveryDate ? new Date(deliveryDate) : null); }
+    if (orderDate !== undefined) { query += `, orderDate=?`; params.push(orderDate ? new Date(orderDate) : null); }
+    if (customerConfirmedAt !== undefined) { query += `, customerConfirmedAt=?`; params.push(customerConfirmedAt ? new Date(customerConfirmedAt) : null); }
+    
+    query += ` WHERE orderId=?`;
+    params.push(req.params.id);
+    
+    await conn.execute(query, params);
 
-    const updated = await prisma.$transaction(async (tx) => {
-      await tx.designOrder.update({
-        where: { orderId: req.params.id },
-        data: {
-          customerId, garmentType,
-          measurements: measurements || old.measurements,
-          fabricNotes, specialInstructions,
-          assignedTailorId: assignedTailorId || null,
-          status,
-          deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
-          orderDate: orderDate ? new Date(orderDate) : undefined,
-          bagRef: bagRef !== undefined ? bagRef : old.bagRef,
-          isSample: isSample !== undefined ? Boolean(isSample) : old.isSample,
-          baseDescription: baseDescription !== undefined ? baseDescription : old.baseDescription,
-          threadColors: threadColors !== undefined ? threadColors : old.threadColors,
-          buttonsNeeded: buttonsNeeded !== undefined ? buttonsNeeded : old.buttonsNeeded,
-          customerConfirmedAt: customerConfirmedAt !== undefined
-            ? (customerConfirmedAt ? new Date(customerConfirmedAt) : null)
-            : old.customerConfirmedAt,
-        },
-      });
-      if (particulars !== undefined) await syncParticulars(tx, req.params.id, particulars);
-      if (designSections !== undefined) await syncDesignSections(tx, req.params.id, designSections);
-      return tx.designOrder.findUnique({ where: { orderId: req.params.id }, include: fullOrderInclude });
-    });
-
-    await logUpdate('DesignOrder', updated.orderId, req.user, old, updated);
-    res.json(updated);
-  } catch (err) { next(err); }
+    if (particulars !== undefined) await syncParticulars(conn, req.params.id, particulars);
+    if (designSections !== undefined) await syncDesignSections(conn, req.params.id, designSections);
+    
+    await conn.commit();
+    
+    const updatedOrder = await getFullOrder(req.params.id);
+    await logUpdate('DesignOrder', req.params.id, req.user, oldOrder, updatedOrder);
+    res.json(updatedOrder);
+  } catch (err) {
+    await conn.rollback();
+    next(err);
+  } finally {
+    conn.release();
+  }
 });
 
 // PATCH assign tailor
 router.patch('/:id/assign', protect, adminOnly, async (req, res, next) => {
   try {
     const { tailorId } = req.body;
-    const old = await prisma.designOrder.findUnique({ where: { orderId: req.params.id } });
-    if (!old) return res.status(404).json({ message: 'Order not found.' });
-    const updated = await prisma.designOrder.update({
-      where: { orderId: req.params.id },
-      data: { assignedTailorId: tailorId || null },
-      include: orderInclude,
-    });
-    await logUpdate('DesignOrder', updated.orderId, req.user, old, updated);
-    res.json(updated);
+    const oldOrder = await getFullOrder(req.params.id);
+    if (!oldOrder) return res.status(404).json({ message: 'Order not found.' });
+    
+    await db.execute(`UPDATE DesignOrder SET assignedTailorId=?, updatedAt=NOW() WHERE orderId=?`, [tailorId || null, req.params.id]);
+    
+    const updatedOrder = await getFullOrder(req.params.id);
+    await logUpdate('DesignOrder', req.params.id, req.user, oldOrder, updatedOrder);
+    res.json(updatedOrder);
   } catch (err) { next(err); }
 });
 
@@ -277,29 +347,31 @@ router.patch('/:id/assign', protect, adminOnly, async (req, res, next) => {
 router.patch('/:id/status', protect, async (req, res, next) => {
   try {
     const { status } = req.body;
-    const old = await prisma.designOrder.findUnique({ where: { orderId: req.params.id } });
-    if (!old) return res.status(404).json({ message: 'Order not found.' });
-    const updated = await prisma.designOrder.update({
-      where: { orderId: req.params.id },
-      data: { status },
-    });
-    await logUpdate('DesignOrder', updated.orderId, req.user, old, updated);
-    res.json(updated);
+    const oldOrder = await getFullOrder(req.params.id);
+    if (!oldOrder) return res.status(404).json({ message: 'Order not found.' });
+    
+    await db.execute(`UPDATE DesignOrder SET status=?, updatedAt=NOW() WHERE orderId=?`, [status, req.params.id]);
+    
+    const updatedOrder = await getFullOrder(req.params.id);
+    await logUpdate('DesignOrder', req.params.id, req.user, oldOrder, updatedOrder);
+    res.json(updatedOrder);
   } catch (err) { next(err); }
 });
 
 // POST upload main sketch image (legacy/freeform canvas)
 router.post('/:id/sketch', protect, adminOnly, upload.single('sketch'), async (req, res, next) => {
   try {
-    const order = await prisma.designOrder.findUnique({ where: { orderId: req.params.id } });
-    if (!order) return res.status(404).json({ message: 'Order not found.' });
+    const [rows] = await db.query(`SELECT orderId FROM DesignOrder WHERE orderId = ?`, [req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ message: 'Order not found.' });
+    
     const sketchUrl = `/uploads/sketches/${req.file.filename}`;
     const sketchJSON = req.body.sketchJSON || null;
-    const updated = await prisma.designOrder.update({
-      where: { orderId: req.params.id },
-      data: { designSketchUrl: sketchUrl, designSketchJSON: sketchJSON },
-    });
-    res.json({ designSketchUrl: updated.designSketchUrl });
+    
+    await db.execute(
+      `UPDATE DesignOrder SET designSketchUrl=?, designSketchJSON=?, updatedAt=NOW() WHERE orderId=?`,
+      [sketchUrl, sketchJSON, req.params.id]
+    );
+    res.json({ designSketchUrl: sketchUrl });
   } catch (err) { next(err); }
 });
 
@@ -307,54 +379,58 @@ router.post('/:id/sketch', protect, adminOnly, upload.single('sketch'), async (r
 router.patch('/:id/sketch-json', protect, adminOnly, async (req, res, next) => {
   try {
     const { sketchJSON, designSketchUrl } = req.body;
-    const updated = await prisma.designOrder.update({
-      where: { orderId: req.params.id },
-      data: {
-        designSketchJSON: sketchJSON,
-        ...(designSketchUrl ? { designSketchUrl } : {}),
-      },
-    });
-    res.json({ message: 'Sketch saved.', designSketchUrl: updated.designSketchUrl });
+    let query = `UPDATE DesignOrder SET designSketchJSON=?, updatedAt=NOW()`;
+    let params = [sketchJSON];
+    if (designSketchUrl) { query += `, designSketchUrl=?`; params.push(designSketchUrl); }
+    query += ` WHERE orderId=?`;
+    params.push(req.params.id);
+    
+    await db.execute(query, params);
+    
+    const [rows] = await db.query(`SELECT designSketchUrl FROM DesignOrder WHERE orderId = ?`, [req.params.id]);
+    res.json({ message: 'Sketch saved.', designSketchUrl: rows[0].designSketchUrl });
   } catch (err) { next(err); }
 });
 
 // POST upload per-section sketch: /api/design-orders/:id/section-sketch
-// Body: sectionType (back_neck|sleeve|front_neck), file: sketch
 router.post('/:id/section-sketch', protect, adminOnly, upload.single('sketch'), async (req, res, next) => {
   try {
     const { sectionType, sketchJSON } = req.body;
     if (!['back_neck', 'sleeve', 'front_neck'].includes(sectionType)) {
       return res.status(400).json({ message: 'Invalid sectionType.' });
     }
-    const order = await prisma.designOrder.findUnique({ where: { orderId: req.params.id } });
-    if (!order) return res.status(404).json({ message: 'Order not found.' });
+    const [rows] = await db.query(`SELECT orderId FROM DesignOrder WHERE orderId = ?`, [req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ message: 'Order not found.' });
 
     const sketchUrl = req.file ? `/uploads/sketches/${req.file.filename}` : null;
 
-    const section = await prisma.orderDesignSection.upsert({
-      where: { orderId_sectionType: { orderId: req.params.id, sectionType } },
-      create: {
-        orderId: req.params.id,
-        sectionType,
-        sketchImageUrl: sketchUrl,
-        sketchJSON: sketchJSON || null,
-      },
-      update: {
-        ...(sketchUrl ? { sketchImageUrl: sketchUrl } : {}),
-        ...(sketchJSON !== undefined ? { sketchJSON } : {}),
-      },
-    });
-    res.json({ sectionType, sketchImageUrl: section.sketchImageUrl });
+    const [existing] = await db.query(`SELECT id FROM OrderDesignSection WHERE orderId = ? AND sectionType = ?`, [req.params.id, sectionType]);
+    if (existing.length > 0) {
+      let query = `UPDATE OrderDesignSection SET sketchJSON = ?`;
+      let params = [sketchJSON || null];
+      if (sketchUrl) { query += `, sketchImageUrl = ?`; params.push(sketchUrl); }
+      query += ` WHERE orderId = ? AND sectionType = ?`;
+      params.push(req.params.id, sectionType);
+      await db.execute(query, params);
+    } else {
+      await db.execute(
+        `INSERT INTO OrderDesignSection (id, orderId, sectionType, sketchImageUrl, sketchJSON, notes) VALUES (?, ?, ?, ?, ?, '')`,
+        [uuidv4(), req.params.id, sectionType, sketchUrl, sketchJSON || null]
+      );
+    }
+    
+    const [secRows] = await db.query(`SELECT sketchImageUrl FROM OrderDesignSection WHERE orderId = ? AND sectionType = ?`, [req.params.id, sectionType]);
+    res.json({ sectionType, sketchImageUrl: secRows[0].sketchImageUrl });
   } catch (err) { next(err); }
 });
 
 // DELETE /api/design-orders/:id
 router.delete('/:id', protect, adminOnly, async (req, res, next) => {
   try {
-    const order = await prisma.designOrder.findUnique({ where: { orderId: req.params.id } });
+    const order = await getFullOrder(req.params.id);
     if (!order) return res.status(404).json({ message: 'Order not found.' });
     await logDelete('DesignOrder', order.orderId, req.user, order);
-    await prisma.designOrder.delete({ where: { orderId: req.params.id } });
+    await db.execute(`DELETE FROM DesignOrder WHERE orderId = ?`, [req.params.id]);
     res.json({ message: 'Order deleted.' });
   } catch (err) { next(err); }
 });
@@ -362,13 +438,27 @@ router.delete('/:id', protect, adminOnly, async (req, res, next) => {
 // GET audit log for order
 router.get('/:id/audit', protect, adminOnly, async (req, res, next) => {
   try {
-    const logs = await prisma.auditLog.findMany({
-      where: { recordType: 'DesignOrder', recordId: req.params.id },
-      orderBy: { timestamp: 'desc' },
-      take: 50,
-      include: { changedBy: { select: { name: true, role: true } } },
+    const [logs] = await db.query(`
+      SELECT a.*, u.name as 'changedBy.name', u.role as 'changedBy.role'
+      FROM AuditLog a
+      LEFT JOIN User u ON a.changedById = u.id
+      WHERE a.recordType = 'DesignOrder' AND a.recordId = ?
+      ORDER BY a.timestamp DESC LIMIT 50
+    `, [req.params.id]);
+
+    const formattedLogs = logs.map(log => {
+      const formatted = { ...log, changedBy: null };
+      if (log['changedBy.name']) {
+        formatted.changedBy = { name: log['changedBy.name'], role: log['changedBy.role'] };
+      }
+      delete formatted['changedBy.name'];
+      delete formatted['changedBy.role'];
+      if(typeof formatted.changes === 'string') formatted.changes = JSON.parse(formatted.changes);
+      if(typeof formatted.snapshot === 'string') formatted.snapshot = JSON.parse(formatted.snapshot);
+      return formatted;
     });
-    res.json(logs);
+
+    res.json(formattedLogs);
   } catch (err) { next(err); }
 });
 

@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const prisma = require('../utils/prisma');
+const db = require('../utils/db');
 
 const protect = async (req, res, next) => {
   try {
@@ -10,10 +10,11 @@ const protect = async (req, res, next) => {
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.id },
-      select: { id: true, name: true, email: true, role: true, employeeRef: true, isActive: true, createdAt: true },
-    });
+    const [rows] = await db.query(
+      `SELECT id, name, email, role, employeeRef, isActive, createdAt FROM User WHERE id = ?`,
+      [decoded.id]
+    );
+    const user = rows[0];
 
     if (!user || !user.isActive)
       return res.status(401).json({ message: 'User not found or deactivated.' });
