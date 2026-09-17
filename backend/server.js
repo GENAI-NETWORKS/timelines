@@ -76,6 +76,23 @@ app.get('/api/setup-admin', async (req, res) => {
   }
 });
 
+app.get('/api/test-db', async (req, res) => {
+  try {
+    const mysql = require('mysql2/promise');
+    const conn = await mysql.createConnection({
+      host: 'srv1128.hstgr.io',
+      user: 'u416856653_timelines',
+      password: 'Timelines@2026',
+      database: 'u416856653_timelines',
+      connectTimeout: 5000
+    });
+    await conn.end();
+    res.json({ success: true, message: 'Connected to MySQL using mysql2 successfully!' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message, stack: err.stack });
+  }
+});
+
 // Error handler
 app.use(require('./src/middleware/errorHandler'));
 
