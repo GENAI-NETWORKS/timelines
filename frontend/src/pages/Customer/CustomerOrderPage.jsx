@@ -22,6 +22,7 @@ import { searchCustomers } from '../../api/customers';
 import QuickEntryTable from './components/QuickEntryTable';
 import DesignModal from './components/DesignModal';
 import TailorPrintout from './components/TailorPrintout';
+import { ITEM_TYPES } from './components/ParticularRow';
 
 // ─── Customer step ────────────────────────────────────────────────────────
 function CustomerStep({ onOrderCreated }) {
