@@ -46,7 +46,8 @@ export default function Dashboard() {
     async function load() {
       try {
         if (isAdmin) {
-          const [custRes, empRes, ordersRes, credsRes, invRes, purchRes, servRes, payRes] = await Promise.all([
+          // Use allSettled so one failing API doesn't block everything
+          const [custRes, empRes, ordersRes, credsRes, invRes, purchRes, servRes, payRes] = await Promise.allSettled([
             getCustomers({ limit: 1 }),
             getEmployees({ limit: 1 }),
             getTailoringOrders({ limit: 5 }),
@@ -56,38 +57,52 @@ export default function Dashboard() {
             getServices(),
             getPayments()
           ]);
-          const [pendingRes, progressRes, readyRes] = await Promise.all([
+          const [pendingRes, progressRes, readyRes] = await Promise.allSettled([
             getTailoringOrders({ status: 'Draft', limit: 1 }),
             getTailoringOrders({ status: 'Submitted', limit: 1 }),
             getTailoringOrders({ status: 'Ready', limit: 1 }),
           ]);
+
+          // Safe value extractor
+          const val = (res, getter) => {
+            if (res.status === 'fulfilled') {
+              try { return getter(res.value); } catch(e) { return undefined; }
+            }
+            return undefined;
+          };
+
           setStats({
-            customers: custRes.data.total,
-            employees: empRes.data.total,
-            totalOrders: ordersRes.data.total,
-            pending: pendingRes.data.total,
-            inProgress: progressRes.data.total,
-            ready: readyRes.data.total,
-            lowStock: invRes.data.filter(i => i.quantity <= i.minStockLevel).length,
-            purchases: purchRes.data.reduce((sum, p) => sum + p.totalCost, 0),
-            services: servRes.data.length,
-            payments: payRes.data.reduce((sum, p) => sum + p.amount, 0),
+            customers:   val(custRes,     r => r.data.total),
+            employees:   val(empRes,      r => r.data.total),
+            totalOrders: val(ordersRes,   r => r.data.total),
+            pending:     val(pendingRes,  r => r.data.total),
+            inProgress:  val(progressRes, r => r.data.total),
+            ready:       val(readyRes,    r => r.data.total),
+            lowStock:    val(invRes,      r => r.data.filter(i => i.quantity <= i.minStockLevel).length),
+            purchases:   val(purchRes,    r => r.data.reduce((sum, p) => sum + (p.totalCost || 0), 0)),
+            services:    val(servRes,     r => r.data.length),
+            payments:    val(payRes,      r => r.data.reduce((sum, p) => sum + (p.amount || 0), 0)),
           });
-          setRecentOrders(ordersRes.data.orders);
-          setCredentials(credsRes.data);
+          if (ordersRes.status === 'fulfilled') {
+            setRecentOrders(ordersRes.value.data.orders || []);
+          }
+          if (credsRes.status === 'fulfilled') {
+            setCredentials(credsRes.value.data || []);
+          }
         } else {
           // Staff view: Just fetch assigned orders
           const ordersRes = await getTailoringOrders({ limit: 20 });
-          setRecentOrders(ordersRes.data.orders);
+          setRecentOrders(ordersRes.data.orders || []);
         }
       } catch (err) {
-        console.error(err);
+        console.error('Dashboard load error:', err);
       } finally {
         setLoading(false);
       }
     }
     load();
   }, [isAdmin]);
+
 
   return (
     <div className="space-y-6 animate-fade-in">
