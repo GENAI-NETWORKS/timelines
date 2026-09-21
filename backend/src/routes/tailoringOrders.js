@@ -8,16 +8,8 @@ const { protect, adminOnly } = require('../middleware/auth');
 const { v4: uuidv4 } = require('uuid');
 
 // ── Multer ─────────────────────────────────────────────────────────────────
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = path.join(__dirname, '../../uploads/tailoring');
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`);
-  },
-});
+const { getStorage } = require('../utils/cloudinary');
+const storage = getStorage('timelines/tailoring');
 const upload = multer({ storage, limits: { fileSize: 15 * 1024 * 1024 } });
 
 // ── Auto-generate Customer ID ──────────────────────────────────────────────
@@ -354,7 +346,7 @@ router.post('/:id/items/:itemId/upload', protect, adminOnly, upload.single('imag
     const item = rows[0];
     if (!item) return res.status(404).json({ message: 'Item not found.' });
 
-    const imageUrl = `/uploads/tailoring/${req.file.filename}`;
+    const imageUrl = req.file.path;
 
     if (!subItemNumber || subItemNumber === 'null' || subItemNumber === 'undefined') {
       let detailsRaw = item.details;
@@ -396,7 +388,7 @@ router.post('/:id/items/:itemId/canvas', protect, adminOnly, upload.single('canv
     const item = rows[0];
     if (!item) return res.status(404).json({ message: 'Item not found.' });
 
-    const imageUrl = req.file ? `/uploads/tailoring/${req.file.filename}` : null;
+    const imageUrl = req.file ? req.file.path : null;
     const subNum = parseInt(subItemNumber);
     let subsRaw = item.subItems;
     if (typeof subsRaw === 'string') {

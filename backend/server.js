@@ -65,6 +65,18 @@ const PORT = process.env.PORT || 5000;
 
 async function main() {
   try {
+    // Initialize required tables
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS DesignLibrary (
+        id VARCHAR(255) PRIMARY KEY,
+        itemType VARCHAR(100),
+        section VARCHAR(50),
+        filename VARCHAR(255),
+        url VARCHAR(500),
+        uploadedAt DATETIME
+      )
+    `);
+
     // db.js automatically initializes the pool and tests connection
     app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
   } catch (err) {

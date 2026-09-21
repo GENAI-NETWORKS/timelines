@@ -9,16 +9,8 @@ const { logCreate, logUpdate, logDelete } = require('../utils/auditLogger');
 const { v4: uuidv4 } = require('uuid');
 
 // ─── Multer setup ─────────────────────────────────────────────────────────
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const dir = path.join(__dirname, '../../uploads/sketches');
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    cb(null, `sketch-${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`);
-  },
-});
+const { getStorage } = require('../utils/cloudinary');
+const storage = getStorage('timelines/sketches');
 const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 
 // ─── Auto-generate Order ID: ORD-XXXX ────────────────────────────────────
@@ -364,7 +356,7 @@ router.post('/:id/sketch', protect, adminOnly, upload.single('sketch'), async (r
     const [rows] = await db.query(`SELECT orderId FROM DesignOrder WHERE orderId = ?`, [req.params.id]);
     if (rows.length === 0) return res.status(404).json({ message: 'Order not found.' });
     
-    const sketchUrl = `/uploads/sketches/${req.file.filename}`;
+    const sketchUrl = req.file.path;
     const sketchJSON = req.body.sketchJSON || null;
     
     await db.execute(
@@ -402,7 +394,7 @@ router.post('/:id/section-sketch', protect, adminOnly, upload.single('sketch'), 
     const [rows] = await db.query(`SELECT orderId FROM DesignOrder WHERE orderId = ?`, [req.params.id]);
     if (rows.length === 0) return res.status(404).json({ message: 'Order not found.' });
 
-    const sketchUrl = req.file ? `/uploads/sketches/${req.file.filename}` : null;
+    const sketchUrl = req.file ? req.file.path : null;
 
     const [existing] = await db.query(`SELECT id FROM OrderDesignSection WHERE orderId = ? AND sectionType = ?`, [req.params.id, sectionType]);
     if (existing.length > 0) {
