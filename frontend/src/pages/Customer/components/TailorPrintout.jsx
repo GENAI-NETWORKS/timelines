@@ -191,6 +191,18 @@ export function TailorPrintContent({ order, customer, showPrices = false }) {
               </div>
             )}
 
+            {/* Measurement Blouse Reference Photo */}
+            {item.details?.blouseType === 'MEASUREMENT' && item.details?.measurementBlouseImageUrl && (
+              <div className="tp-ref-image-block">
+                <div className="tp-img-caption">Measurement Reference Photo:</div>
+                <img
+                  src={`${API_BASE}${item.details.measurementBlouseImageUrl}`}
+                  alt="Measurement Reference"
+                  className="tp-ref-img"
+                />
+              </div>
+            )}
+
             {/* Per-quantity sub-items */}
             {subs.map((sub, si) => (
               <div key={si} className="tp-subitem">

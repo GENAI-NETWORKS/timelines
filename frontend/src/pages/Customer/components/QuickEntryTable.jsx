@@ -77,6 +77,7 @@ function makeBlankSub(base = {}) {
     // blouse mode toggle: 'measurement' | 'sample'
     blouseMode: base.blouseMode || 'measurement',
     sampleBlouseImageUrl: null,
+    measurementBlouseImageUrl: null,
     sampleBlouseDescription: '',
     // measurements
     measurement_SL: '', measurement_SA: '', measurement_ARM: '',
@@ -477,39 +478,57 @@ const ItemCard = React.memo(function ItemCard({ item, rowIndex, theme, onUpdate,
                       <div className={`text-xs md:text-sm font-bold uppercase tracking-wider ${theme.text}`}>Measurements (Item {activeSub + 1})</div>
                       <div className="text-[10px] text-gray-400 font-semibold">Drag labels to rearrange</div>
                     </div>
-                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
-                      {measOrder.map((m, index) => (
-                        <div
-                          key={m.key}
-                          draggable
-                          onDragStart={(e) => {
-                            if (e.target.tagName === 'INPUT') { e.preventDefault(); return; }
-                            e.dataTransfer.setData('text/plain', index.toString());
-                            e.dataTransfer.effectAllowed = 'move';
-                          }}
-                          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
-                          onDrop={(e) => {
-                            e.preventDefault();
-                            const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
-                            const toIndex = index;
-                            if (fromIndex === toIndex || isNaN(fromIndex)) return;
-                            const newOrder = [...measOrder];
-                            const [moved] = newOrder.splice(fromIndex, 1);
-                            newOrder.splice(toIndex, 0, moved);
-                            setMeasOrder(newOrder);
-                          }}
-                          className="flex flex-col group cursor-move hover:bg-white/50 p-1 -m-1 rounded transition-colors"
-                        >
-                          <label className={`block text-[10px] sm:text-xs font-semibold mb-1 truncate ${theme.text} flex items-center justify-between`}>
-                            {m.label} <span className="opacity-0 group-hover:opacity-100 text-gray-400 cursor-grab">⋮⋮</span>
-                          </label>
-                          <input type="text" placeholder="—"
-                            className="w-full bg-white border border-surface-border rounded-lg px-2 py-1.5 text-sm text-gray-800 focus:outline-none focus:ring-1 focus:ring-brand-400 transition-colors"
-                            value={localSub[`measurement_${m.key}`] || ''}
-                            onChange={e => updateSub(`measurement_${m.key}`, e.target.value)}
+                    {/* Reference photo + measurements row */}
+                    <div className="flex flex-col sm:flex-row gap-4 items-start">
+                      {/* Reference photo upload */}
+                      <div className="flex flex-col items-center gap-1 shrink-0">
+                        <div className={`text-[10px] font-bold uppercase tracking-wider ${theme.text} mb-0.5`}>Reference Photo</div>
+                        <div className="w-24 h-28">
+                          <ImageUploadSlot
+                            imageUrl={localSub.measurementBlouseImageUrl}
+                            onUpload={(file) => handleImageUpload('measurementBlouseImageUrl', file)}
+                            onRemove={() => updateSub('measurementBlouseImageUrl', null)}
+                            label="Upload Photo"
+                            small={false}
                           />
                         </div>
-                      ))}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+                          {measOrder.map((m, index) => (
+                            <div
+                              key={m.key}
+                              draggable
+                              onDragStart={(e) => {
+                                if (e.target.tagName === 'INPUT') { e.preventDefault(); return; }
+                                e.dataTransfer.setData('text/plain', index.toString());
+                                e.dataTransfer.effectAllowed = 'move';
+                              }}
+                              onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
+                              onDrop={(e) => {
+                                e.preventDefault();
+                                const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+                                const toIndex = index;
+                                if (fromIndex === toIndex || isNaN(fromIndex)) return;
+                                const newOrder = [...measOrder];
+                                const [moved] = newOrder.splice(fromIndex, 1);
+                                newOrder.splice(toIndex, 0, moved);
+                                setMeasOrder(newOrder);
+                              }}
+                              className="flex flex-col group cursor-move hover:bg-white/50 p-1 -m-1 rounded transition-colors"
+                            >
+                              <label className={`block text-[10px] sm:text-xs font-semibold mb-1 truncate ${theme.text} flex items-center justify-between`}>
+                                {m.label} <span className="opacity-0 group-hover:opacity-100 text-gray-400 cursor-grab">⋮⋮</span>
+                              </label>
+                              <input type="text" placeholder="—"
+                                className="w-full bg-white border border-surface-border rounded-lg px-2 py-1.5 text-sm text-gray-800 focus:outline-none focus:ring-1 focus:ring-brand-400 transition-colors"
+                                value={localSub[`measurement_${m.key}`] || ''}
+                                onChange={e => updateSub(`measurement_${m.key}`, e.target.value)}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                     {/* Measurement description */}
                     <div className="mt-3">

@@ -347,7 +347,7 @@ router.delete('/:id/items/:itemId', protect, adminOnly, async (req, res, next) =
 router.post('/:id/items/:itemId/upload', protect, adminOnly, upload.single('image'), async (req, res, next) => {
   try {
     const { subItemNumber, field } = req.body;
-    const allowedFields = ['referenceImageUrl', 'frontDesignImageUrl', 'backDesignImageUrl', 'sleeveDesignImageUrl', 'sampleBlouseImageUrl'];
+    const allowedFields = ['referenceImageUrl', 'frontDesignImageUrl', 'backDesignImageUrl', 'sleeveDesignImageUrl', 'sampleBlouseImageUrl', 'measurementBlouseImageUrl'];
     if (!allowedFields.includes(field)) return res.status(400).json({ message: 'Invalid field.' });
 
     const [rows] = await db.query(`SELECT details, subItems FROM TailoringOrderItem WHERE id = ?`, [req.params.itemId]);
