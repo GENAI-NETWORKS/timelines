@@ -15,6 +15,13 @@ function fmt(d) {
   try { return d ? format(new Date(d), 'dd MMM yyyy') : '—'; } catch { return '—'; }
 }
 
+function getImgUrl(url) {
+  if (!url) return null;
+  return url.startsWith('http') || url.startsWith('data:') || url.startsWith('blob:') 
+    ? url 
+    : `${API_BASE}${url}`;
+}
+
 /* ── Measurement grid ────────────────────────────────────────────────────── */
 const MEAS_FIELDS = [
   { key: 'SL',         label: 'SL' },
@@ -47,7 +54,7 @@ function MeasurementGrid({ sub }) {
 /* ── Design section block (Front / Back / Sleeve) ─────────────────────── */
 function DesignBlock({ label, notes, canvasImgUrl, canvasDataUrl, designImgUrl, isArya }) {
   const displaySrc = canvasImgUrl
-    ? (canvasImgUrl.startsWith('data:') ? canvasImgUrl : `${API_BASE}${canvasImgUrl}`)
+    ? getImgUrl(canvasImgUrl)
     : canvasDataUrl || null;
 
   return (
@@ -63,7 +70,7 @@ function DesignBlock({ label, notes, canvasImgUrl, canvasDataUrl, designImgUrl, 
       {isArya && designImgUrl && (
         <>
           <div className="tp-img-caption">Design Reference:</div>
-          <img src={`${API_BASE}${designImgUrl}`} alt={`${label} design ref`} className="tp-design-ref-img" />
+          <img src={getImgUrl(designImgUrl)} alt={`${label} design ref`} className="tp-design-ref-img" />
         </>
       )}
 
@@ -275,7 +282,7 @@ export function TailorPrintContent({ order, customer, showPrices = false }) {
                   <div className="tp-ref-image-block">
                     <div className="tp-img-caption">Reference Image:</div>
                     <img
-                      src={`${API_BASE}${sub.referenceImageUrl}`}
+                      src={getImgUrl(sub.referenceImageUrl)}
                       alt="Reference"
                       className="tp-ref-img"
                     />
