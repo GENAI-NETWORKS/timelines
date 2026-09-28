@@ -157,7 +157,7 @@ router.post('/', protect, adminOnly, async (req, res, next) => {
   const conn = await db.getConnection();
   try {
     await conn.beginTransaction();
-    const { customerId, customerName, customerPhone, orderDate, deliveryDate, notes, bagNo, bagName } = req.body;
+    const { customerId, customerName, customerPhone, customerAddress, orderDate, deliveryDate, notes, bagNo, bagName } = req.body;
     let resolvedCustomerId = customerId;
 
     if (!customerId && customerName) {
@@ -170,7 +170,7 @@ router.post('/', protect, adminOnly, async (req, res, next) => {
       
       await conn.execute(
         `INSERT INTO Customer (customerId, name, phone, email, address, notes, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-        [resolvedCustomerId, customerName, customerPhone || '', '', '', '']
+        [resolvedCustomerId, customerName, customerPhone || '', '', customerAddress || '', '']
       );
     }
     if (!resolvedCustomerId) {

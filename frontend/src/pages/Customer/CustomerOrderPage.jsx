@@ -31,7 +31,7 @@ function CustomerStep({ onOrderCreated }) {
   const [results, setResults]   = useState([]);
   const [searching, setSearching] = useState(false);
   const [selected, setSelected] = useState(null);
-  const [newForm, setNewForm]   = useState({ name: '', phone: '', orderDate: new Date().toISOString().slice(0, 10), deliveryDate: '', bagNo: '', bagName: '' });
+  const [newForm, setNewForm]   = useState({ name: '', phone: '', address: '', orderDate: new Date().toISOString().slice(0, 10), deliveryDate: '', bagNo: '', bagName: '' });
   const [creating, setCreating] = useState(false);
   const debounceRef = useRef(null);
   const wrapperRef  = useRef(null);
@@ -56,10 +56,11 @@ function CustomerStep({ onOrderCreated }) {
   }, []);
 
   const handleCreate = async () => {
-    const name  = mode === 'new' ? newForm.name.trim()  : selected?.name;
-    const phone = mode === 'new' ? newForm.phone.trim() : selected?.phone;
-    const od    = mode === 'new' ? newForm.orderDate    : newForm.orderDate;
-    const dd    = newForm.deliveryDate;
+    const name    = mode === 'new' ? newForm.name.trim()    : selected?.name;
+    const phone   = mode === 'new' ? newForm.phone.trim()   : selected?.phone;
+    const address = mode === 'new' ? newForm.address.trim() : '';
+    const od      = newForm.orderDate;
+    const dd      = newForm.deliveryDate;
 
     if (!name)  { toast.error('Customer name is required.'); return; }
     if (!phone && mode === 'new') { toast.error('Phone number is required.'); return; }
@@ -73,7 +74,9 @@ function CustomerStep({ onOrderCreated }) {
         deliveryDate: dd,
         bagNo:        newForm.bagNo,
         bagName:      newForm.bagName,
-        ...(mode === 'search' && selected ? { customerId: selected.customerId } : { customerName: name, customerPhone: phone }),
+        ...(mode === 'search' && selected
+          ? { customerId: selected.customerId }
+          : { customerName: name, customerPhone: phone, customerAddress: address }),
       };
       const res = await createTailoringOrder(payload);
       onOrderCreated(res.data);
@@ -178,6 +181,18 @@ function CustomerStep({ onOrderCreated }) {
               <input id="cust-phone" className="input" type="tel" placeholder="Mobile number" value={newForm.phone}
                 onChange={e => setNewForm(f => ({ ...f, phone: e.target.value }))} />
             </div>
+          </div>
+          <div>
+            <label className="label">Address</label>
+            <textarea
+              id="cust-address"
+              className="input"
+              rows={2}
+              placeholder="Street, City, State…"
+              value={newForm.address}
+              onChange={e => setNewForm(f => ({ ...f, address: e.target.value }))}
+              style={{ resize: 'vertical', minHeight: '64px' }}
+            />
           </div>
           {orderFields}
         </div>
@@ -445,6 +460,9 @@ export default function CustomerOrderPage() {
                   Order: {format(new Date(order.orderDate), 'dd MMM yyyy')}
                   {order.deliveryDate && ` · Delivery: ${format(new Date(order.deliveryDate), 'dd MMM yyyy')}`}
                 </p>
+                {order.customer?.address && (
+                  <p className="text-xs text-gray-500 mt-0.5"> {order.customer.address}</p>
+                )}
                 {(order.bagNo || order.bagName) && (
                   <p className="text-xs text-amber-400 mt-0.5">
                     {order.bagNo && `Bag No: ${order.bagNo}`}
