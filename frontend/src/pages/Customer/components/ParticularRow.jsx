@@ -348,7 +348,7 @@ export default function ParticularRow({
 
         {/* Product type badge */}
         <div className="flex-1 flex items-center gap-2 min-w-0">
-          <span className="font-semibold text-gray-900 text-sm truncate">{meta.label}</span>
+          <span className="font-semibold text-gray-900 text-sm truncate">{item.customName || item.details?.customName || meta.label}</span>
           {meta.hasMeter    && <span className="badge badge-pending text-xs hidden sm:inline">Meter</span>}
           {meta.hasDesign   && <span className="badge badge-progress text-xs hidden sm:inline">Canvas</span>}
           {meta.hasSource   && <span className="badge text-xs bg-surface-elevated text-gray-600 border border-surface-border hidden sm:inline">Source</span>}

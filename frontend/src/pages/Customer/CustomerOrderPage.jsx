@@ -221,6 +221,20 @@ export default function CustomerOrderPage() {
   const [designModalState, setDesignModalState] = useState(null); // { item, activeSub, section }
   const saveTimers  = useRef({});
 
+  const mapLoadedItem = (i, local = null) => {
+    let details = i.details;
+    if (typeof details === 'string') {
+      try { details = JSON.parse(details); } catch(e) { details = {}; }
+    }
+    details = details || {};
+    return {
+      ...i,
+      details,
+      customConfig: details.customConfig || i.customConfig || (local && local.customConfig) || null,
+      customName: details.customName || i.customName || (local && local.customName) || '',
+    };
+  };
+
   // Load existing order
   useEffect(() => {
     if (!editId) return;
@@ -228,13 +242,7 @@ export default function CustomerOrderPage() {
     getTailoringOrder(editId)
       .then(r => {
         setOrder(r.data);
-        const loadedItems = (r.data.items || []).map(i => {
-          let details = i.details;
-          if (typeof details === 'string') {
-            try { details = JSON.parse(details); } catch(e) { details = {}; }
-          }
-          return { ...i, details, customConfig: details?.customConfig || null };
-        });
+        const loadedItems = (r.data.items || []).map(i => mapLoadedItem(i));
         setItems(loadedItems);
       })
       .catch(() => { toast.error('Order not found.'); navigate('/customer'); })
@@ -253,7 +261,7 @@ export default function CustomerOrderPage() {
     setAdding(true);
     try {
       const res = await addOrderItem(order.id, { itemType, quantity: 1 });
-      setItems(prev => [...prev, res.data]);
+      setItems(prev => [...prev, mapLoadedItem(res.data)]);
       toast.success(`${ITEM_TYPES.find(t => t.value === itemType)?.label} added!`);
     } catch { toast.error('Failed to add item.'); }
     finally { setAdding(false); }
@@ -261,7 +269,16 @@ export default function CustomerOrderPage() {
 
   // Update item in local state, debounce-save to server
   const handleUpdateItem = useCallback((updated) => {
-    setItems(prev => prev.map(i => i.id === updated.id ? updated : i));
+    const updatedDetails = {
+      ...(updated.details || {}),
+      customConfig: updated.customConfig,
+      customName: updated.customName
+    };
+    const itemWithDetails = {
+      ...updated,
+      details: updatedDetails
+    };
+    setItems(prev => prev.map(i => i.id === updated.id ? itemWithDetails : i));
 
     // Debounce server save by 1.5s
     clearTimeout(saveTimers.current[updated.id]);
@@ -269,9 +286,9 @@ export default function CustomerOrderPage() {
       if (!order || !updated.id) return;
       try {
         await updateOrderItem(order.id, updated.id, {
-          quantity: updated.quantity,
-          details:  updated.details,
-          subItems: updated.subItems,
+          quantity: itemWithDetails.quantity,
+          details:  itemWithDetails.details,
+          subItems: itemWithDetails.subItems,
         });
         // Removed `setItems` here to prevent overwriting active typing
       } catch {}
@@ -315,8 +332,12 @@ export default function CustomerOrderPage() {
 
       await Promise.all(currentItems.map(async (item) => {
         // 1) Save text fields / subItems JSON to server
-        // Make sure we include customConfig inside details!
-        const savedDetails = { ...item.details, customConfig: item.customConfig };
+        // Make sure we include customConfig and customName inside details!
+        const savedDetails = {
+          ...item.details,
+          customConfig: item.customConfig,
+          customName: item.customName
+        };
         const savedItem = await updateOrderItem(order.id, item.id, {
           quantity: item.quantity,
           details:  savedDetails,
@@ -352,9 +373,8 @@ export default function CustomerOrderPage() {
       const serverItems = res.data.items || [];
       setItems(serverItems.map(si => {
         const local = currentItems.find(li => li.id === si.id);
-        if (!local) return si;
         const mergedSubs = (si.subItems || []).map((ss, idx) => {
-          const ls = (local.subItems || [])[idx] || {};
+          const ls = (local?.subItems || [])[idx] || {};
           return {
             ...ss,
             // Keep local dataUrls for immediate print
@@ -363,15 +383,9 @@ export default function CustomerOrderPage() {
             sleeveCanvasDataUrl: ls.sleeveCanvasDataUrl || ss.sleeveCanvasDataUrl,
           };
         });
-        // Map customConfig back out
-        let details = si.details;
-        if (typeof details === 'string') {
-          try { details = JSON.parse(details); } catch(e) { details = {}; }
-        }
+        const mapped = mapLoadedItem(si, local);
         return {
-          ...si,
-          details,
-          customConfig: details?.customConfig || null,
+          ...mapped,
           subItems: mergedSubs
         };
       }));
@@ -399,7 +413,7 @@ export default function CustomerOrderPage() {
   return (
     <>
       {/* Tailor printout (hidden on screen) */}
-      <TailorPrintout order={order} customer={order?.customer} />
+      <TailorPrintout order={order ? { ...order, items } : null} customer={order?.customer} />
 
       {/* Screen UI */}
       <div className="space-y-6 animate-fade-in no-print">
@@ -492,7 +506,7 @@ export default function CustomerOrderPage() {
                 await uploadItemImage(order.id, itemId, fd);
                 const res = await getTailoringOrder(order.id);
                 setOrder(res.data);
-                setItems(res.data.items || []);
+                setItems((res.data.items || []).map(i => mapLoadedItem(i, items.find(li => li.id === i.id))));
               }}
               adding={adding}
             />

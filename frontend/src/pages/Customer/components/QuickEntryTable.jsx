@@ -152,7 +152,27 @@ const ItemCard = React.memo(function ItemCard({ item, rowIndex, theme, onUpdate,
     const config = item.customConfig || {
       hasMeter: false, hasSource: false, hasDesign: false, hasLining: false, hasMeasurements: false, hasNotes: true, hasReferenceImage: false
     };
-    onUpdate({ ...item, customConfig: { ...config, [field]: !config[field] } });
+    const newConfig = { ...config, [field]: !config[field] };
+    onUpdate({
+      ...item,
+      customConfig: newConfig,
+      details: { ...(item.details || {}), customConfig: newConfig }
+    });
+  };
+
+  const toggleCustomFields = (fields) => {
+    const config = item.customConfig || {
+      hasMeter: false, hasSource: false, hasDesign: false, hasLining: false, hasMeasurements: false, hasNotes: true, hasReferenceImage: false
+    };
+    const newConfig = { ...config };
+    fields.forEach(f => {
+      newConfig[f] = !config[f];
+    });
+    onUpdate({
+      ...item,
+      customConfig: newConfig,
+      details: { ...(item.details || {}), customConfig: newConfig }
+    });
   };
 
   const handleImageUpload = async (field, file) => {
@@ -215,7 +235,11 @@ const ItemCard = React.memo(function ItemCard({ item, rowIndex, theme, onUpdate,
               placeholder="Enter custom item name..."
               className={`font-bold text-base bg-transparent border-b border-dashed focus:outline-none focus:border-brand-500 w-40 sm:w-56 ${theme.text}`}
               value={item.customName || ''}
-              onChange={(e) => onUpdate({ ...item, customName: e.target.value })}
+              onChange={(e) => onUpdate({
+                ...item,
+                customName: e.target.value,
+                details: { ...(item.details || {}), customName: e.target.value }
+              })}
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
@@ -253,7 +277,7 @@ const ItemCard = React.memo(function ItemCard({ item, rowIndex, theme, onUpdate,
               <button onClick={() => toggleCustomField('hasDesign')} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors ${meta.hasDesign ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}><Palette className="w-3.5 h-3.5" /> Canvas</button>
               <button onClick={() => toggleCustomField('hasReferenceImage')} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors ${meta.hasReferenceImage ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}><ImageIcon className="w-3.5 h-3.5" /> Ref Image</button>
               <button onClick={() => toggleCustomField('hasLining')} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors ${meta.hasLining ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}><Layers className="w-3.5 h-3.5" /> Lining</button>
-              <button onClick={() => { toggleCustomField('hasMeter'); toggleCustomField('hasSource'); }} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors ${meta.hasMeter ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}><Scissors className="w-3.5 h-3.5" /> Meter</button>
+              <button onClick={() => toggleCustomFields(['hasMeter', 'hasSource'])} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors ${meta.hasMeter ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}><Scissors className="w-3.5 h-3.5" /> Meter</button>
             </div>
           )}
 

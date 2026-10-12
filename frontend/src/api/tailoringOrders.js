@@ -10,6 +10,12 @@ const parseItem = (item) => {
   }
   item.details = item.details || {};
   item.subItems = item.subItems || [];
+  if (item.details.customName && !item.customName) {
+    item.customName = item.details.customName;
+  }
+  if (item.details.customConfig && !item.customConfig) {
+    item.customConfig = item.details.customConfig;
+  }
   return item;
 };
 

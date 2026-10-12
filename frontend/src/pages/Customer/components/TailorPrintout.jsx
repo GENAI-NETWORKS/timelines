@@ -142,7 +142,19 @@ export function TailorPrintContent({ order, customer, showPrices = false }) {
         for (let i = 0; i < qty; i++) {
           subs.push(rawSubs[i] || {});
         }
-        const meta = getItemMeta(item.itemType);
+        let details = item.details;
+        if (typeof details === 'string') {
+          try { details = JSON.parse(details); } catch(e) { details = {}; }
+        }
+        details = details || {};
+
+        let meta = getItemMeta(item.itemType);
+        const customConfig = item.customConfig || details.customConfig;
+        if (customConfig) {
+          meta = { ...meta, ...customConfig };
+        }
+
+        const displayName = item.customName || details.customName || meta.label;
 
         // Running total for preview
         let itemTotal = 0;
@@ -162,7 +174,7 @@ export function TailorPrintContent({ order, customer, showPrices = false }) {
 
             {/* Item header bar */}
             <div className="tp-item-header">
-              {idx + 1}.&nbsp;&nbsp;{meta.label}
+              {idx + 1}.&nbsp;&nbsp;{displayName}
               <span className="tp-qty-badge">Qty: {item.quantity}</span>
               {showPrices && itemTotal > 0 && (
                 <span className="tp-price-badge">₹ {itemTotal.toFixed(0)}</span>
@@ -172,26 +184,26 @@ export function TailorPrintContent({ order, customer, showPrices = false }) {
 
 
             {/* Bag row */}
-            {(item.details?.bagNo || item.details?.bagColour) && (
+            {(details.bagNo || details.bagColour || item.details?.bagNo || item.details?.bagColour) && (
               <div className="tp-lining-row" style={{ marginTop: '2px' }}>
-                <strong>Bag Details:</strong> {item.details?.bagNo || '—'} {item.details?.bagColour ? `(${item.details.bagColour})` : ''}
+                <strong>Bag Details:</strong> {details.bagNo || item.details?.bagNo || '—'} {(details.bagColour || item.details?.bagColour) ? `(${details.bagColour || item.details?.bagColour})` : ''}
               </div>
             )}
 
             {/* Blouse Type & Notes (item-level) */}
-            {meta.hasBlouseType && item.details?.blouseType && (
+            {meta.hasBlouseType && (details.blouseType || item.details?.blouseType) && (
               <div className="tp-lining-row" style={{ marginTop: '2px' }}>
-                <strong>Blouse Type:</strong> {item.details.blouseType === 'MEASUREMENT' ? 'Measurement Blouse' : 'Sample Blouse'}
-                {item.details?.blouseNotes && <>&nbsp;·&nbsp;<strong>Notes:</strong> {item.details.blouseNotes}</>}
+                <strong>Blouse Type:</strong> {(details.blouseType || item.details?.blouseType) === 'MEASUREMENT' ? 'Measurement Blouse' : 'Sample Blouse'}
+                {(details.blouseNotes || item.details?.blouseNotes) && <>&nbsp;·&nbsp;<strong>Notes:</strong> {details.blouseNotes || item.details?.blouseNotes}</>}
               </div>
             )}
 
             {/* Sample Blouse Image */}
-            {item.details?.blouseType === 'SAMPLE' && item.details?.sampleBlouseImageUrl && (
+            {(details.blouseType || item.details?.blouseType) === 'SAMPLE' && (details.sampleBlouseImageUrl || item.details?.sampleBlouseImageUrl) && (
               <div className="tp-ref-image-block">
                 <div className="tp-img-caption">Sample Blouse Image:</div>
                 <img
-                  src={`${API_BASE}${item.details.sampleBlouseImageUrl}`}
+                  src={`${API_BASE}${details.sampleBlouseImageUrl || item.details?.sampleBlouseImageUrl}`}
                   alt="Sample Blouse"
                   className="tp-ref-img"
                 />
@@ -199,11 +211,11 @@ export function TailorPrintContent({ order, customer, showPrices = false }) {
             )}
 
             {/* Measurement Blouse Reference Photo */}
-            {item.details?.blouseType === 'MEASUREMENT' && item.details?.measurementBlouseImageUrl && (
+            {(details.blouseType || item.details?.blouseType) === 'MEASUREMENT' && (details.measurementBlouseImageUrl || item.details?.measurementBlouseImageUrl) && (
               <div className="tp-ref-image-block">
                 <div className="tp-img-caption">Measurement Reference Photo:</div>
                 <img
-                  src={`${API_BASE}${item.details.measurementBlouseImageUrl}`}
+                  src={`${API_BASE}${details.measurementBlouseImageUrl || item.details?.measurementBlouseImageUrl}`}
                   alt="Measurement Reference"
                   className="tp-ref-img"
                 />
