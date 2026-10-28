@@ -4,12 +4,13 @@ import {
   ShoppingBag, IndianRupee, Layers, CheckCircle2, AlertCircle
 } from 'lucide-react';
 import {
-  getBillingProducts, createBillingProduct,
+  getBillingProducts, getProductByBarcode, createBillingProduct,
   updateBillingProduct, deleteBillingProduct
 } from '../../api/billingProducts';
 import NewProductModal from './NewProductModal';
 import BarcodePrintModal from './BarcodePrintModal';
 import SheetPrintModal from './SheetPrintModal';
+import ScannedProductModal from './ScannedProductModal';
 import ConfirmModal from '../../components/UI/ConfirmModal';
 import Pagination from '../../components/UI/Pagination';
 import toast from 'react-hot-toast';
@@ -50,7 +51,9 @@ export default function BillingSystem() {
   const [printProduct, setPrintProduct] = useState(null);
   const [showSheetModal, setShowSheetModal] = useState(false);
   const [sheetInitialSelected, setSheetInitialSelected] = useState([]);
+  const [scannedProduct, setScannedProduct] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
+  const barcodeInputRef = useRef(null);
 
   const LIMIT = 15;
 
@@ -70,6 +73,55 @@ export default function BillingSystem() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Direct Barcode Lookup handler
+  const handleScanBarcode = async (code) => {
+    if (!code || !code.trim()) return;
+    const cleanCode = code.trim();
+    try {
+      const res = await getProductByBarcode(cleanCode);
+      if (res.data) {
+        setScannedProduct(res.data);
+        toast.success(`Scanned: ${res.data.name}`);
+        setSearch('');
+      }
+    } catch (e) {
+      toast.error(`No product found with barcode "${cleanCode}"`);
+    }
+  };
+
+  // Hardware Barcode Scanner Listener:
+  // USB/Bluetooth barcode scanners type characters very quickly (<30ms apart) followed by Enter.
+  useEffect(() => {
+    let buffer = '';
+    let lastKeyTime = Date.now();
+
+    const handleKeyDown = (e) => {
+      // Ignore if user is actively typing in a standard input or textarea other than the barcode search
+      const activeTag = document.activeElement?.tagName?.toLowerCase();
+      const isInput = activeTag === 'input' || activeTag === 'textarea';
+
+      const currentTime = Date.now();
+      const charDiff = currentTime - lastKeyTime;
+      lastKeyTime = currentTime;
+
+      if (e.key === 'Enter') {
+        if (buffer.length >= 4) {
+          e.preventDefault();
+          handleScanBarcode(buffer);
+          buffer = '';
+        }
+      } else if (e.key.length === 1) {
+        if (charDiff > 80 && !isInput) {
+          buffer = ''; // reset buffer if human typing slowly
+        }
+        buffer += e.key;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handleCreateProduct = async (formData) => {
     setCreating(true);
@@ -170,17 +222,35 @@ export default function BillingSystem() {
         </div>
       </div>
 
-      {/* Search Bar */}
+      {/* Search & Scanner Input Bar */}
       <div className="card p-3">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-          <input
-            type="text"
-            className="input pl-9"
-            placeholder="Search products by name or barcode number…"
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          />
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            <input
+              ref={barcodeInputRef}
+              type="text"
+              className="input pl-9"
+              placeholder="Scan barcode with scanner or search by name / barcode number (Press Enter to open)…"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && search.trim()) {
+                  e.preventDefault();
+                  handleScanBarcode(search.trim());
+                }
+              }}
+            />
+          </div>
+          {search && (
+            <button
+              onClick={() => handleScanBarcode(search.trim())}
+              className="btn btn-secondary text-xs flex items-center gap-1.5"
+            >
+              <Barcode className="w-3.5 h-3.5 text-brand-600" />
+              Lookup Barcode
+            </button>
+          )}
         </div>
       </div>
 
@@ -216,17 +286,23 @@ export default function BillingSystem() {
                 </tr>
               ) : (
                 products.map((p) => (
-                  <tr key={p.id} className="hover:bg-brand-50/30 transition-colors">
+                  <tr
+                    key={p.id}
+                    onClick={() => setScannedProduct(p)}
+                    className="hover:bg-brand-50/40 transition-colors cursor-pointer group"
+                  >
                     <td>
                       <div className="flex flex-col gap-1">
                         <MiniBarcode value={p.barcode} />
-                        <span className="font-mono text-xs font-semibold text-gray-800 tracking-wider">
+                        <span className="font-mono text-xs font-semibold text-gray-800 tracking-wider group-hover:text-brand-600">
                           {p.barcode}
                         </span>
                       </div>
                     </td>
                     <td>
-                      <div className="font-semibold text-gray-900">{p.name}</div>
+                      <div className="font-semibold text-gray-900 group-hover:text-brand-600 transition-colors">
+                        {p.name}
+                      </div>
                     </td>
                     <td>
                       <span className="font-bold text-gray-900">
@@ -243,7 +319,7 @@ export default function BillingSystem() {
                         {p.category || '—'}
                       </span>
                     </td>
-                    <td className="text-right">
+                    <td className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="inline-flex items-center gap-1">
                         <button
                           onClick={() => {
@@ -293,6 +369,18 @@ export default function BillingSystem() {
           products={products}
           initialSelected={sheetInitialSelected}
           onClose={() => setShowSheetModal(false)}
+        />
+      )}
+
+      {/* Scanned Barcode Product Details Modal */}
+      {scannedProduct && (
+        <ScannedProductModal
+          product={scannedProduct}
+          onClose={() => setScannedProduct(null)}
+          onPrint={(p) => {
+            setSheetInitialSelected([p.id]);
+            setShowSheetModal(true);
+          }}
         />
       )}
 
