@@ -9,6 +9,7 @@ import {
 } from '../../api/billingProducts';
 import NewProductModal from './NewProductModal';
 import BarcodePrintModal from './BarcodePrintModal';
+import SheetPrintModal from './SheetPrintModal';
 import ConfirmModal from '../../components/UI/ConfirmModal';
 import Pagination from '../../components/UI/Pagination';
 import toast from 'react-hot-toast';
@@ -47,6 +48,8 @@ export default function BillingSystem() {
   const [showNewModal, setShowNewModal] = useState(false);
   const [creating, setCreating] = useState(false);
   const [printProduct, setPrintProduct] = useState(null);
+  const [showSheetModal, setShowSheetModal] = useState(false);
+  const [sheetInitialSelected, setSheetInitialSelected] = useState([]);
   const [deleteId, setDeleteId] = useState(null);
 
   const LIMIT = 15;
@@ -113,12 +116,25 @@ export default function BillingSystem() {
           </p>
         </div>
 
-        <button
-          onClick={() => setShowNewModal(true)}
-          className="btn-primary flex items-center gap-2 self-start sm:self-auto shadow-md"
-        >
-          <Plus className="w-4 h-4" /> New Product
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => {
+              setSheetInitialSelected(products.map((p) => p.id));
+              setShowSheetModal(true);
+            }}
+            className="btn btn-secondary flex items-center gap-2"
+            disabled={products.length === 0}
+          >
+            <Printer className="w-4 h-4 text-brand-600" /> Print Sheet (4×5 Grid)
+          </button>
+
+          <button
+            onClick={() => setShowNewModal(true)}
+            className="btn-primary flex items-center gap-2 shadow-md"
+          >
+            <Plus className="w-4 h-4" /> New Product
+          </button>
+        </div>
       </div>
 
       {/* KPI Overview */}
@@ -230,9 +246,12 @@ export default function BillingSystem() {
                     <td className="text-right">
                       <div className="inline-flex items-center gap-1">
                         <button
-                          onClick={() => setPrintProduct(p)}
+                          onClick={() => {
+                            setSheetInitialSelected([p.id]);
+                            setShowSheetModal(true);
+                          }}
                           className="btn-icon text-brand-600 hover:text-brand-700 hover:bg-brand-50"
-                          title="Print Barcode Sticker"
+                          title="Print Barcode Sheet (4x5)"
                         >
                           <Printer className="w-4 h-4" />
                         </button>
@@ -268,7 +287,16 @@ export default function BillingSystem() {
         />
       )}
 
-      {/* Print Barcode Sticker Modal */}
+      {/* Barcode Sheet Print Modal (4x5 A4 Grid with Include / Exclude) */}
+      {showSheetModal && (
+        <SheetPrintModal
+          products={products}
+          initialSelected={sheetInitialSelected}
+          onClose={() => setShowSheetModal(false)}
+        />
+      )}
+
+      {/* Single Barcode Print Modal */}
       {printProduct && (
         <BarcodePrintModal
           product={printProduct}
