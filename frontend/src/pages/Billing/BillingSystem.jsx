@@ -154,7 +154,7 @@ export default function BillingSystem() {
             <Layers className="w-6 h-6" />
           </div>
           <div>
-            <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Stock on Hand</div>
+            <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Quantity</div>
             <div className="text-2xl font-bold text-gray-900">{totalStockQty} <span className="text-xs font-normal text-gray-500">units</span></div>
           </div>
         </div>
@@ -235,7 +235,7 @@ export default function BillingSystem() {
                     </td>
                     <td>
                       <span className={`badge ${p.quantity > 5 ? 'badge-ready' : p.quantity > 0 ? 'badge-pending' : 'badge-unpaid'}`}>
-                        {p.quantity} in stock
+                        {p.quantity}
                       </span>
                     </td>
                     <td>

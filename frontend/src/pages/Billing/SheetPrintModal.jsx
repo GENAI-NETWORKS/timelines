@@ -311,7 +311,7 @@ export default function SheetPrintModal({ products, initialSelected = [], onClos
                         <span>·</span>
                         <span className="font-medium text-gray-700">₹ {Number(p.price).toFixed(2)}</span>
                         <span>·</span>
-                        <span>Stock: {p.quantity}</span>
+                        <span>Quantity: {p.quantity}</span>
                       </div>
                     </div>
                   </div>
