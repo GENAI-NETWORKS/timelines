@@ -108,7 +108,13 @@ export default function CustomerOrderList() {
                 <tr key={o.id} className="border-b border-surface-border hover:bg-surface-elevated/30 transition-colors">
                   <td className="px-4 py-3">
                     <div className="font-medium text-gray-900">{o.customer?.name}</div>
-                    {o.customer?.phone && <div className="text-xs text-gray-500 mt-0.5">{o.customer.phone}</div>}
+                    {o.customer?.address ? (
+                      <div className="text-xs text-gray-500 mt-0.5 max-w-xs truncate" title={o.customer.address}>
+                        {o.customer.address}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-gray-400 italic mt-0.5">No address</div>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-gray-600">{format(new Date(o.orderDate), 'dd MMM yy')}</td>
                   <td className="px-4 py-3 text-gray-600">{o.deliveryDate ? format(new Date(o.deliveryDate), 'dd MMM yy') : '—'}</td>

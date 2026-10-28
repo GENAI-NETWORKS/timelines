@@ -21,6 +21,7 @@ import Inventory from './pages/Inventory/Inventory';
 import Purchases from './pages/Purchases/Purchases';
 import Services from './pages/Services/Services';
 import Payments from './pages/Payments/Payments';
+import BillingSystem from './pages/Billing/BillingSystem';
 
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user, loading } = useAuth();
@@ -56,6 +57,7 @@ function AppRoutes() {
                 <Route path="/employees" element={<Employees />} />
                 <Route path="/customer"        element={<ProtectedRoute adminOnly><CustomerOrderPage /></ProtectedRoute>} />
                 <Route path="/customer/list"   element={<ProtectedRoute adminOnly><CustomerOrderList /></ProtectedRoute>} />
+                <Route path="/billing"         element={<ProtectedRoute adminOnly><BillingSystem /></ProtectedRoute>} />
                 <Route path="/customer/:id"    element={<ProtectedRoute adminOnly><CustomerOrderPage /></ProtectedRoute>} />
                 <Route path="/orders" element={<DesignOrders />} />
                 <Route path="/orders/new" element={

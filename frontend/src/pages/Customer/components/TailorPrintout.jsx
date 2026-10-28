@@ -116,7 +116,9 @@ export function TailorPrintContent({ order, customer, showPrices = false }) {
         <tbody>
           <tr>
             <td className="tp-label-cell">Customer Name</td>
-            <td className="tp-value-cell" colSpan={3}>{custName}</td>
+            <td className="tp-value-cell">{custName}</td>
+            <td className="tp-label-cell">Address</td>
+            <td className="tp-value-cell">{customer?.address || order?.customer?.address || '—'}</td>
           </tr>
           <tr>
             <td className="tp-label-cell">Order Date</td>

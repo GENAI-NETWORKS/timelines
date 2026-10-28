@@ -469,16 +469,26 @@ export default function CustomerOrderPage() {
                 {order.customer?.name?.[0]?.toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-900">{order.customer?.name}</p>
-                <p className="text-xs text-gray-500">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <p className="font-semibold text-gray-900">{order.customer?.name}</p>
+                  {order.customer?.phone && (
+                    <a
+                      href={`tel:${order.customer.phone}`}
+                      className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 hover:bg-emerald-100 transition-colors"
+                    >
+                      📞 {order.customer.phone}
+                    </a>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-0.5">
                   Order: {format(new Date(order.orderDate), 'dd MMM yyyy')}
                   {order.deliveryDate && ` · Delivery: ${format(new Date(order.deliveryDate), 'dd MMM yyyy')}`}
                 </p>
                 {order.customer?.address && (
-                  <p className="text-xs text-gray-500 mt-0.5"> {order.customer.address}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">📍 {order.customer.address}</p>
                 )}
                 {(order.bagNo || order.bagName) && (
-                  <p className="text-xs text-amber-400 mt-0.5">
+                  <p className="text-xs text-amber-500 font-medium mt-0.5">
                     {order.bagNo && `Bag No: ${order.bagNo}`}
                     {order.bagNo && order.bagName && ' · '}
                     {order.bagName && `Bag Name: ${order.bagName}`}

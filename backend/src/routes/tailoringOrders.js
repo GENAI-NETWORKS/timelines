@@ -60,12 +60,14 @@ const formatOrderList = (row) => {
     formatted.customer = {
       customerId: row['customer.customerId'],
       name: row['customer.name'],
-      phone: row['customer.phone']
+      phone: row['customer.phone'],
+      address: row['customer.address'] || '',
     };
   }
   delete formatted['customer.customerId'];
   delete formatted['customer.name'];
   delete formatted['customer.phone'];
+  delete formatted['customer.address'];
   delete formatted.itemCount;
   return formatted;
 };
@@ -115,9 +117,9 @@ router.get('/', protect, async (req, res, next) => {
     
     if (status) { whereClauses.push('o.status = ?'); params.push(status); }
     if (search) {
-      whereClauses.push('(c.name LIKE ? OR c.phone LIKE ?)');
+      whereClauses.push('(c.name LIKE ? OR c.phone LIKE ? OR c.address LIKE ?)');
       const likeS = `%${search}%`;
-      params.push(likeS, likeS);
+      params.push(likeS, likeS, likeS);
     }
     
     let whereClause = whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : '';
@@ -130,7 +132,7 @@ router.get('/', protect, async (req, res, next) => {
     
     const [rows] = await db.query(`
       SELECT o.*,
-             c.customerId as 'customer.customerId', c.name as 'customer.name', c.phone as 'customer.phone',
+             c.customerId as 'customer.customerId', c.name as 'customer.name', c.phone as 'customer.phone', c.address as 'customer.address',
              (SELECT COUNT(*) FROM TailoringOrderItem i WHERE i.orderId = o.id) as itemCount
       FROM TailoringOrder o
       LEFT JOIN Customer c ON o.customerId = c.customerId
