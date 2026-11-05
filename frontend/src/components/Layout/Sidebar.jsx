@@ -1,26 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, Users, UserSquare2, ShoppingBag, Palette,
-  IndianRupee, Printer, ClipboardList, Settings, LogOut, Menu, X, Scissors,
-  Package, ShoppingCart, CreditCard, Barcode
+  LayoutDashboard, Users, ShoppingBag, Scissors, QrCode, X, LogOut
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { logout } from '../../api/auth';
 
 const navItems = [
-  { to: '/',              label: 'Dashboard',     icon: LayoutDashboard },
+  { to: '/',              label: 'Dashboard',      icon: LayoutDashboard },
   { to: '/customers',     label: 'Customers',      icon: Users,         adminOnly: true },
-  { to: '/customer/list', label: 'All Orders',    icon: ShoppingBag,   adminOnly: true },
-  { to: '/billing',       label: 'Billing System', icon: Barcode,       adminOnly: true },
-  { to: '/employees',     label: 'Employees',     icon: UserSquare2,   adminOnly: true },
-  { to: '/salary',        label: 'Salary',        icon: IndianRupee,   adminOnly: true },
-  { to: '/inventory',     label: 'Stocks (Inv)',  icon: Package,       adminOnly: true },
-  { to: '/purchases',     label: 'Purchases',     icon: ShoppingCart,  adminOnly: true },
-  { to: '/services',      label: 'Services',      icon: Scissors,      adminOnly: true },
-  { to: '/payments',      label: 'Payments',      icon: CreditCard,    adminOnly: true },
-  { to: '/audit',         label: 'Audit Log',     icon: ClipboardList, adminOnly: true },
-  { to: '/garments',      label: 'Garment Types', icon: Settings,      adminOnly: true },
+  { to: '/customer/list', label: 'All Orders',     icon: ShoppingBag,   adminOnly: true },
+  { to: '/billing',       label: 'Billing System', icon: QrCode,        adminOnly: true },
 ];
 
 export default function Sidebar({ open, onClose }) {
