@@ -106,3 +106,79 @@ export function formatINR(val) {
   });
 }
 
+/**
+ * Safe UTF-8 Base64 encode for browser
+ */
+export function safeBase64Encode(str) {
+  try {
+    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode('0x' + p1)));
+  } catch {
+    return btoa(unescape(encodeURIComponent(str)));
+  }
+}
+
+/**
+ * Safe UTF-8 Base64 decode for browser
+ */
+export function safeBase64Decode(b64) {
+  try {
+    return decodeURIComponent(Array.prototype.map.call(atob(b64), (c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+  } catch {
+    return decodeURIComponent(escape(atob(b64)));
+  }
+}
+
+/**
+ * Encodes a bill object into a super-compact Base64 string for QR code embedding
+ */
+export function encodeBillToPayload(bill) {
+  const compact = {
+    b: bill.billNo,
+    d: bill.date,
+    c: bill.customerName || '',
+    p: bill.customerPhone || '',
+    m: bill.paymentMode || 'CASH',
+    i: (bill.items || []).map((it) => [it.name, Number(it.quantity) || 1, Number(it.price) || 0, it.barcode || '']),
+    s: Number(bill.subtotal) || 0,
+    ds: Number(bill.discountAmount) || 0,
+    tx: Number(bill.taxRate) || 0,
+    g: Number(bill.grandTotal) || 0,
+  };
+  return safeBase64Encode(JSON.stringify(compact));
+}
+
+/**
+ * Decodes a compact or legacy Base64 string back into full bill object
+ */
+export function decodeBillFromPayload(encodedStr) {
+  if (!encodedStr) return null;
+  try {
+    const jsonStr = safeBase64Decode(encodedStr);
+    const parsed = JSON.parse(jsonStr);
+    if (parsed.b) {
+      return {
+        billNo: parsed.b,
+        date: parsed.d,
+        customerName: parsed.c,
+        customerPhone: parsed.p,
+        paymentMode: parsed.m,
+        items: (parsed.i || []).map((x) => ({
+          name: x[0],
+          quantity: x[1],
+          price: x[2],
+          barcode: x[3] || '',
+        })),
+        subtotal: parsed.s,
+        discountAmount: parsed.ds || 0,
+        taxRate: parsed.tx || 0,
+        grandTotal: parsed.g,
+      };
+    }
+    return parsed;
+  } catch (e) {
+    console.error('Failed to decode bill payload', e);
+    return null;
+  }
+}
+
+

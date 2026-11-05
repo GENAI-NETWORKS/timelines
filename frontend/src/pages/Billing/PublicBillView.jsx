@@ -5,7 +5,7 @@ import {
   CreditCard, User, IndianRupee, ShieldCheck
 } from 'lucide-react';
 import QrCodeView from './QrCodeView';
-import { formatINR, numberToWordsIndian } from './billUtils';
+import { formatINR, numberToWordsIndian, decodeBillFromPayload } from './billUtils';
 
 const HISTORY_KEY = 'timelines_billing_history';
 
@@ -20,14 +20,11 @@ export default function PublicBillView() {
   useEffect(() => {
     // 1. Try decoding from query param 'd'
     if (encodedData) {
-      try {
-        const jsonStr = decodeURIComponent(atob(encodedData));
-        const parsed = JSON.parse(jsonStr);
-        setBill(parsed);
+      const decoded = decodeBillFromPayload(encodedData);
+      if (decoded) {
+        setBill(decoded);
         setLoading(false);
         return;
-      } catch (e) {
-        console.error('Failed to parse encoded bill data', e);
       }
     }
 

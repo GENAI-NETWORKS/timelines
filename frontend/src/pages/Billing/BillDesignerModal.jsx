@@ -7,7 +7,7 @@ import {
 import Modal from '../../components/UI/Modal';
 import QrCodeView from './QrCodeView';
 import { createQrSvgString } from './qrCodeGenerator';
-import { numberToWordsIndian, generateBillNumber, formatINR } from './billUtils';
+import { numberToWordsIndian, generateBillNumber, formatINR, encodeBillToPayload } from './billUtils';
 import toast from 'react-hot-toast';
 
 const HISTORY_KEY = 'timelines_billing_history';
@@ -252,26 +252,24 @@ export default function BillDesignerModal({
 
   // Generate public view URL with encoded bill data so scanning QR code immediately shows the bill
   const billQrUrl = useMemo(() => {
-    const payload = {
-      billNo,
-      date: billDate,
-      customerName,
-      customerPhone,
-      paymentMode,
-      items: items.map((i) => ({ name: i.name, quantity: i.quantity, price: i.price, barcode: i.barcode })),
-      subtotal,
-      discountAmount,
-      taxRate,
-      grandTotal,
-      storeInfo,
-    };
     try {
-      const encoded = btoa(encodeURIComponent(JSON.stringify(payload)));
+      const encoded = encodeBillToPayload({
+        billNo,
+        date: billDate,
+        customerName,
+        customerPhone,
+        paymentMode,
+        items,
+        subtotal,
+        discountAmount,
+        taxRate,
+        grandTotal,
+      });
       return `${window.location.origin}/bill/view/${encodeURIComponent(billNo)}?d=${encoded}`;
     } catch {
       return `${window.location.origin}/bill/view/${encodeURIComponent(billNo)}`;
     }
-  }, [billNo, billDate, customerName, customerPhone, paymentMode, items, subtotal, discountAmount, taxRate, grandTotal, storeInfo]);
+  }, [billNo, billDate, customerName, customerPhone, paymentMode, items, subtotal, discountAmount, taxRate, grandTotal]);
 
   // Save current bill to history
   const saveToHistory = () => {
@@ -334,7 +332,7 @@ export default function BillDesignerModal({
     const isA4 = paperSize === 'a4';
 
     const qrSize = isA4 ? 130 : isA5 ? 110 : 92;
-    const qrSvgHtml = showQrCode ? createQrSvgString(billQrUrl, { size: qrSize, margin: 1 }) : '';
+    const qrSvgHtml = showQrCode ? createQrSvgString(billQrUrl, { size: qrSize, margin: 1, ecLevel: 'L' }) : '';
 
     const html = `
       <!DOCTYPE html>
