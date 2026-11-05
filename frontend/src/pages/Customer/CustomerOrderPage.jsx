@@ -476,7 +476,7 @@ export default function CustomerOrderPage() {
                       href={`tel:${order.customer.phone}`}
                       className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 hover:bg-emerald-100 transition-colors"
                     >
-                      📞 {order.customer.phone}
+                      {order.customer.phone}
                     </a>
                   )}
                 </div>

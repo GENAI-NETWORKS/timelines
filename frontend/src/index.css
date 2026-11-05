@@ -114,12 +114,12 @@
   /* Divider */
   .divider { @apply border-t border-surface-border; }
 
-  /* Overlay backdrop */
-  .backdrop { @apply fixed inset-0 bg-black/60 backdrop-blur-sm z-40 animate-fade-in; }
+  /* Overlay backdrop — z-[500] ensures it covers sticky topbar (z-20) and sidebar (z-40) */
+  .backdrop { @apply fixed inset-0 bg-black/70 backdrop-blur-[3px] z-[500] animate-fade-in; }
 
   /* Modal */
   .modal {
-    @apply fixed inset-0 z-50 flex items-center justify-center p-4;
+    @apply fixed inset-0 z-[501] flex items-center justify-center p-4;
   }
   .modal-box {
     @apply card w-full max-h-[90vh] overflow-y-auto animate-slide-up shadow-2xl;

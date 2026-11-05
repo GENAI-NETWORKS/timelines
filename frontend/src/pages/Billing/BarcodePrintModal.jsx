@@ -1,41 +1,22 @@
-import { useEffect, useRef } from 'react';
-import JsBarcode from 'jsbarcode';
-import { Printer } from 'lucide-react';
+import { Printer, QrCode } from 'lucide-react';
 import Modal from '../../components/UI/Modal';
+import QrCodeView from './QrCodeView';
+import { createQrSvgString } from './qrCodeGenerator';
 
 export default function BarcodePrintModal({ product, onClose }) {
-  const svgRef = useRef(null);
-
-  useEffect(() => {
-    if (svgRef.current && product?.barcode) {
-      try {
-        JsBarcode(svgRef.current, product.barcode, {
-          format: 'CODE128',
-          lineColor: '#000000',
-          width: 2,
-          height: 60,
-          displayValue: true,
-          fontSize: 14,
-          font: 'monospace',
-          textMargin: 4,
-          margin: 10,
-        });
-      } catch (e) {
-        console.error('Barcode generation error:', e);
-      }
-    }
-  }, [product]);
+  if (!product) return null;
 
   const handlePrint = () => {
     const printWindow = window.open('', '_blank', 'width=500,height=500');
     if (!printWindow) return;
 
-    const svgContent = svgRef.current ? svgRef.current.outerHTML : '';
+    const qrSvgContent = createQrSvgString(product.barcode, { size: 130, margin: 1 });
+
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Print Barcode - ${product.name}</title>
+          <title>Print QR Code - ${product.name}</title>
           <style>
             @page {
               size: auto;
@@ -52,32 +33,40 @@ export default function BarcodePrintModal({ product, onClose }) {
             }
             .label-card {
               border: 1px dashed #444;
-              padding: 12px 16px;
+              padding: 14px 18px;
               text-align: center;
               width: 240px;
-              border-radius: 6px;
+              border-radius: 8px;
             }
             .shop-title {
               font-size: 11px;
               font-weight: 700;
               text-transform: uppercase;
               letter-spacing: 0.5px;
-              margin-bottom: 3px;
+              margin-bottom: 4px;
             }
             .product-name {
               font-size: 14px;
               font-weight: 600;
-              margin-bottom: 2px;
+              margin-bottom: 6px;
               word-break: break-word;
+            }
+            .qr-wrapper {
+              margin: 6px auto;
+              display: flex;
+              justify-content: center;
+            }
+            .product-code {
+              font-family: monospace;
+              font-size: 12px;
+              font-weight: 700;
+              color: #333;
+              margin-top: 4px;
             }
             .price-tag {
               font-size: 16px;
               font-weight: 800;
-              margin-top: 4px;
-            }
-            svg {
-              max-width: 100%;
-              height: auto;
+              margin-top: 6px;
             }
           </style>
         </head>
@@ -85,7 +74,8 @@ export default function BarcodePrintModal({ product, onClose }) {
           <div class="label-card">
             <div class="shop-title">Timelines Costume Designers</div>
             <div class="product-name">${product.name}</div>
-            ${svgContent}
+            <div class="qr-wrapper">${qrSvgContent}</div>
+            <div class="product-code">${product.barcode}</div>
             <div class="price-tag">₹ ${Number(product.price).toFixed(2)}</div>
           </div>
           <script>
@@ -102,7 +92,7 @@ export default function BarcodePrintModal({ product, onClose }) {
   };
 
   return (
-    <Modal title="Product Barcode Label" onClose={onClose} size="max-w-md">
+    <Modal title="Product QR Code Label" onClose={onClose} size="max-w-md">
       <div className="space-y-6">
         {/* Visual Sticker Preview */}
         <div className="flex flex-col items-center justify-center p-6 bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl text-center">
@@ -113,11 +103,15 @@ export default function BarcodePrintModal({ product, onClose }) {
             {product.name}
           </div>
 
-          <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
-            <svg ref={svgRef}></svg>
+          <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-200">
+            <QrCodeView value={product.barcode} size={120} margin={1} />
           </div>
 
-          <div className="text-xl font-extrabold text-brand-500 mt-3">
+          <div className="font-mono text-xs font-bold text-gray-700 mt-2">
+            {product.barcode}
+          </div>
+
+          <div className="text-xl font-extrabold text-brand-500 mt-2">
             ₹ {Number(product.price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
           </div>
           <div className="text-xs text-gray-500 mt-1">
@@ -131,7 +125,7 @@ export default function BarcodePrintModal({ product, onClose }) {
             Close
           </button>
           <button type="button" onClick={handlePrint} className="btn-primary">
-            <Printer className="w-4 h-4" /> Print Barcode Sticker
+            <Printer className="w-4 h-4" /> Print QR Sticker
           </button>
         </div>
       </div>

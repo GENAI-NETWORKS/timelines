@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import Modal from '../../components/UI/Modal';
-import { Loader, Sparkles } from 'lucide-react';
+import { Loader, Sparkles, QrCode } from 'lucide-react';
 
 export default function NewProductModal({ onClose, onSubmit, loading }) {
   const [form, setForm] = useState({
@@ -78,8 +78,8 @@ export default function NewProductModal({ onClose, onSubmit, loading }) {
         </div>
 
         <div className="p-3 bg-brand-50 border border-brand-200 rounded-xl text-xs text-brand-700 flex items-center gap-2">
-          <Sparkles className="w-4 h-4 flex-shrink-0 text-brand-500" />
-          <span>A unique barcode (e.g. <code>TL928412</code>) will be generated automatically for instant sticker printing.</span>
+          <QrCode className="w-4 h-4 flex-shrink-0 text-brand-500" />
+          <span>A unique QR Code (e.g. <code>TL928412</code>) will be generated automatically for instant sticker printing.</span>
         </div>
 
         <div className="flex gap-2 justify-end pt-3 border-t border-surface-border">
@@ -87,7 +87,7 @@ export default function NewProductModal({ onClose, onSubmit, loading }) {
             Cancel
           </button>
           <button type="submit" className="btn-primary" disabled={loading || !form.name.trim()}>
-            {loading ? <><Loader className="w-4 h-4 animate-spin" /> Saving…</> : 'Generate Product & Barcode'}
+            {loading ? <><Loader className="w-4 h-4 animate-spin" /> Saving…</> : 'Generate Product & QR Code'}
           </button>
         </div>
       </form>

@@ -1,30 +1,9 @@
-import { useEffect, useRef } from 'react';
-import JsBarcode from 'jsbarcode';
-import { Barcode, Printer, Tag, Package, Calendar, IndianRupee, Layers } from 'lucide-react';
+import { Tag, Calendar, IndianRupee, Layers, Receipt, Printer, QrCode } from 'lucide-react';
 import Modal from '../../components/UI/Modal';
+import QrCodeView from './QrCodeView';
 import { format } from 'date-fns';
 
-export default function ScannedProductModal({ product, onClose, onPrint }) {
-  const svgRef = useRef(null);
-
-  useEffect(() => {
-    if (svgRef.current && product?.barcode) {
-      try {
-        JsBarcode(svgRef.current, product.barcode, {
-          format: 'CODE128',
-          lineColor: '#111827',
-          width: 1.6,
-          height: 48,
-          displayValue: true,
-          fontSize: 12,
-          font: 'monospace',
-          textMargin: 3,
-          margin: 6,
-        });
-      } catch (e) {}
-    }
-  }, [product]);
-
+export default function ScannedProductModal({ product, onClose, onPrint, onAddToBill }) {
   if (!product) return null;
 
   return (
@@ -38,7 +17,7 @@ export default function ScannedProductModal({ product, onClose, onPrint }) {
             </div>
             <h2 className="text-xl font-bold mt-0.5">{product.name}</h2>
             <div className="text-xs text-pink-100 mt-1 font-mono">
-              Barcode: {product.barcode}
+              Item Code: {product.barcode}
             </div>
           </div>
           <div className="text-right">
@@ -49,13 +28,16 @@ export default function ScannedProductModal({ product, onClose, onPrint }) {
           </div>
         </div>
 
-        {/* Barcode Sticker Preview Box */}
+        {/* QR Code Sticker Preview Box */}
         <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl text-center">
-          <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">
-            Scanned Barcode
+          <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2 flex items-center justify-center gap-1.5">
+            <QrCode className="w-4 h-4 text-brand-600" /> Scanned QR Code
           </div>
-          <div className="bg-white p-2 rounded-lg inline-block border border-gray-200 shadow-sm">
-            <svg ref={svgRef}></svg>
+          <div className="bg-white p-3 rounded-xl inline-block border border-gray-200 shadow-sm">
+            <QrCodeView value={product.barcode} size={120} margin={1} />
+            <div className="font-mono text-xs font-bold text-gray-700 mt-2">
+              {product.barcode}
+            </div>
           </div>
         </div>
 
@@ -99,7 +81,7 @@ export default function ScannedProductModal({ product, onClose, onPrint }) {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-between pt-4 border-t border-surface-border">
+        <div className="flex items-center justify-between pt-4 border-t border-surface-border gap-2 flex-wrap">
           <button
             type="button"
             onClick={onClose}
@@ -108,16 +90,29 @@ export default function ScannedProductModal({ product, onClose, onPrint }) {
             Close
           </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              if (onPrint) onPrint(product);
-            }}
-            className="btn-primary flex items-center gap-2"
-          >
-            <Printer className="w-4 h-4" /> Print Barcode Label
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                if (onAddToBill) onAddToBill(product);
+              }}
+              className="btn bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2 shadow-sm"
+            >
+              <Receipt className="w-4 h-4" /> Add to Bill
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                if (onPrint) onPrint(product);
+              }}
+              className="btn-primary flex items-center gap-2"
+            >
+              <Printer className="w-4 h-4" /> Print QR Code Label
+            </button>
+          </div>
         </div>
       </div>
     </Modal>

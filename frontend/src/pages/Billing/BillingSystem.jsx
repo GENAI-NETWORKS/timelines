@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, Component } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  Barcode, Plus, Search, Printer, Trash2, Edit2, Loader,
-  ShoppingBag, IndianRupee, Layers, CheckCircle2, AlertCircle
+  QrCode, Plus, Search, Printer, Trash2, Edit2, Loader,
+  ShoppingBag, IndianRupee, Layers, CheckCircle2, AlertCircle, Receipt
 } from 'lucide-react';
 import {
   getBillingProducts, getProductByBarcode, createBillingProduct,
@@ -11,34 +12,48 @@ import NewProductModal from './NewProductModal';
 import BarcodePrintModal from './BarcodePrintModal';
 import SheetPrintModal from './SheetPrintModal';
 import ScannedProductModal from './ScannedProductModal';
+import BillDesignerModal from './BillDesignerModal';
 import ConfirmModal from '../../components/UI/ConfirmModal';
 import Pagination from '../../components/UI/Pagination';
+import QrCodeView from './QrCodeView';
 import toast from 'react-hot-toast';
-import JsBarcode from 'jsbarcode';
 
-// Mini barcode canvas component for table row preview
-function MiniBarcode({ value }) {
-  const svgRef = useRef(null);
-
-  useEffect(() => {
-    if (svgRef.current && value) {
-      try {
-        JsBarcode(svgRef.current, value, {
-          format: 'CODE128',
-          lineColor: '#1f2937',
-          width: 1.2,
-          height: 28,
-          displayValue: false,
-          margin: 0,
-        });
-      } catch (e) {}
+// Error boundary for QR code cells — prevents one bad row from wiping the whole table
+class QrErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { failed: false }; }
+  static getDerivedStateFromError() { return { failed: true }; }
+  render() {
+    if (this.state.failed) {
+      return (
+        <span className="font-mono text-xs text-gray-500">{this.props.fallback}</span>
+      );
     }
-  }, [value]);
+    return this.props.children;
+  }
+}
 
-  return <svg ref={svgRef} className="h-7 w-auto" />;
+// Mini QR Code preview component for table row
+function MiniQrCode({ value }) {
+  if (!value) return <span className="font-mono text-xs text-gray-400">—</span>;
+  return (
+    <QrErrorBoundary fallback={value}>
+      <div className="flex items-center gap-2">
+        <QrCodeView
+          value={value}
+          size={30}
+          margin={1}
+          className="rounded border border-gray-200 bg-white p-0.5 shadow-sm flex-shrink-0"
+        />
+        <span className="font-mono text-xs font-semibold text-gray-800 tracking-wider group-hover:text-brand-600">
+          {value}
+        </span>
+      </div>
+    </QrErrorBoundary>
+  );
 }
 
 export default function BillingSystem() {
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -52,6 +67,8 @@ export default function BillingSystem() {
   const [showSheetModal, setShowSheetModal] = useState(false);
   const [sheetInitialSelected, setSheetInitialSelected] = useState([]);
   const [scannedProduct, setScannedProduct] = useState(null);
+  const [showBillModal, setShowBillModal] = useState(false);
+  const [billInitialProduct, setBillInitialProduct] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
   const barcodeInputRef = useRef(null);
 
@@ -74,10 +91,33 @@ export default function BillingSystem() {
     load();
   }, [load]);
 
-  // Direct Barcode Lookup handler
-  const handleScanBarcode = async (code) => {
+  // Direct QR Code / Barcode Lookup handler
+  const handleScanCode = async (code) => {
     if (!code || !code.trim()) return;
     const cleanCode = code.trim();
+
+    // 1. If scanned code is a Bill URL (e.g., http://.../bill/view/TL-xxx?d=...) or a Bill No:
+    if (cleanCode.includes('/bill/view/')) {
+      const billPath = cleanCode.substring(cleanCode.indexOf('/bill/view/'));
+      navigate(billPath);
+      return;
+    }
+
+    // Check if it matches a Bill Number saved in local history
+    try {
+      const saved = localStorage.getItem('timelines_billing_history');
+      if (saved) {
+        const historyList = JSON.parse(saved);
+        const billMatch = historyList.find((b) => b.billNo?.toLowerCase() === cleanCode.toLowerCase());
+        if (billMatch) {
+          navigate(`/bill/view/${encodeURIComponent(billMatch.billNo)}`);
+          toast.success(`Opening Bill ${billMatch.billNo}`);
+          return;
+        }
+      }
+    } catch {}
+
+    // 2. Otherwise look up as Product item code
     try {
       const res = await getProductByBarcode(cleanCode);
       if (res.data) {
@@ -86,18 +126,17 @@ export default function BillingSystem() {
         setSearch('');
       }
     } catch (e) {
-      toast.error(`No product found with barcode "${cleanCode}"`);
+      toast.error(`No item found for code "${cleanCode}"`);
     }
   };
 
-  // Hardware Barcode Scanner Listener:
-  // USB/Bluetooth barcode scanners type characters very quickly (<30ms apart) followed by Enter.
+  // Hardware Scanner Listener:
+  // USB/Bluetooth scanners type characters quickly (<40ms apart) followed by Enter.
   useEffect(() => {
     let buffer = '';
     let lastKeyTime = Date.now();
 
     const handleKeyDown = (e) => {
-      // Ignore if user is actively typing in a standard input or textarea other than the barcode search
       const activeTag = document.activeElement?.tagName?.toLowerCase();
       const isInput = activeTag === 'input' || activeTag === 'textarea';
 
@@ -108,12 +147,12 @@ export default function BillingSystem() {
       if (e.key === 'Enter') {
         if (buffer.length >= 4) {
           e.preventDefault();
-          handleScanBarcode(buffer);
+          handleScanCode(buffer);
           buffer = '';
         }
       } else if (e.key.length === 1) {
         if (charDiff > 80 && !isInput) {
-          buffer = ''; // reset buffer if human typing slowly
+          buffer = '';
         }
         buffer += e.key;
       }
@@ -127,7 +166,7 @@ export default function BillingSystem() {
     setCreating(true);
     try {
       const res = await createBillingProduct(formData);
-      toast.success('Product created with barcode!');
+      toast.success('Product created with QR code!');
       setShowNewModal(false);
       load();
       // Directly open print modal for convenience!
@@ -161,14 +200,24 @@ export default function BillingSystem() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-display font-bold text-2xl text-gray-900 flex items-center gap-2">
-            <Barcode className="w-7 h-7 text-brand-500" /> Billing System & Barcode Generator
+            <QrCode className="w-7 h-7 text-brand-500" /> Billing System & QR Code Generator
           </h1>
           <p className="text-sm text-gray-500">
-            Create products, generate barcodes, and print stickers to stick on inventory items.
+            Create products, generate QR codes, and print stickers to stick on inventory items.
           </p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => {
+              setBillInitialProduct(null);
+              setShowBillModal(true);
+            }}
+            className="btn bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2 shadow-md transition-all hover:scale-[1.02]"
+          >
+            <Receipt className="w-4 h-4" /> Design & Print Bill
+          </button>
+
           <button
             onClick={() => {
               setSheetInitialSelected(products.map((p) => p.id));
@@ -177,7 +226,7 @@ export default function BillingSystem() {
             className="btn btn-secondary flex items-center gap-2"
             disabled={products.length === 0}
           >
-            <Printer className="w-4 h-4 text-brand-600" /> Print Sheet (4×5 Grid)
+            <Printer className="w-4 h-4 text-brand-600" /> Print QR Sheet (4×5 Grid)
           </button>
 
           <button
@@ -193,7 +242,7 @@ export default function BillingSystem() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="card p-4 flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
-            <Barcode className="w-6 h-6" />
+            <QrCode className="w-6 h-6" />
           </div>
           <div>
             <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Products</div>
@@ -231,24 +280,24 @@ export default function BillingSystem() {
               ref={barcodeInputRef}
               type="text"
               className="input pl-9"
-              placeholder="Scan barcode with scanner or search by name / barcode number (Press Enter to open)…"
+              placeholder="Scan QR code with scanner or search by name / item code (Press Enter to open)…"
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && search.trim()) {
                   e.preventDefault();
-                  handleScanBarcode(search.trim());
+                  handleScanCode(search.trim());
                 }
               }}
             />
           </div>
           {search && (
             <button
-              onClick={() => handleScanBarcode(search.trim())}
+              onClick={() => handleScanCode(search.trim())}
               className="btn btn-secondary text-xs flex items-center gap-1.5"
             >
-              <Barcode className="w-3.5 h-3.5 text-brand-600" />
-              Lookup Barcode
+              <QrCode className="w-3.5 h-3.5 text-brand-600" />
+              Lookup Code
             </button>
           )}
         </div>
@@ -260,7 +309,7 @@ export default function BillingSystem() {
           <table className="table">
             <thead>
               <tr>
-                <th className="w-44">Barcode</th>
+                <th className="w-48">QR Code</th>
                 <th>Product Name</th>
                 <th>Price</th>
                 <th>Quantity</th>
@@ -279,7 +328,7 @@ export default function BillingSystem() {
               ) : products.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-12 text-gray-500">
-                    <Barcode className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                    <QrCode className="w-10 h-10 text-gray-300 mx-auto mb-2" />
                     <p className="text-sm font-medium">No products found</p>
                     <p className="text-xs text-gray-400 mt-1">Click "+ New Product" to add your first billing item.</p>
                   </td>
@@ -287,17 +336,12 @@ export default function BillingSystem() {
               ) : (
                 products.map((p) => (
                   <tr
-                    key={p.id}
+                    key={String(p.id)}
                     onClick={() => setScannedProduct(p)}
                     className="hover:bg-brand-50/40 transition-colors cursor-pointer group"
                   >
                     <td>
-                      <div className="flex flex-col gap-1">
-                        <MiniBarcode value={p.barcode} />
-                        <span className="font-mono text-xs font-semibold text-gray-800 tracking-wider group-hover:text-brand-600">
-                          {p.barcode}
-                        </span>
-                      </div>
+                      <MiniQrCode value={p.barcode} />
                     </td>
                     <td>
                       <div className="font-semibold text-gray-900 group-hover:text-brand-600 transition-colors">
@@ -323,11 +367,21 @@ export default function BillingSystem() {
                       <div className="inline-flex items-center gap-1">
                         <button
                           onClick={() => {
+                            setBillInitialProduct(p);
+                            setShowBillModal(true);
+                          }}
+                          className="btn-icon text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                          title="Add to Bill & Print Receipt"
+                        >
+                          <Receipt className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => {
                             setSheetInitialSelected([p.id]);
                             setShowSheetModal(true);
                           }}
                           className="btn-icon text-brand-600 hover:text-brand-700 hover:bg-brand-50"
-                          title="Print Barcode Sheet (4x5)"
+                          title="Print QR Code Sheet (4x5)"
                         >
                           <Printer className="w-4 h-4" />
                         </button>
@@ -363,7 +417,7 @@ export default function BillingSystem() {
         />
       )}
 
-      {/* Barcode Sheet Print Modal (4x5 A4 Grid with Include / Exclude) */}
+      {/* QR Code Sheet Print Modal (4x5 A4 Grid) */}
       {showSheetModal && (
         <SheetPrintModal
           products={products}
@@ -372,7 +426,7 @@ export default function BillingSystem() {
         />
       )}
 
-      {/* Scanned Barcode Product Details Modal */}
+      {/* Scanned QR Code Product Details Modal */}
       {scannedProduct && (
         <ScannedProductModal
           product={scannedProduct}
@@ -381,10 +435,14 @@ export default function BillingSystem() {
             setSheetInitialSelected([p.id]);
             setShowSheetModal(true);
           }}
+          onAddToBill={(p) => {
+            setBillInitialProduct(p);
+            setShowBillModal(true);
+          }}
         />
       )}
 
-      {/* Single Barcode Print Modal */}
+      {/* Single QR Code Print Modal */}
       {printProduct && (
         <BarcodePrintModal
           product={printProduct}
@@ -392,11 +450,23 @@ export default function BillingSystem() {
         />
       )}
 
+      {/* Bill Designer & Printout Modal */}
+      {showBillModal && (
+        <BillDesignerModal
+          availableProducts={products}
+          initialProduct={billInitialProduct}
+          onClose={() => {
+            setShowBillModal(false);
+            setBillInitialProduct(null);
+          }}
+        />
+      )}
+
       {/* Confirm Delete Modal */}
       {deleteId && (
         <ConfirmModal
           title="Delete Product?"
-          message="Are you sure you want to remove this product and barcode from the billing system?"
+          message="Are you sure you want to remove this product and QR code from the billing system?"
           onConfirm={handleDelete}
           onCancel={() => setDeleteId(null)}
         />

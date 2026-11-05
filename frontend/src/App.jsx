@@ -22,6 +22,7 @@ import Purchases from './pages/Purchases/Purchases';
 import Services from './pages/Services/Services';
 import Payments from './pages/Payments/Payments';
 import BillingSystem from './pages/Billing/BillingSystem';
+import PublicBillView from './pages/Billing/PublicBillView';
 
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user, loading } = useAuth();
@@ -46,6 +47,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/bill/view/:id" element={<PublicBillView />} />
       <Route
         path="/*"
         element={
