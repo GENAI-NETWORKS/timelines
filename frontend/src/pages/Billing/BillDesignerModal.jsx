@@ -331,8 +331,8 @@ export default function BillDesignerModal({
     const isA5 = paperSize === 'a5';
     const isA4 = paperSize === 'a4';
 
-    const qrSize = isA4 ? 130 : isA5 ? 110 : 92;
-    const qrSvgHtml = showQrCode ? createQrSvgString(billQrUrl, { size: qrSize, margin: 1, ecLevel: 'L' }) : '';
+    const qrSize = isA4 ? 140 : isA5 ? 120 : 100;
+    const qrSvgHtml = showQrCode ? createQrSvgString(billQrUrl, { size: qrSize, margin: 4, ecLevel: 'L' }) : '';
 
     const html = `
       <!DOCTYPE html>
@@ -1472,12 +1472,12 @@ export default function BillDesignerModal({
 
                 {/* QR Code preview */}
                 {showQrCode && (
-                  <div className="text-center pt-3">
-                    <div className="inline-block p-1 bg-white border border-gray-200 rounded-lg shadow-xs">
-                      <QrCodeView value={billQrUrl} size={90} margin={1} />
+                  <div className="text-center pt-3 flex flex-col items-center">
+                    <div className="p-3 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col items-center">
+                      <QrCodeView value={billQrUrl} size={150} margin={4} />
+                      <div className="font-mono text-xs font-bold text-gray-800 tracking-wider mt-2">{billNo}</div>
+                      <div className="text-[10px] font-medium text-brand-600 mt-0.5">Scan QR Code to view digital bill</div>
                     </div>
-                    <div className="font-mono text-[9px] font-bold text-gray-700 mt-1">{billNo}</div>
-                    <div className="text-[8.5px] text-gray-400">Scan QR Code to view bill</div>
                   </div>
                 )}
 

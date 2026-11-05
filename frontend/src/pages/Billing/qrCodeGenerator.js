@@ -7,7 +7,7 @@
 import QRCode from 'qrcode';
 
 export const QRErrorCorrectLevel = {
-  L: 'L', // ~7% recovery (highest data capacity, easiest to scan)
+  L: 'L', // ~7% recovery (highest data capacity, lowest density, easiest to scan)
   M: 'M', // ~15% recovery (standard)
   Q: 'Q', // ~25% recovery
   H: 'H'  // ~30% recovery
@@ -16,7 +16,7 @@ export const QRErrorCorrectLevel = {
 /**
  * Generate a 2D boolean array representing the QR code modules.
  */
-export function createQrMatrix(text, ecLevel = 'M') {
+export function createQrMatrix(text, ecLevel = 'L') {
   const cleanText = String(text ?? '');
   const qr = QRCode.create(cleanText, { errorCorrectionLevel: ecLevel });
   const count = qr.modules.size;
@@ -35,14 +35,16 @@ export function createQrMatrix(text, ecLevel = 'M') {
 
 /**
  * Generate an inline SVG string for the QR code.
+ * Uses standard Quiet Zone (margin = 4) and level L by default to ensure
+ * phone cameras, Google Lens, and hardware scanners recognize it immediately.
  */
 export function createQrSvgString(text, options = {}) {
   const {
-    size = 120,
-    margin = 1,
+    size = 140,
+    margin = 4, // 4-module quiet zone is the ISO 18004 standard required by phone scanners
     fgColor = '#000000',
     bgColor = '#ffffff',
-    ecLevel = 'M'
+    ecLevel = 'L'
   } = options;
 
   const cleanText = String(text ?? '').trim();

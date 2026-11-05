@@ -129,56 +129,65 @@ export function safeBase64Decode(b64) {
 }
 
 /**
- * Encodes a bill object into a super-compact Base64 string for QR code embedding
+ * Encodes a bill object into an ultra-short Base64 string for QR code embedding.
+ * Keeps payload minimal (< 100 bytes) so the resulting QR code is low density,
+ * has big blocks, and scans instantly with any phone camera or Google Lens.
  */
 export function encodeBillToPayload(bill) {
-  const compact = {
-    b: bill.billNo,
-    d: bill.date,
-    c: bill.customerName || '',
-    p: bill.customerPhone || '',
-    m: bill.paymentMode || 'CASH',
-    i: (bill.items || []).map((it) => [it.name, Number(it.quantity) || 1, Number(it.price) || 0, it.barcode || '']),
-    s: Number(bill.subtotal) || 0,
-    ds: Number(bill.discountAmount) || 0,
-    tx: Number(bill.taxRate) || 0,
-    g: Number(bill.grandTotal) || 0,
+  const min = {
+    d: (bill.date || '').slice(0, 10),
+    i: (bill.items || []).map((it) => [
+      String(it.name || ''),
+      Number(it.quantity) || 1,
+      Number(it.price) || 0
+    ]),
+    g: Number(bill.grandTotal) || 0
   };
-  return safeBase64Encode(JSON.stringify(compact));
+
+  if (bill.customerName && bill.customerName !== 'Walk-in Customer') min.c = bill.customerName;
+  if (bill.customerPhone) min.p = bill.customerPhone;
+  if (bill.paymentMode && bill.paymentMode !== 'CASH') min.m = bill.paymentMode;
+  if (bill.discountAmount) min.ds = Number(bill.discountAmount);
+  if (bill.taxRate) min.tx = Number(bill.taxRate);
+  if (bill.subtotal && bill.subtotal !== bill.grandTotal) min.s = Number(bill.subtotal);
+
+  return safeBase64Encode(JSON.stringify(min));
 }
 
 /**
  * Decodes a compact or legacy Base64 string back into full bill object
  */
-export function decodeBillFromPayload(encodedStr) {
+export function decodeBillFromPayload(encodedStr, fallbackId = '') {
   if (!encodedStr) return null;
   try {
     const jsonStr = safeBase64Decode(encodedStr);
     const parsed = JSON.parse(jsonStr);
-    if (parsed.b) {
+
+    // Ultra-compact format
+    if (parsed.i) {
       return {
-        billNo: parsed.b,
+        billNo: parsed.b || fallbackId,
         date: parsed.d,
-        customerName: parsed.c,
-        customerPhone: parsed.p,
-        paymentMode: parsed.m,
-        items: (parsed.i || []).map((x) => ({
+        customerName: parsed.c || 'Walk-in Customer',
+        customerPhone: parsed.p || '',
+        paymentMode: parsed.m || 'CASH',
+        items: parsed.i.map((x) => ({
           name: x[0],
           quantity: x[1],
           price: x[2],
           barcode: x[3] || '',
         })),
-        subtotal: parsed.s,
+        subtotal: parsed.s ?? parsed.g,
         discountAmount: parsed.ds || 0,
         taxRate: parsed.tx || 0,
         grandTotal: parsed.g,
       };
     }
+
+    // Legacy format
     return parsed;
   } catch (e) {
     console.error('Failed to decode bill payload', e);
     return null;
   }
 }
-
-

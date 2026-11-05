@@ -20,7 +20,7 @@ export default function PublicBillView() {
   useEffect(() => {
     // 1. Try decoding from query param 'd'
     if (encodedData) {
-      const decoded = decodeBillFromPayload(encodedData);
+      const decoded = decodeBillFromPayload(encodedData, id);
       if (decoded) {
         setBill(decoded);
         setLoading(false);
