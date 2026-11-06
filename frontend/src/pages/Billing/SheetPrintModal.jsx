@@ -3,6 +3,7 @@ import { Printer, Plus, Minus, QrCode, Type } from 'lucide-react';
 import Modal from '../../components/UI/Modal';
 import QrCodeView from './QrCodeView';
 import { createQrSvgString } from './qrCodeGenerator';
+import { getProductStickerUrl } from './billUtils';
 
 // Grid presets
 const GRID_PRESETS = [
@@ -137,7 +138,7 @@ export default function SheetPrintModal({ products, initialSelected = [], onClos
     const f = scaledFonts(fontScale);
 
     const stickersHtml = stickerList.map((product) => {
-      const qrSvg = createQrSvgString(product.barcode || product.name, { size: Math.round(qrPx), margin: 1 });
+      const qrSvg = createQrSvgString(getProductStickerUrl(product), { size: Math.round(qrPx), margin: 4, ecLevel: 'L' });
       return `
         <div class="sticker-cell">
           <div class="shop-name">${shopName}</div>
@@ -455,7 +456,7 @@ export default function SheetPrintModal({ products, initialSelected = [], onClos
                       <div className="text-[9px] font-bold text-gray-900 leading-tight truncate mt-0.5">{product.name}</div>
                     </div>
                     <div className="flex justify-center my-1 flex-shrink-0">
-                      <QrCodeView value={product.barcode} size={previewQrPx} margin={1} />
+                      <QrCodeView value={getProductStickerUrl(product)} size={previewQrPx} margin={4} />
                     </div>
                     <div className="w-full overflow-hidden">
                       <div className="font-mono text-[8px] font-semibold text-gray-600 truncate">{product.barcode}</div>

@@ -2,15 +2,18 @@ import { Printer, QrCode } from 'lucide-react';
 import Modal from '../../components/UI/Modal';
 import QrCodeView from './QrCodeView';
 import { createQrSvgString } from './qrCodeGenerator';
+import { getProductStickerUrl } from './billUtils';
 
 export default function BarcodePrintModal({ product, onClose }) {
   if (!product) return null;
+
+  const stickerUrl = getProductStickerUrl(product);
 
   const handlePrint = () => {
     const printWindow = window.open('', '_blank', 'width=500,height=500');
     if (!printWindow) return;
 
-    const qrSvgContent = createQrSvgString(product.barcode, { size: 130, margin: 1 });
+    const qrSvgContent = createQrSvgString(stickerUrl, { size: 140, margin: 4, ecLevel: 'L' });
 
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -104,7 +107,7 @@ export default function BarcodePrintModal({ product, onClose }) {
           </div>
 
           <div className="bg-white p-3 rounded-xl shadow-sm border border-gray-200">
-            <QrCodeView value={product.barcode} size={120} margin={1} />
+            <QrCodeView value={stickerUrl} size={140} margin={4} />
           </div>
 
           <div className="font-mono text-xs font-bold text-gray-700 mt-2">

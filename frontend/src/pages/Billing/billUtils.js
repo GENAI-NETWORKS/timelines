@@ -191,3 +191,28 @@ export function decodeBillFromPayload(encodedStr, fallbackId = '') {
     return null;
   }
 }
+
+/**
+ * Returns the full scannable URL for a product sticker.
+ * When scanned by ANY smartphone camera, Google Lens, or barcode scanner,
+ * it immediately opens the verified digital bill receipt for this item.
+ */
+export function getProductStickerUrl(product) {
+  if (!product) return typeof window !== 'undefined' ? window.location.origin : '';
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const code = product.barcode || product.id || 'ITEM';
+  const payload = encodeBillToPayload({
+    billNo: code,
+    date: new Date().toISOString(),
+    customerName: 'Walk-in Customer',
+    items: [{
+      name: product.name,
+      quantity: 1,
+      price: product.price,
+      barcode: code
+    }],
+    subtotal: product.price,
+    grandTotal: product.price
+  });
+  return `${origin}/bill/view/${encodeURIComponent(code)}?d=${payload}`;
+}

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import QrCodeView from './QrCodeView';
 import { formatINR, numberToWordsIndian, decodeBillFromPayload } from './billUtils';
+import { getProductByBarcode } from '../../api/billingProducts';
 
 const HISTORY_KEY = 'timelines_billing_history';
 
@@ -44,7 +45,38 @@ export default function PublicBillView() {
       console.error('History lookup error', e);
     }
 
-    setLoading(false);
+    // 3. Fallback: Lookup product by barcode from database to show single-item retail bill
+    async function fetchProduct() {
+      try {
+        const cleanId = decodeURIComponent(id || '').trim();
+        const res = await getProductByBarcode(cleanId);
+        if (res.data) {
+          const prod = res.data;
+          setBill({
+            billNo: prod.barcode || cleanId,
+            date: new Date().toISOString(),
+            customerName: 'Walk-in Customer',
+            customerPhone: '',
+            paymentMode: 'CASH',
+            items: [{
+              name: prod.name,
+              quantity: 1,
+              price: prod.price,
+              barcode: prod.barcode
+            }],
+            subtotal: prod.price,
+            discountAmount: 0,
+            taxRate: 0,
+            grandTotal: prod.price
+          });
+          setLoading(false);
+          return;
+        }
+      } catch (e) {}
+      setLoading(false);
+    }
+
+    fetchProduct();
   }, [id, encodedData]);
 
   const items = bill?.items || [];

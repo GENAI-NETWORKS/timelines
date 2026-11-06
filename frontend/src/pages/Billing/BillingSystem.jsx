@@ -16,6 +16,7 @@ import BillDesignerModal from './BillDesignerModal';
 import ConfirmModal from '../../components/UI/ConfirmModal';
 import Pagination from '../../components/UI/Pagination';
 import QrCodeView from './QrCodeView';
+import { getProductStickerUrl } from './billUtils';
 import toast from 'react-hot-toast';
 
 // Error boundary for QR code cells — prevents one bad row from wiping the whole table
@@ -33,15 +34,16 @@ class QrErrorBoundary extends Component {
 }
 
 // Mini QR Code preview component for table row
-function MiniQrCode({ value }) {
+function MiniQrCode({ product, value }) {
   if (!value) return <span className="font-mono text-xs text-gray-400">—</span>;
+  const qrTarget = product ? getProductStickerUrl(product) : value;
   return (
     <QrErrorBoundary fallback={value}>
       <div className="flex items-center gap-2">
         <QrCodeView
-          value={value}
-          size={30}
-          margin={1}
+          value={qrTarget}
+          size={32}
+          margin={2}
           className="rounded border border-gray-200 bg-white p-0.5 shadow-sm flex-shrink-0"
         />
         <span className="font-mono text-xs font-semibold text-gray-800 tracking-wider group-hover:text-brand-600">
@@ -341,7 +343,7 @@ export default function BillingSystem() {
                     className="hover:bg-brand-50/40 transition-colors cursor-pointer group"
                   >
                     <td>
-                      <MiniQrCode value={p.barcode} />
+                      <MiniQrCode product={p} value={p.barcode} />
                     </td>
                     <td>
                       <div className="font-semibold text-gray-900 group-hover:text-brand-600 transition-colors">

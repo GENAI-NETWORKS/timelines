@@ -1,10 +1,13 @@
 import { Tag, Calendar, IndianRupee, Layers, Receipt, Printer, QrCode } from 'lucide-react';
 import Modal from '../../components/UI/Modal';
 import QrCodeView from './QrCodeView';
+import { getProductStickerUrl } from './billUtils';
 import { format } from 'date-fns';
 
 export default function ScannedProductModal({ product, onClose, onPrint, onAddToBill }) {
   if (!product) return null;
+
+  const stickerUrl = getProductStickerUrl(product);
 
   return (
     <Modal title="Scanned Product Details" onClose={onClose} size="max-w-lg">
@@ -34,9 +37,12 @@ export default function ScannedProductModal({ product, onClose, onPrint, onAddTo
             <QrCode className="w-4 h-4 text-brand-600" /> Scanned QR Code
           </div>
           <div className="bg-white p-3 rounded-xl inline-block border border-gray-200 shadow-sm">
-            <QrCodeView value={product.barcode} size={120} margin={1} />
+            <QrCodeView value={stickerUrl} size={130} margin={4} />
             <div className="font-mono text-xs font-bold text-gray-700 mt-2">
               {product.barcode}
+            </div>
+            <div className="text-[10px] text-brand-600 mt-0.5">
+              Scan to view bill
             </div>
           </div>
         </div>
