@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
-  Receipt, Search, Filter, Calendar, IndianRupee, Trash2,
+  FileText, Search, Filter, Calendar, IndianRupee, Trash2,
   RefreshCw, TrendingUp, BarChart2, Tag, ChevronDown, ChevronUp,
-  ExternalLink, ArrowLeft, CheckCircle2, QrCode, Phone, Smartphone, CreditCard
+  ExternalLink, ArrowLeft, CheckCircle2, Wallet, Phone, Smartphone, CreditCard
 } from 'lucide-react';
 import { getBillingRecords, deleteBillingRecord } from '../../api/billingRecords';
 import { formatINR } from './billUtils';
@@ -154,7 +154,7 @@ export default function PaymentRecords() {
         <div>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
-              <Receipt className="w-5 h-5" />
+              <FileText className="w-5 h-5" />
             </div>
             <div>
               <h1 className="text-2xl font-black text-gray-900 tracking-tight">Payment Records</h1>
@@ -178,7 +178,7 @@ export default function PaymentRecords() {
             to="/billing"
             className="btn bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2 shadow-sm"
           >
-            <QrCode className="w-4 h-4" /> Go to Billing System
+            <Wallet className="w-4 h-4" /> Go to Billing System
           </Link>
         </div>
       </div>
@@ -354,7 +354,7 @@ export default function PaymentRecords() {
               ) : records.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="py-16 text-center text-gray-400">
-                    <Receipt className="w-12 h-12 mx-auto mb-3 opacity-40 text-purple-600" />
+                    <FileText className="w-12 h-12 mx-auto mb-3 opacity-40 text-purple-600" />
                     <p className="font-semibold text-gray-700">No payment records found</p>
                     <p className="text-xs text-gray-400 mt-1 max-w-sm mx-auto">
                       {hasActiveFilters
@@ -390,7 +390,7 @@ export default function PaymentRecords() {
                           rel="noreferrer"
                           className="inline-flex items-center gap-1.5 text-purple-700 hover:text-purple-900 hover:underline"
                         >
-                          <Receipt className="w-4 h-4 text-purple-500" />
+                          <FileText className="w-4 h-4 text-purple-500" />
                           <span>{r.billNo}</span>
                           <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </Link>
