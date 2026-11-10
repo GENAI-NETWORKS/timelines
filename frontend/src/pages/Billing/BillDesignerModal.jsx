@@ -8,6 +8,7 @@ import Modal from '../../components/UI/Modal';
 import QrCodeView from './QrCodeView';
 import { createQrSvgString } from './qrCodeGenerator';
 import { numberToWordsIndian, generateBillNumber, formatINR, encodeBillToPayload } from './billUtils';
+import { saveBillingRecord } from '../../api/billingRecords';
 import toast from 'react-hot-toast';
 
 const HISTORY_KEY = 'timelines_billing_history';
@@ -320,6 +321,20 @@ export default function BillDesignerModal({
     }
 
     saveToHistory();
+
+    // Auto-save bill to payment records DB
+    saveBillingRecord({
+      billNo,
+      billDate,
+      customerName,
+      customerPhone,
+      paymentMode,
+      items,
+      subtotal,
+      discountAmount,
+      taxRate,
+      grandTotal,
+    }).catch((err) => console.warn('Bill record save failed (non-critical):', err));
 
     const printWin = window.open('', '_blank', 'width=850,height=950');
     if (!printWin) {

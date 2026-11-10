@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useRef, Component } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   QrCode, Plus, Search, Printer, Trash2, Edit2, Loader,
-  ShoppingBag, IndianRupee, Layers, CheckCircle2, AlertCircle, Receipt
+  ShoppingBag, IndianRupee, Layers, CheckCircle2, AlertCircle, Receipt,
+  ClipboardList
 } from 'lucide-react';
 import {
   getBillingProducts, getProductByBarcode, createBillingProduct,
@@ -13,6 +14,7 @@ import BarcodePrintModal from './BarcodePrintModal';
 import SheetPrintModal from './SheetPrintModal';
 import ScannedProductModal from './ScannedProductModal';
 import BillDesignerModal from './BillDesignerModal';
+import BillRecordsPanel from './BillRecordsPanel';
 import ConfirmModal from '../../components/UI/ConfirmModal';
 import Pagination from '../../components/UI/Pagination';
 import QrCodeView from './QrCodeView';
@@ -72,6 +74,7 @@ export default function BillingSystem() {
   const [showBillModal, setShowBillModal] = useState(false);
   const [billInitialProduct, setBillInitialProduct] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
+  const [showRecordsPanel, setShowRecordsPanel] = useState(false);
   const barcodeInputRef = useRef(null);
 
   const LIMIT = 15;
@@ -210,6 +213,13 @@ export default function BillingSystem() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setShowRecordsPanel(true)}
+            className="btn btn-secondary flex items-center gap-2 border-purple-300 text-purple-700 hover:bg-purple-50"
+          >
+            <ClipboardList className="w-4 h-4" /> Payment Records
+          </button>
+
           <button
             onClick={() => {
               setBillInitialProduct(null);
@@ -463,6 +473,12 @@ export default function BillingSystem() {
           }}
         />
       )}
+
+      {/* Payment Records Side Panel */}
+      <BillRecordsPanel
+        open={showRecordsPanel}
+        onClose={() => setShowRecordsPanel(false)}
+      />
 
       {/* Confirm Delete Modal */}
       {deleteId && (
