@@ -152,6 +152,26 @@ router.post('/', protect, adminOnly, async (req, res, next) => {
   }
 });
 
+// PATCH /api/billing-records/:id  — update payment method only
+router.patch('/:id', protect, adminOnly, async (req, res, next) => {
+  try {
+    const { paymentMode } = req.body;
+    const allowed = ['Cash', 'UPI', 'Scanner', 'phone number'];
+    if (!paymentMode || !allowed.map(a => a.toLowerCase()).includes(paymentMode.toLowerCase())) {
+      return res.status(400).json({ message: 'Invalid paymentMode.' });
+    }
+    // Match original casing
+    const normalised = allowed.find(a => a.toLowerCase() === paymentMode.toLowerCase());
+    await db.execute(
+      'UPDATE BillingRecord SET paymentMode=?, updatedAt=NOW() WHERE id=?',
+      [normalised, req.params.id]
+    );
+    res.json({ success: true, paymentMode: normalised });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // DELETE /api/billing-records/:id
 router.delete('/:id', protect, adminOnly, async (req, res, next) => {
   try {

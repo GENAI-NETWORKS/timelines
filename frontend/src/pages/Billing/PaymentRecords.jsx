@@ -5,7 +5,7 @@ import {
   RefreshCw, TrendingUp, BarChart2, Tag, ChevronDown, ChevronUp,
   ExternalLink, ArrowLeft, CheckCircle2, Wallet, Phone, Smartphone, CreditCard
 } from 'lucide-react';
-import { getBillingRecords, deleteBillingRecord } from '../../api/billingRecords';
+import { getBillingRecords, deleteBillingRecord, updateBillingRecordPayment } from '../../api/billingRecords';
 import { formatINR } from './billUtils';
 import Pagination from '../../components/UI/Pagination';
 import ConfirmModal from '../../components/UI/ConfirmModal';
@@ -59,6 +59,7 @@ export default function PaymentRecords() {
   const [page, setPage] = useState(1);
   const [deleteId, setDeleteId] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
+  const [editingPaymentId, setEditingPaymentId] = useState(null); // row id being edited
 
   // Filters
   const [search, setSearch] = useState('');
@@ -144,6 +145,19 @@ export default function PaymentRecords() {
       loadData();
     } catch {
       toast.error('Failed to delete payment record');
+    }
+  };
+
+  const handleUpdatePayment = async (id, newMode) => {
+    try {
+      await updateBillingRecordPayment(id, newMode);
+      // Optimistically update local records
+      setRecords(prev => prev.map(r => r.id === id ? { ...r, paymentMode: newMode } : r));
+      toast.success(`Payment method updated to ${newMode}`);
+    } catch {
+      toast.error('Failed to update payment method');
+    } finally {
+      setEditingPaymentId(null);
     }
   };
 
@@ -425,12 +439,42 @@ export default function PaymentRecords() {
                         )}
                       </td>
 
-                      {/* Payment Method Badge */}
+                      {/* Payment Method Badge — click to edit */}
                       <td className="py-3.5 px-4">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${getPaymentBadgeClass(r.paymentMode)}`}>
-                          <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                          {r.paymentMode || 'Cash'}
-                        </span>
+                        {editingPaymentId === r.id ? (
+                          <div className="relative flex flex-col gap-1 bg-white border border-purple-200 rounded-xl shadow-lg p-1.5 min-w-[140px] z-10">
+                            {PAYMENT_METHODS.map((m) => (
+                              <button
+                                key={m.key}
+                                onClick={() => handleUpdatePayment(r.id, m.key)}
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-left transition-all w-full ${
+                                  (r.paymentMode || 'Cash').toLowerCase() === m.key.toLowerCase()
+                                    ? 'bg-purple-100 text-purple-700'
+                                    : 'hover:bg-gray-100 text-gray-700'
+                                }`}
+                              >
+                                <span className={`w-2 h-2 rounded-full ${m.color.split(' ')[0].replace('bg-', 'bg-').replace('100', '400')}`} />
+                                {m.label}
+                              </button>
+                            ))}
+                            <button
+                              onClick={() => setEditingPaymentId(null)}
+                              className="mt-0.5 text-[10px] text-gray-400 hover:text-gray-600 text-center w-full py-0.5"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setEditingPaymentId(r.id)}
+                            title="Click to change payment method"
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border cursor-pointer hover:opacity-80 hover:scale-105 transition-all ${getPaymentBadgeClass(r.paymentMode)}`}
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                            {r.paymentMode || 'Cash'}
+                            <span className="text-[9px] opacity-50 ml-0.5">▼</span>
+                          </button>
+                        )}
                       </td>
 
                       {/* Items */}
