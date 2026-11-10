@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  X, Search, Filter, IndianRupee, Receipt, Calendar, CreditCard,
+  X, Search, Filter, IndianRupee, FileText, Calendar, CreditCard,
   Trash2, ChevronDown, ChevronUp, RefreshCw, TrendingUp, Users,
   Tag, BarChart2
 } from 'lucide-react';
@@ -201,7 +201,7 @@ export default function BillRecordsPanel({ open, onClose }) {
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-600 to-purple-700 text-white">
           <div className="flex items-center gap-2.5">
-            <Receipt className="w-5 h-5" />
+            <FileText className="w-5 h-5" />
             <div>
               <h2 className="font-bold text-base leading-tight">Payment Records</h2>
               <p className="text-xs text-purple-200 leading-tight">Auto-saved on every bill print</p>
@@ -354,7 +354,7 @@ export default function BillRecordsPanel({ open, onClose }) {
             </div>
           ) : records.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-40 text-center space-y-2">
-              <Receipt className="w-10 h-10 text-gray-300" />
+              <FileText className="w-10 h-10 text-gray-300" />
               <p className="text-sm font-medium text-gray-500">No payment records yet</p>
               <p className="text-xs text-gray-400">Bills will appear here automatically when you print them</p>
             </div>

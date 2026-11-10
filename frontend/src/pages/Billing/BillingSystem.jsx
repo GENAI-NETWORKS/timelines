@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, Component } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Printer, Trash2, Edit2, Loader,
-  ShoppingBag, IndianRupee, Layers, CheckCircle2, AlertCircle, Receipt
+  ShoppingBag, IndianRupee, Layers, CheckCircle2, AlertCircle, FileText
 } from 'lucide-react';
 import {
   getBillingProducts, getProductByBarcode, createBillingProduct,
@@ -216,7 +216,7 @@ export default function BillingSystem() {
             }}
             className="btn bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2 shadow-md transition-all hover:scale-[1.02]"
           >
-            <Receipt className="w-4 h-4" /> Design & Print Bill
+            <FileText className="w-4 h-4" /> Design & Print Bill
           </button>
 
           <button
@@ -373,7 +373,7 @@ export default function BillingSystem() {
                           className="btn-icon text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
                           title="Add to Bill & Print Receipt"
                         >
-                          <Receipt className="w-4 h-4" />
+                          <FileText className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => {

@@ -531,7 +531,7 @@ export default function PaymentRecords() {
                             className="btn-icon text-purple-600 hover:text-purple-700 hover:bg-purple-50"
                             title="View / Print Receipt"
                           >
-                            <Receipt className="w-4 h-4" />
+                            <FileText className="w-4 h-4" />
                           </Link>
                           <button
                             onClick={() => setDeleteId(r.id)}

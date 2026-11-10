@@ -1,4 +1,4 @@
-import { Tag, Calendar, IndianRupee, Layers, Receipt, Printer, QrCode } from 'lucide-react';
+import { Tag, Calendar, IndianRupee, Layers, FileText, Printer, QrCode } from 'lucide-react';
 import Modal from '../../components/UI/Modal';
 import QrCodeView from './QrCodeView';
 import { getProductStickerUrl } from './billUtils';
@@ -105,7 +105,7 @@ export default function ScannedProductModal({ product, onClose, onPrint, onAddTo
               }}
               className="btn bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2 shadow-sm"
             >
-              <Receipt className="w-4 h-4" /> Add to Bill
+              <FileText className="w-4 h-4" /> Add to Bill
             </button>
 
             <button
