@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef, Component } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  QrCode, Plus, Search, Printer, Trash2, Edit2, Loader,
+import { Plus, Search, Printer, Trash2, Edit2, Loader,
   ShoppingBag, IndianRupee, Layers, CheckCircle2, AlertCircle, Receipt
 } from 'lucide-react';
 import {
@@ -201,8 +200,8 @@ export default function BillingSystem() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-display font-bold text-2xl text-gray-900 flex items-center gap-2">
-            <QrCode className="w-7 h-7 text-brand-500" /> Billing System & QR Code Generator
+          <h1 className="font-display font-bold text-2xl text-gray-900">
+            Billing System & QR Code Generator
           </h1>
           <p className="text-sm text-gray-500">
             Create products, generate QR codes, and print stickers to stick on inventory items.
@@ -244,7 +243,7 @@ export default function BillingSystem() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="card p-4 flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
-            <QrCode className="w-6 h-6" />
+            <ShoppingBag className="w-6 h-6" />
           </div>
           <div>
             <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Products</div>
@@ -298,7 +297,6 @@ export default function BillingSystem() {
               onClick={() => handleScanCode(search.trim())}
               className="btn btn-secondary text-xs flex items-center gap-1.5"
             >
-              <QrCode className="w-3.5 h-3.5 text-brand-600" />
               Lookup Code
             </button>
           )}
@@ -330,7 +328,7 @@ export default function BillingSystem() {
               ) : products.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-12 text-gray-500">
-                    <QrCode className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                    <ShoppingBag className="w-10 h-10 text-gray-300 mx-auto mb-2" />
                     <p className="text-sm font-medium">No products found</p>
                     <p className="text-xs text-gray-400 mt-1">Click "+ New Product" to add your first billing item.</p>
                   </td>
