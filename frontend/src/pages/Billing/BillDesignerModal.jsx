@@ -225,7 +225,7 @@ export default function BillDesignerModal({
   const totalItemsCount = items.length;
 
   const changeDue = useMemo(() => {
-    if (paymentMode !== 'Cash' || !cashTendered) return 0;
+    if (paymentMode?.toLowerCase() !== 'cash' || !cashTendered) return 0;
     const rcvd = parseFloat(cashTendered) || 0;
     return rcvd >= grandTotal ? rcvd - grandTotal : 0;
   }, [paymentMode, cashTendered, grandTotal]);
@@ -615,7 +615,7 @@ export default function BillDesignerModal({
               </div>
             ` : ''}
 
-            ${paymentMode === 'Cash' && cashTendered ? `
+            ${paymentMode?.toLowerCase() === 'cash' && cashTendered ? `
               <div class="summary-row" style="margin-top: 4px; font-size: ${isA4 ? '13px' : '11px'};">
                 <span>Cash Received: ₹ ${formatINR(cashTendered)}</span>
                 <span>Change: <strong>₹ ${formatINR(changeDue)}</strong></span>
@@ -1263,16 +1263,16 @@ export default function BillDesignerModal({
                     value={paymentMode}
                     onChange={(e) => setPaymentMode(e.target.value)}
                   >
-                    <option value="Cash">Cash</option>
                     <option value="UPI">UPI</option>
                     <option value="Scanner">Scanner</option>
-                    <option value="Phone Number">Phone Number</option>
+                    <option value="phone number">phone number</option>
+                    <option value="Cash">Cash</option>
                   </select>
                 </div>
               </div>
 
               {/* Cash Received & Change */}
-              {paymentMode === 'Cash' && (
+              {paymentMode?.toLowerCase() === 'cash' && (
                 <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <label className="text-xs font-semibold text-emerald-900">Cash Received ₹:</label>
@@ -1478,7 +1478,7 @@ export default function BillDesignerModal({
                 )}
 
                 {/* Cash payment details */}
-                {paymentMode === 'Cash' && cashTendered && (
+                {paymentMode?.toLowerCase() === 'cash' && cashTendered && (
                   <div className="flex justify-between text-[10px] text-gray-600 pt-0.5">
                     <span>Rcvd: ₹{formatINR(cashTendered)}</span>
                     <span className="font-bold text-gray-900">Change: ₹{formatINR(changeDue)}</span>

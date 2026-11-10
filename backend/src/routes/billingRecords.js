@@ -51,8 +51,8 @@ router.get('/', protect, adminOnly, async (req, res, next) => {
       params.push(like, like, like);
     }
     if (paymentMode) {
-      conditions.push('paymentMode = ?');
-      params.push(paymentMode);
+      conditions.push('LOWER(paymentMode) = LOWER(?)');
+      params.push(paymentMode.trim());
     }
     if (dateFrom) {
       conditions.push('billDate >= ?');

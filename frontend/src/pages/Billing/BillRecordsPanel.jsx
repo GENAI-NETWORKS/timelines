@@ -8,7 +8,7 @@ import { getBillingRecords, deleteBillingRecord } from '../../api/billingRecords
 import { formatINR } from './billUtils';
 import toast from 'react-hot-toast';
 
-const PAYMENT_MODES = ['Cash', 'UPI', 'Scanner', 'Phone Number'];
+const PAYMENT_MODES = ['UPI', 'Scanner', 'phone number', 'Cash'];
 
 function StatCard({ icon: Icon, label, value, color = 'brand' }) {
   const colors = {

@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, Users, ShoppingBag, Scissors, QrCode, X, LogOut
+  LayoutDashboard, Users, ShoppingBag, Scissors, QrCode, X, LogOut, Receipt
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { logout } from '../../api/auth';
 
 const navItems = [
-  { to: '/',              label: 'Dashboard',      icon: LayoutDashboard },
-  { to: '/customers',     label: 'Customers',      icon: Users,         adminOnly: true },
-  { to: '/customer/list', label: 'All Orders',     icon: ShoppingBag,   adminOnly: true },
-  { to: '/billing',       label: 'Billing System', icon: QrCode,        adminOnly: true },
+  { to: '/',                 label: 'Dashboard',       icon: LayoutDashboard },
+  { to: '/customers',        label: 'Customers',       icon: Users,           adminOnly: true },
+  { to: '/customer/list',    label: 'All Orders',      icon: ShoppingBag,     adminOnly: true },
+  { to: '/billing',          label: 'Billing System',  icon: QrCode,          adminOnly: true },
+  { to: '/payment-records',  label: 'Payment Records', icon: Receipt,         adminOnly: true },
 ];
 
 export default function Sidebar({ open, onClose }) {
