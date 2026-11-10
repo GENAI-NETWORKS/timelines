@@ -77,10 +77,18 @@ router.get('/', protect, adminOnly, async (req, res, next) => {
       [...params, take, skip]
     );
 
-    // Parse JSON items field
+    // Parse JSON items field + format timestamps as IST (Asia/Kolkata)
+    const fmtIST = (dt) => {
+      if (!dt) return null;
+      const d = dt instanceof Date ? dt : new Date(dt);
+      // Format: "YYYY-MM-DDTHH:mm:ss+05:30" so the browser treats it as IST
+      return d.toLocaleString('sv-SE', { timeZone: 'Asia/Kolkata' }).replace(' ', 'T') + '+05:30';
+    };
     const parsed = records.map(r => ({
       ...r,
       items: typeof r.items === 'string' ? JSON.parse(r.items) : r.items,
+      createdAt: fmtIST(r.createdAt),
+      updatedAt: fmtIST(r.updatedAt),
     }));
 
     // Aggregate stats for the filtered set
