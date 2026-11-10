@@ -51,8 +51,7 @@ export default function BillDesignerModal({
   const [showWords, setShowWords] = useState(true);
   const [showQrCode, setShowQrCode] = useState(true);
 
-  // Discount & Tax
-  const [discountType, setDiscountType] = useState('flat'); // 'flat' or 'percent'
+  // Discount (always flat ₹ — no % toggle)
   const [discountVal, setDiscountVal] = useState(0);
   const [taxRate, setTaxRate] = useState(0); // 0%, 5%, 12%, 18%
   const [roundOff, setRoundOff] = useState(true);
@@ -206,11 +205,8 @@ export default function BillDesignerModal({
   const discountAmount = useMemo(() => {
     const val = Number(discountVal) || 0;
     if (val <= 0) return 0;
-    if (discountType === 'percent') {
-      return (subtotal * val) / 100;
-    }
-    return Math.min(subtotal, val);
-  }, [subtotal, discountVal, discountType]);
+    return Math.min(subtotal, val); // Always flat ₹
+  }, [subtotal, discountVal]);
 
   const taxableAmount = Math.max(0, subtotal - discountAmount);
   const taxAmount = (taxableAmount * (Number(taxRate) || 0)) / 100;
@@ -581,7 +577,7 @@ export default function BillDesignerModal({
 
             ${discountAmount > 0 ? `
               <div class="summary-row">
-                <span>Discount (${discountType === 'percent' ? discountVal + '%' : 'Flat'}):</span>
+                <span>Discount:</span>
                 <span>- ₹ ${formatINR(discountAmount)}</span>
               </div>
             ` : ''}
@@ -615,12 +611,6 @@ export default function BillDesignerModal({
               </div>
             ` : ''}
 
-            ${paymentMode?.toLowerCase() === 'cash' && cashTendered ? `
-              <div class="summary-row" style="margin-top: 4px; font-size: ${isA4 ? '13px' : '11px'};">
-                <span>Cash Received: ₹ ${formatINR(cashTendered)}</span>
-                <span>Change: <strong>₹ ${formatINR(changeDue)}</strong></span>
-              </div>
-            ` : ''}
 
             ${showQrCode && qrSvgHtml ? `
               <div class="qrcode-section">
@@ -1210,25 +1200,7 @@ export default function BillDesignerModal({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {/* Discount */}
                 <div>
-                  <label className="label flex items-center justify-between">
-                    <span>Discount</span>
-                    <span className="space-x-1">
-                      <button
-                        type="button"
-                        onClick={() => setDiscountType('flat')}
-                        className={`text-[10px] px-1 rounded ${discountType === 'flat' ? 'bg-brand-600 text-white' : 'text-gray-500'}`}
-                      >
-                        ₹ Flat
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDiscountType('percent')}
-                        className={`text-[10px] px-1 rounded ${discountType === 'percent' ? 'bg-brand-600 text-white' : 'text-gray-500'}`}
-                      >
-                        %
-                      </button>
-                    </span>
-                  </label>
+                  <label className="label">Discount (₹)</label>
                   <input
                     type="number"
                     min="0"
@@ -1270,29 +1242,6 @@ export default function BillDesignerModal({
                   </select>
                 </div>
               </div>
-
-              {/* Cash Received & Change */}
-              {paymentMode?.toLowerCase() === 'cash' && (
-                <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs font-semibold text-emerald-900">Cash Received ₹:</label>
-                    <input
-                      type="number"
-                      step="1"
-                      className="w-28 input py-1 text-xs font-bold"
-                      placeholder={grandTotal.toString()}
-                      value={cashTendered}
-                      onChange={(e) => setCashTendered(e.target.value)}
-                    />
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs text-emerald-800">Change Due: </span>
-                    <strong className="text-sm font-bold text-emerald-900 font-mono">
-                      ₹ {formatINR(changeDue)}
-                    </strong>
-                  </div>
-                </div>
-              )}
 
               {/* Round Off Toggle & Footer note */}
               <div className="flex items-center justify-between gap-4 pt-1">
@@ -1474,14 +1423,6 @@ export default function BillDesignerModal({
                 {showWords && wordsTotal && (
                   <div className="text-[9.5px] italic text-center py-1 bg-gray-50 rounded my-1 text-gray-700">
                     {wordsTotal}
-                  </div>
-                )}
-
-                {/* Cash payment details */}
-                {paymentMode?.toLowerCase() === 'cash' && cashTendered && (
-                  <div className="flex justify-between text-[10px] text-gray-600 pt-0.5">
-                    <span>Rcvd: ₹{formatINR(cashTendered)}</span>
-                    <span className="font-bold text-gray-900">Change: ₹{formatINR(changeDue)}</span>
                   </div>
                 )}
 

@@ -531,3 +531,4 @@ export default function PaymentRecords() {
     </div>
   );
 }
+
