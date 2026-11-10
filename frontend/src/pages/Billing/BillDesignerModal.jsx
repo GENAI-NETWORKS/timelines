@@ -37,7 +37,7 @@ export default function BillDesignerModal({
   const [cashier, setCashier] = useState('Admin');
   const [customerName, setCustomerName] = useState('Walk-in Customer');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [paymentMode, setPaymentMode] = useState('CASH');
+  const [paymentMode, setPaymentMode] = useState('Cash');
   const [cashTendered, setCashTendered] = useState('');
   const [footerNotes, setFooterNotes] = useState('Thank you for shopping with us! Please visit again.');
 
@@ -225,7 +225,7 @@ export default function BillDesignerModal({
   const totalItemsCount = items.length;
 
   const changeDue = useMemo(() => {
-    if (paymentMode !== 'CASH' || !cashTendered) return 0;
+    if (paymentMode !== 'Cash' || !cashTendered) return 0;
     const rcvd = parseFloat(cashTendered) || 0;
     return rcvd >= grandTotal ? rcvd - grandTotal : 0;
   }, [paymentMode, cashTendered, grandTotal]);
@@ -305,7 +305,7 @@ export default function BillDesignerModal({
     setItems(histBill.items || []);
     setCustomerName(histBill.customerName || 'Walk-in Customer');
     setCustomerPhone(histBill.customerPhone || '');
-    setPaymentMode(histBill.paymentMode || 'CASH');
+    setPaymentMode(histBill.paymentMode || 'Cash');
     if (histBill.taxRate !== undefined) setTaxRate(histBill.taxRate);
     if (histBill.paperSize) setPaperSize(histBill.paperSize);
     else if (histBill.layoutMode) setPaperSize(histBill.layoutMode === 'thermal' ? 'thermal' : 'a4');
@@ -615,7 +615,7 @@ export default function BillDesignerModal({
               </div>
             ` : ''}
 
-            ${paymentMode === 'CASH' && cashTendered ? `
+            ${paymentMode === 'Cash' && cashTendered ? `
               <div class="summary-row" style="margin-top: 4px; font-size: ${isA4 ? '13px' : '11px'};">
                 <span>Cash Received: ₹ ${formatINR(cashTendered)}</span>
                 <span>Change: <strong>₹ ${formatINR(changeDue)}</strong></span>
@@ -1263,16 +1263,16 @@ export default function BillDesignerModal({
                     value={paymentMode}
                     onChange={(e) => setPaymentMode(e.target.value)}
                   >
-                    <option value="CASH">CASH</option>
-                    <option value="UPI / GPAY">UPI / GPAY / PHONEPE</option>
-                    <option value="CARD">DEBIT / CREDIT CARD</option>
-                    <option value="DUE">CREDIT / DUE</option>
+                    <option value="Cash">Cash</option>
+                    <option value="UPI">UPI</option>
+                    <option value="Scanner">Scanner</option>
+                    <option value="Phone Number">Phone Number</option>
                   </select>
                 </div>
               </div>
 
               {/* Cash Received & Change */}
-              {paymentMode === 'CASH' && (
+              {paymentMode === 'Cash' && (
                 <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <label className="text-xs font-semibold text-emerald-900">Cash Received ₹:</label>
@@ -1478,7 +1478,7 @@ export default function BillDesignerModal({
                 )}
 
                 {/* Cash payment details */}
-                {paymentMode === 'CASH' && cashTendered && (
+                {paymentMode === 'Cash' && cashTendered && (
                   <div className="flex justify-between text-[10px] text-gray-600 pt-0.5">
                     <span>Rcvd: ₹{formatINR(cashTendered)}</span>
                     <span className="font-bold text-gray-900">Change: ₹{formatINR(changeDue)}</span>

@@ -8,7 +8,7 @@ import { getBillingRecords, deleteBillingRecord } from '../../api/billingRecords
 import { formatINR } from './billUtils';
 import toast from 'react-hot-toast';
 
-const PAYMENT_MODES = ['CASH', 'UPI', 'CARD', 'CHEQUE', 'ONLINE', 'OTHER'];
+const PAYMENT_MODES = ['Cash', 'UPI', 'Scanner', 'Phone Number'];
 
 function StatCard({ icon: Icon, label, value, color = 'brand' }) {
   const colors = {
@@ -32,12 +32,10 @@ function RecordRow({ record, onDelete }) {
   const [expanded, setExpanded] = useState(false);
 
   const modeColor = {
-    CASH:   'bg-emerald-100 text-emerald-700',
-    UPI:    'bg-blue-100    text-blue-700',
-    CARD:   'bg-purple-100  text-purple-700',
-    CHEQUE: 'bg-amber-100   text-amber-700',
-    ONLINE: 'bg-cyan-100    text-cyan-700',
-    OTHER:  'bg-gray-100    text-gray-600',
+    'Cash':         'bg-emerald-100 text-emerald-700',
+    'UPI':          'bg-blue-100    text-blue-700',
+    'Scanner':      'bg-purple-100  text-purple-700',
+    'Phone Number': 'bg-amber-100   text-amber-700',
   }[record.paymentMode] || 'bg-gray-100 text-gray-600';
 
   return (

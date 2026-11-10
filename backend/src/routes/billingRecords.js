@@ -13,7 +13,7 @@ async function ensureTable() {
       billDate      DATE          NOT NULL,
       customerName  VARCHAR(255)  NOT NULL DEFAULT 'Walk-in Customer',
       customerPhone VARCHAR(50)   DEFAULT '',
-      paymentMode   VARCHAR(50)   NOT NULL DEFAULT 'CASH',
+      paymentMode   VARCHAR(50)   NOT NULL DEFAULT 'Cash',
       items         JSON          NOT NULL,
       subtotal      DECIMAL(12,2) NOT NULL DEFAULT 0,
       discountAmount DECIMAL(12,2) NOT NULL DEFAULT 0,
@@ -104,7 +104,7 @@ router.post('/', protect, adminOnly, async (req, res, next) => {
   try {
     const {
       billNo, billDate, customerName = 'Walk-in Customer', customerPhone = '',
-      paymentMode = 'CASH', items = [], subtotal = 0,
+      paymentMode = 'Cash', items = [], subtotal = 0,
       discountAmount = 0, taxRate = 0, grandTotal = 0,
     } = req.body;
 
