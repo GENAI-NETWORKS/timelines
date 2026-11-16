@@ -8,6 +8,7 @@ import {
   getTailorsPayments, createTailorsPayment,
   updateTailorsPayment, deleteTailorsPayment,
 } from '../../api/tailorsPayments';
+import { searchCustomers } from '../../api/customers';
 import ConfirmModal from '../../components/UI/ConfirmModal';
 import toast from 'react-hot-toast';
 
@@ -39,9 +40,24 @@ function PhotoModal({ url, name, onClose }) {
 }
 
 // ── Form Modal ────────────────────────────────────────────────────────────────
-function TailorPaymentForm({ initial = null, onSave, onClose }) {
+function TailorPaymentForm({ initial = null, onSave, onClose, customers = [] }) {
   const isEdit = !!initial;
   const fileRef = useRef();
+
+  const [customerList, setCustomerList] = useState(customers);
+  const [loadingCustomers, setLoadingCustomers] = useState(false);
+
+  useEffect(() => {
+    if (customers && customers.length > 0) {
+      setCustomerList(customers);
+    } else {
+      setLoadingCustomers(true);
+      searchCustomers('')
+        .then(res => setCustomerList(res.data || []))
+        .catch(() => {})
+        .finally(() => setLoadingCustomers(false));
+    }
+  }, [customers]);
 
   const [form, setForm] = useState({
     name:        initial?.name        || '',
@@ -54,6 +70,8 @@ function TailorPaymentForm({ initial = null, onSave, onClose }) {
   const [photoPreview, setPhotoPreview] = useState(initial?.photoUrl || '');
   const [saving, setSaving]             = useState(false);
   const [errors, setErrors]             = useState({});
+
+  const matchedCustomer = customerList.find(c => c.customerId === form.customerId);
 
   const set = (k, v) => {
     setForm(p => ({ ...p, [k]: v }));
@@ -157,18 +175,82 @@ function TailorPaymentForm({ initial = null, onSave, onClose }) {
 
           {/* Customer ID */}
           <div>
-            <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">
-              <Hash className="w-3.5 h-3.5 inline mr-1" />
-              Customer ID <span className="text-rose-500">*</span>
-              <span className="text-gray-400 font-normal ml-1">(must be unique)</span>
-            </label>
-            <input
-              type="text"
-              value={form.customerId}
-              onChange={e => set('customerId', e.target.value)}
-              placeholder="e.g. CUST-001, TL-2024-99…"
-              className={`input w-full font-mono ${errors.customerId ? 'border-rose-400' : ''}`}
-            />
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                <Hash className="w-3.5 h-3.5 inline mr-1" />
+                Customer ID <span className="text-rose-500">*</span>
+                <span className="text-gray-400 font-normal ml-1">(must be unique)</span>
+              </label>
+              {customerList.length > 0 && (
+                <span className="text-[11px] text-gray-400">
+                  {customerList.length} customer{customerList.length === 1 ? '' : 's'} available
+                </span>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              {/* Dropdown to select existing customer */}
+              <div>
+                <select
+                  value={customerList.some(c => c.customerId === form.customerId) ? form.customerId : ''}
+                  onChange={(e) => {
+                    const sel = e.target.value;
+                    if (sel) {
+                      set('customerId', sel);
+                    }
+                  }}
+                  className="input w-full text-xs bg-gray-50 border-gray-200"
+                  disabled={loadingCustomers}
+                >
+                  <option value="">
+                    {loadingCustomers
+                      ? 'Loading customer list…'
+                      : customerList.length === 0
+                      ? '-- No existing customers found --'
+                      : '-- Select Existing Customer ID --'}
+                  </option>
+                  {customerList.map((c) => (
+                    <option key={c.customerId} value={c.customerId}>
+                      {c.customerId} {c.name ? `— ${c.name}` : ''} {c.phone ? `(${c.phone})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Input for manual entry or editing */}
+              <div className="relative">
+                <input
+                  type="text"
+                  value={form.customerId}
+                  onChange={e => set('customerId', e.target.value)}
+                  placeholder="Or enter Customer ID manually (e.g. TC-2024-0001, CUST-001)…"
+                  className={`input w-full font-mono text-sm pr-8 ${errors.customerId ? 'border-rose-400' : ''}`}
+                />
+                {form.customerId && (
+                  <button
+                    type="button"
+                    onClick={() => set('customerId', '')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs px-1"
+                    title="Clear Customer ID"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* Selected Customer Info Preview */}
+              {matchedCustomer && (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 border border-indigo-100 rounded-lg text-xs text-indigo-700 animate-fade-in">
+                  <User className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>
+                    Selected: <strong>{matchedCustomer.name}</strong>
+                    {matchedCustomer.phone && (
+                      <span className="font-mono ml-1.5 text-indigo-500">· {matchedCustomer.phone}</span>
+                    )}
+                  </span>
+                </div>
+              )}
+            </div>
             {errors.customerId && <p className="text-xs text-rose-500 mt-1">{errors.customerId}</p>}
           </div>
 
@@ -256,12 +338,19 @@ function TailorPaymentForm({ initial = null, onSave, onClose }) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function TailorsPayment() {
   const [payments, setPayments]     = useState([]);
+  const [customers, setCustomers]   = useState([]);
   const [loading, setLoading]       = useState(true);
   const [search, setSearch]         = useState('');
   const [showForm, setShowForm]     = useState(false);
   const [editItem, setEditItem]     = useState(null);
   const [deleteId, setDeleteId]     = useState(null);
   const [viewPhoto, setViewPhoto]   = useState(null); // { url, name }
+
+  useEffect(() => {
+    searchCustomers('')
+      .then(res => setCustomers(res.data || []))
+      .catch(() => {});
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -488,12 +577,12 @@ export default function TailorsPayment() {
 
       {/* Add Modal */}
       {showForm && (
-        <TailorPaymentForm onSave={handleAdd} onClose={() => setShowForm(false)} />
+        <TailorPaymentForm customers={customers} onSave={handleAdd} onClose={() => setShowForm(false)} />
       )}
 
       {/* Edit Modal */}
       {editItem && (
-        <TailorPaymentForm initial={editItem} onSave={handleEdit} onClose={() => setEditItem(null)} />
+        <TailorPaymentForm initial={editItem} customers={customers} onSave={handleEdit} onClose={() => setEditItem(null)} />
       )}
 
       {/* Photo Viewer */}
@@ -513,3 +602,4 @@ export default function TailorsPayment() {
     </div>
   );
 }
+

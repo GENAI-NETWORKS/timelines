@@ -18,3 +18,4 @@ export const updateTailorsPayment = (id, formData) =>
 
 export const deleteTailorsPayment = (id) =>
   api.delete(`/tailors-payments/${id}`);
+

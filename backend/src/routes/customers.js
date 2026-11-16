@@ -21,7 +21,7 @@ async function generateCustomerId() {
 // GET /api/customers/search?q=  — typeahead (must be before /:id)
 router.get('/search', protect, async (req, res, next) => {
   try {
-    const { q = '' } = req.query;
+    const { q = '', limit = 100 } = req.query;
     let query = `SELECT customerId, name, phone, address, email FROM Customer`;
     let params = [];
     if (q) {
@@ -29,7 +29,9 @@ router.get('/search', protect, async (req, res, next) => {
       const likeQ = `%${q}%`;
       params = [likeQ, likeQ, likeQ];
     }
-    query += ` ORDER BY name ASC LIMIT 15`;
+    const maxLimit = Math.min(parseInt(limit) || 100, 500);
+    query += ` ORDER BY customerId DESC LIMIT ?`;
+    params.push(maxLimit);
     const [customers] = await db.query(query, params);
     res.json(customers);
   } catch (err) { next(err); }
