@@ -1,29 +1,28 @@
-import { Menu } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 
 const pageTitles = {
-  '/':         'Dashboard',
-  '/customers':'Customer Management',
-  '/employees':'Employee Management',
-  '/orders':   'Design Orders',
-  '/canvas':   'Design Canvas',
-  '/salary':   'Salary Management',
-  '/print':    'Print Module',
-  '/audit':    'Audit Log',
-  '/garments': 'Garment Templates',
+  '/':                'Dashboard',
+  '/customers':       'Customer Management',
+  '/employees':       'Employee Management',
+  '/orders':          'Design Orders',
+  '/canvas':          'Design Canvas',
+  '/salary':          'Salary Management',
+  '/print':           'Print Module',
+  '/audit':           'Audit Log',
+  '/garments':        'Garment Templates',
+  '/materials':       'Materials',
+  '/tailors-payment': 'Tailors Payment',
+  '/payment-records': 'Payment Records',
+  '/billing':         'Billing System',
 };
 
-export default function Topbar({ onMenuClick }) {
+export default function Topbar() {
   const location = useLocation();
   const path = '/' + location.pathname.split('/')[1];
   const title = pageTitles[path] || 'Admin Panel';
 
   return (
-    <header className="h-16 bg-surface-card border-b border-surface-border flex items-center px-4 gap-4 sticky top-0 z-20">
-      {/* Menu toggle — visible on ALL screen sizes */}
-      <button onClick={onMenuClick} className="btn-icon">
-        <Menu className="w-5 h-5" />
-      </button>
+    <header className="h-16 bg-surface-card border-b border-surface-border flex items-center px-6 gap-4 sticky top-0 z-20">
       <div>
         <h2 className="font-display font-semibold text-gray-900 text-lg leading-tight">{title}</h2>
         <p className="text-xs text-gray-500 hidden sm:block">
