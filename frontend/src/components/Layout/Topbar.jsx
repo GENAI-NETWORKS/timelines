@@ -2,8 +2,9 @@ import { useLocation } from 'react-router-dom';
 
 const pageTitles = {
   '/':                'Dashboard',
-  '/customers':       'Customer Management',
-  '/employees':       'Employee Management',
+  '/customers':        'Customer Management',
+  '/employees':        'Employee Details',
+  '/employee-details': 'Employee Details',
   '/orders':          'Design Orders',
   '/canvas':          'Design Canvas',
   '/salary':          'Salary Management',

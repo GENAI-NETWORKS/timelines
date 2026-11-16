@@ -2,19 +2,20 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, ShoppingBag, QrCode, LogOut, Wallet, Package,
-  Scissors, Menu
+  Scissors, Menu, UserCheck
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { logout } from '../../api/auth';
 
 const navItems = [
-  { to: '/',                label: 'Dashboard',       icon: LayoutDashboard },
-  { to: '/customers',       label: 'Customers',       icon: Users,          adminOnly: true },
-  { to: '/customer/list',   label: 'All Orders',      icon: ShoppingBag,    adminOnly: true },
-  { to: '/billing',         label: 'Billing System',  icon: QrCode,         adminOnly: true },
-  { to: '/payment-records', label: 'Payment Records', icon: Wallet,         adminOnly: true },
-  { to: '/materials',       label: 'Materials',       icon: Package,        adminOnly: true },
-  { to: '/tailors-payment', label: 'Tailors Payment', icon: Scissors,       adminOnly: true },
+  { to: '/',                 label: 'Dashboard',        icon: LayoutDashboard },
+  { to: '/customers',        label: 'Customers',        icon: Users,          adminOnly: true },
+  { to: '/customer/list',    label: 'All Orders',       icon: ShoppingBag,    adminOnly: true },
+  { to: '/billing',          label: 'Billing System',   icon: QrCode,         adminOnly: true },
+  { to: '/payment-records',  label: 'Payment Records',  icon: Wallet,         adminOnly: true },
+  { to: '/materials',        label: 'Materials',        icon: Package,        adminOnly: true },
+  { to: '/tailors-payment',  label: 'Tailors Payment',  icon: Scissors,       adminOnly: true },
+  { to: '/employees',        label: 'Employee Details', icon: UserCheck,      adminOnly: true },
 ];
 
 export default function Sidebar({ open, onToggle }) {

@@ -59,7 +59,8 @@ function AppRoutes() {
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/customers" element={<Customers />} />
-                <Route path="/employees" element={<Employees />} />
+                <Route path="/employees" element={<ProtectedRoute adminOnly><Employees /></ProtectedRoute>} />
+                <Route path="/employee-details" element={<ProtectedRoute adminOnly><Employees /></ProtectedRoute>} />
                 <Route path="/customer"        element={<ProtectedRoute adminOnly><CustomerOrderPage /></ProtectedRoute>} />
                 <Route path="/customer/list"   element={<ProtectedRoute adminOnly><CustomerOrderList /></ProtectedRoute>} />
                 <Route path="/billing"         element={<ProtectedRoute adminOnly><BillingSystem /></ProtectedRoute>} />
