@@ -48,7 +48,8 @@ app.use('/api/payments', require('./src/routes/payments'));
 app.use('/api/design-library', require('./src/routes/designLibrary'));
 app.use('/api/billing-products', require('./src/routes/billingProducts'));
 app.use('/api/billing-records', require('./src/routes/billingRecords'));
-app.use('/api/materials',       require('./src/routes/materials'));
+app.use('/api/materials',           require('./src/routes/materials'));
+app.use('/api/tailors-payments',    require('./src/routes/tailorsPayments'));
 
 // Health check
 app.get('/api/health', async (req, res) => {

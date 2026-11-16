@@ -25,6 +25,7 @@ import BillingSystem from './pages/Billing/BillingSystem';
 import PublicBillView from './pages/Billing/PublicBillView';
 import PaymentRecords from './pages/Billing/PaymentRecords';
 import Materials from './pages/Materials/Materials';
+import TailorsPayment from './pages/TailorsPayment/TailorsPayment';
 
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user, loading } = useAuth();
@@ -63,7 +64,8 @@ function AppRoutes() {
                 <Route path="/customer/list"   element={<ProtectedRoute adminOnly><CustomerOrderList /></ProtectedRoute>} />
                 <Route path="/billing"         element={<ProtectedRoute adminOnly><BillingSystem /></ProtectedRoute>} />
                 <Route path="/payment-records" element={<ProtectedRoute adminOnly><PaymentRecords /></ProtectedRoute>} />
-                <Route path="/materials"       element={<ProtectedRoute adminOnly><Materials />       </ProtectedRoute>} />
+                <Route path="/materials"        element={<ProtectedRoute adminOnly><Materials />       </ProtectedRoute>} />
+                <Route path="/tailors-payment"  element={<ProtectedRoute adminOnly><TailorsPayment />  </ProtectedRoute>} />
                 <Route path="/customer/:id"    element={<ProtectedRoute adminOnly><CustomerOrderPage /></ProtectedRoute>} />
                 <Route path="/orders" element={<DesignOrders />} />
                 <Route path="/orders/new" element={

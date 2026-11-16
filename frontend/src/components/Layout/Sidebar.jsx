@@ -13,6 +13,7 @@ const navItems = [
   { to: '/billing',          label: 'Billing System',  icon: QrCode,          adminOnly: true },
   { to: '/payment-records',  label: 'Payment Records', icon: Wallet,         adminOnly: true },
   { to: '/materials',        label: 'Materials',        icon: Package,        adminOnly: true },
+  { to: '/tailors-payment',  label: 'Tailors Payment',  icon: Scissors,       adminOnly: true },
 ];
 
 export default function Sidebar({ open, onClose }) {
