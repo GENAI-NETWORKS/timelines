@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard, Users, ShoppingBag, Scissors, QrCode, X, LogOut, Wallet
+  LayoutDashboard, Users, ShoppingBag, Scissors, QrCode, X, LogOut, Wallet, Package
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { logout } from '../../api/auth';
@@ -12,6 +12,7 @@ const navItems = [
   { to: '/customer/list',    label: 'All Orders',      icon: ShoppingBag,     adminOnly: true },
   { to: '/billing',          label: 'Billing System',  icon: QrCode,          adminOnly: true },
   { to: '/payment-records',  label: 'Payment Records', icon: Wallet,         adminOnly: true },
+  { to: '/materials',        label: 'Materials',        icon: Package,        adminOnly: true },
 ];
 
 export default function Sidebar({ open, onClose }) {
