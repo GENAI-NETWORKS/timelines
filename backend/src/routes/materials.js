@@ -14,7 +14,7 @@ async function ensureTable() {
       stockOut    DECIMAL(12,2)  NOT NULL DEFAULT 0,
       pricing     DECIMAL(12,2)  NOT NULL DEFAULT 0,
       unit        VARCHAR(50)    DEFAULT 'pcs',
-      notes       TEXT           DEFAULT '',
+      notes       TEXT,
       createdAt   DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updatedAt   DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       INDEX idx_name (name)
@@ -33,6 +33,7 @@ const fmtIST = (dt) => {
 // GET /api/materials  — list all with optional search
 router.get('/', protect, adminOnly, async (req, res, next) => {
   try {
+    await ensureTable().catch(() => {});
     const { search = '' } = req.query;
     const params = [];
     let where = '';
@@ -71,6 +72,7 @@ router.get('/:id', protect, adminOnly, async (req, res, next) => {
 // POST /api/materials  — create
 router.post('/', protect, adminOnly, async (req, res, next) => {
   try {
+    await ensureTable().catch(() => {});
     const { name, stockIn = 0, stockOut = 0, pricing = 0, unit = 'pcs', notes = '' } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ message: 'Name is required.' });
     const id = uuidv4();

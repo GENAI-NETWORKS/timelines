@@ -16,6 +16,13 @@ import toast from 'react-hot-toast';
 const fmt = (n) =>
   Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+const getPhotoUrl = (url) => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:')) return url;
+  const apiBase = import.meta.env.VITE_API_URL || '';
+  return `${apiBase}${url}`;
+};
+
 // ── Photo preview modal ───────────────────────────────────────────────────────
 function PhotoModal({ url, name, onClose }) {
   return (
@@ -67,7 +74,7 @@ function TailorPaymentForm({ initial = null, onSave, onClose, customers = [] }) 
     notes:       initial?.notes       || '',
   });
   const [photoFile, setPhotoFile]       = useState(null);
-  const [photoPreview, setPhotoPreview] = useState(initial?.photoUrl || '');
+  const [photoPreview, setPhotoPreview] = useState(initial?.photoUrl ? getPhotoUrl(initial.photoUrl) : '');
   const [saving, setSaving]             = useState(false);
   const [errors, setErrors]             = useState({});
 
@@ -522,7 +529,7 @@ export default function TailorsPayment() {
                     <td className="py-3.5 px-4 text-center">
                       {p.photoUrl ? (
                         <button
-                          onClick={() => setViewPhoto({ url: p.photoUrl, name: p.name })}
+                          onClick={() => setViewPhoto({ url: getPhotoUrl(p.photoUrl), name: p.name })}
                           className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 hover:underline font-medium"
                           title="View photo"
                         >

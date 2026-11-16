@@ -1,23 +1,25 @@
 const express = require('express');
 const router  = express.Router();
 const multer  = require('multer');
+const path    = require('path');
+const fs      = require('fs');
 const db      = require('../utils/db');
 const { protect, adminOnly } = require('../middleware/auth');
-const { getStorage, cloudinary } = require('../utils/cloudinary');
+const { getStorage, cloudinary, isCloudinaryConfigured } = require('../utils/cloudinary');
 const { v4: uuidv4 } = require('uuid');
 
-// ── Multer / Cloudinary ───────────────────────────────────────────────────────
+// ── Multer / Storage (Cloudinary with local disk fallback) ───────────────────
 const storage = getStorage('timelines/tailors-payments');
 const upload  = multer({
   storage,
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) cb(null, true);
+    if (file.mimetype && file.mimetype.startsWith('image/')) cb(null, true);
     else cb(new Error('Only image files are allowed'));
   },
 });
 
-// ── Ensure table ──────────────────────────────────────────────────────────────
+// ── Ensure table exists ───────────────────────────────────────────────────────
 async function ensureTable() {
   await db.query(`
     CREATE TABLE IF NOT EXISTS TailorsPayment (
@@ -28,7 +30,7 @@ async function ensureTable() {
       productName   VARCHAR(255)   DEFAULT '',
       photoUrl      VARCHAR(1000)  DEFAULT '',
       photoPublicId VARCHAR(500)   DEFAULT '',
-      notes         TEXT           DEFAULT '',
+      notes         TEXT,
       createdAt     DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updatedAt     DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       INDEX idx_customerId (customerId),
@@ -50,9 +52,24 @@ const mapRow = (r) => ({
   updatedAt: fmtIST(r.updatedAt),
 });
 
+const resolvePhoto = (file) => {
+  if (!file) return { photoUrl: '', photoPublicId: '' };
+  if (file.path && (file.path.startsWith('http://') || file.path.startsWith('https://'))) {
+    return { photoUrl: file.path, photoPublicId: file.filename || '' };
+  }
+  if (file.filename) {
+    return {
+      photoUrl: `/uploads/timelines_tailors-payments/${file.filename}`,
+      photoPublicId: file.filename,
+    };
+  }
+  return { photoUrl: '', photoPublicId: '' };
+};
+
 // ── GET /api/tailors-payments ─────────────────────────────────────────────────
 router.get('/', protect, adminOnly, async (req, res, next) => {
   try {
+    await ensureTable().catch(() => {});
     const { search = '' } = req.query;
     const params = [];
     let where = '';
@@ -72,6 +89,7 @@ router.get('/', protect, adminOnly, async (req, res, next) => {
 // ── GET /api/tailors-payments/:id ─────────────────────────────────────────────
 router.get('/:id', protect, adminOnly, async (req, res, next) => {
   try {
+    await ensureTable().catch(() => {});
     const [rows] = await db.query('SELECT * FROM TailorsPayment WHERE id = ?', [req.params.id]);
     if (!rows.length) return res.status(404).json({ message: 'Not found.' });
     res.json(mapRow(rows[0]));
@@ -81,6 +99,7 @@ router.get('/:id', protect, adminOnly, async (req, res, next) => {
 // ── POST /api/tailors-payments  — create (with optional photo) ────────────────
 router.post('/', protect, adminOnly, upload.single('photo'), async (req, res, next) => {
   try {
+    await ensureTable().catch(() => {});
     const { name, amount = 0, customerId, productName = '', notes = '' } = req.body;
     if (!name?.trim())       return res.status(400).json({ message: 'Name is required.' });
     if (!customerId?.trim()) return res.status(400).json({ message: 'Customer ID is required.' });
@@ -90,13 +109,12 @@ router.post('/', protect, adminOnly, upload.single('photo'), async (req, res, ne
     if (dup.length) return res.status(409).json({ message: `Customer ID "${customerId}" already exists. Use a unique ID.` });
 
     const id = uuidv4();
-    const photoUrl      = req.file?.path || '';
-    const photoPublicId = req.file?.filename || '';
+    const { photoUrl, photoPublicId } = resolvePhoto(req.file);
 
     await db.execute(
       `INSERT INTO TailorsPayment (id, name, amount, customerId, productName, photoUrl, photoPublicId, notes, createdAt, updatedAt)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-      [id, name.trim(), amount, customerId.trim(), productName.trim(), photoUrl, photoPublicId, notes]
+      [id, name.trim(), amount, customerId.trim(), productName.trim(), photoUrl, photoPublicId, notes || '']
     );
     const [rows] = await db.query('SELECT * FROM TailorsPayment WHERE id = ?', [id]);
     res.status(201).json(mapRow(rows[0]));
@@ -106,6 +124,7 @@ router.post('/', protect, adminOnly, upload.single('photo'), async (req, res, ne
 // ── PUT /api/tailors-payments/:id  — update (with optional new photo) ─────────
 router.put('/:id', protect, adminOnly, upload.single('photo'), async (req, res, next) => {
   try {
+    await ensureTable().catch(() => {});
     const { name, amount, customerId, productName = '', notes = '' } = req.body;
     if (!name?.trim())       return res.status(400).json({ message: 'Name is required.' });
     if (!customerId?.trim()) return res.status(400).json({ message: 'Customer ID is required.' });
@@ -120,19 +139,27 @@ router.put('/:id', protect, adminOnly, upload.single('photo'), async (req, res, 
     let photoUrl      = existing[0].photoUrl;
     let photoPublicId = existing[0].photoPublicId;
 
-    // If new photo uploaded, delete old from Cloudinary and use new
     if (req.file) {
+      // Remove old photo if exists
       if (photoPublicId) {
-        try { await cloudinary.uploader.destroy(photoPublicId); } catch {}
+        if (isCloudinaryConfigured) {
+          try { await cloudinary.uploader.destroy(photoPublicId); } catch {}
+        } else {
+          try {
+            const oldPath = path.join(__dirname, '../../uploads/timelines_tailors-payments', photoPublicId);
+            if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+          } catch {}
+        }
       }
-      photoUrl      = req.file.path;
-      photoPublicId = req.file.filename;
+      const resolved = resolvePhoto(req.file);
+      photoUrl      = resolved.photoUrl;
+      photoPublicId = resolved.photoPublicId;
     }
 
     await db.execute(
       `UPDATE TailorsPayment SET name=?, amount=?, customerId=?, productName=?, photoUrl=?, photoPublicId=?, notes=?, updatedAt=NOW()
        WHERE id=?`,
-      [name.trim(), amount, customerId.trim(), productName.trim(), photoUrl, photoPublicId, notes, req.params.id]
+      [name.trim(), amount, customerId.trim(), productName.trim(), photoUrl, photoPublicId, notes || '', req.params.id]
     );
     const [rows] = await db.query('SELECT * FROM TailorsPayment WHERE id = ?', [req.params.id]);
     res.json(mapRow(rows[0]));
@@ -144,14 +171,22 @@ router.delete('/:id', protect, adminOnly, async (req, res, next) => {
   try {
     const [rows] = await db.query('SELECT * FROM TailorsPayment WHERE id = ?', [req.params.id]);
     if (!rows.length) return res.status(404).json({ message: 'Not found.' });
-    // Delete photo from Cloudinary
+
+    // Clean up photo
     if (rows[0].photoPublicId) {
-      try { await cloudinary.uploader.destroy(rows[0].photoPublicId); } catch {}
+      if (isCloudinaryConfigured) {
+        try { await cloudinary.uploader.destroy(rows[0].photoPublicId); } catch {}
+      } else {
+        try {
+          const oldPath = path.join(__dirname, '../../uploads/timelines_tailors-payments', rows[0].photoPublicId);
+          if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+        } catch {}
+      }
     }
+
     await db.execute('DELETE FROM TailorsPayment WHERE id = ?', [req.params.id]);
     res.json({ success: true });
   } catch (err) { next(err); }
 });
 
 module.exports = router;
-
