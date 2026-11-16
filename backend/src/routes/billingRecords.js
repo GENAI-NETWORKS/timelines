@@ -1,8 +1,23 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const db = require('../utils/db');
 const { protect, adminOnly } = require('../middleware/auth');
+const { getStorage, cloudinary, isCloudinaryConfigured } = require('../utils/cloudinary');
 const { v4: uuidv4 } = require('uuid');
+
+// Multer for photo uploads (Cloudinary or local disk fallback)
+const storage = getStorage('timelines/billing-records');
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype && file.mimetype.startsWith('image/')) cb(null, true);
+    else cb(new Error('Only image files are allowed'));
+  },
+});
 
 // Ensure BillingRecord table exists
 async function ensureTable() {
@@ -19,6 +34,8 @@ async function ensureTable() {
       discountAmount DECIMAL(12,2) NOT NULL DEFAULT 0,
       taxRate       DECIMAL(6,2)  NOT NULL DEFAULT 0,
       grandTotal    DECIMAL(12,2) NOT NULL DEFAULT 0,
+      photoUrl      VARCHAR(1000) DEFAULT '',
+      photoPublicId VARCHAR(500)  DEFAULT '',
       createdAt     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updatedAt     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       INDEX idx_billDate   (billDate),
@@ -26,9 +43,32 @@ async function ensureTable() {
       INDEX idx_grandTotal  (grandTotal)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `);
+
+  // Add photo columns if upgrading from an older schema
+  for (const col of [
+    "ALTER TABLE BillingRecord ADD COLUMN photoUrl VARCHAR(1000) DEFAULT '' AFTER grandTotal",
+    "ALTER TABLE BillingRecord ADD COLUMN photoPublicId VARCHAR(500) DEFAULT '' AFTER photoUrl",
+  ]) {
+    try { await db.query(col); } catch (_) { /* column already exists */ }
+  }
 }
 
 ensureTable().catch(err => console.error('BillingRecord table init error:', err));
+
+// Helper to resolve photo from multer file
+const resolvePhoto = (file) => {
+  if (!file) return { photoUrl: '', photoPublicId: '' };
+  if (file.path && (file.path.startsWith('http://') || file.path.startsWith('https://'))) {
+    return { photoUrl: file.path, photoPublicId: file.filename || '' };
+  }
+  if (file.filename) {
+    return {
+      photoUrl: `/uploads/timelines_billing-records/${file.filename}`,
+      photoPublicId: file.filename,
+    };
+  }
+  return { photoUrl: '', photoPublicId: '' };
+};
 
 // GET /api/billing-records  — list with filters + pagination
 router.get('/', protect, adminOnly, async (req, res, next) => {
@@ -167,6 +207,39 @@ router.patch('/:id', protect, adminOnly, async (req, res, next) => {
       [normalised, req.params.id]
     );
     res.json({ success: true, paymentMode: normalised });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/billing-records/:id/photo  — upload / replace reference photo
+router.patch('/:id/photo', protect, adminOnly, upload.single('photo'), async (req, res, next) => {
+  try {
+    const [rows] = await db.query('SELECT * FROM BillingRecord WHERE id = ?', [req.params.id]);
+    if (!rows.length) return res.status(404).json({ message: 'Record not found.' });
+
+    const existing = rows[0];
+
+    // Remove old photo if present
+    if (existing.photoPublicId) {
+      if (isCloudinaryConfigured) {
+        try { await cloudinary.uploader.destroy(existing.photoPublicId); } catch {}
+      } else {
+        try {
+          const oldPath = path.join(__dirname, '../../uploads/timelines_billing-records', existing.photoPublicId);
+          if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+        } catch {}
+      }
+    }
+
+    const { photoUrl, photoPublicId } = resolvePhoto(req.file);
+
+    await db.execute(
+      'UPDATE BillingRecord SET photoUrl=?, photoPublicId=?, updatedAt=NOW() WHERE id=?',
+      [photoUrl, photoPublicId, req.params.id]
+    );
+
+    res.json({ success: true, photoUrl, photoPublicId });
   } catch (err) {
     next(err);
   }

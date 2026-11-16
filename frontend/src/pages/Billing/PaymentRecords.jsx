@@ -1,11 +1,12 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   FileText, Search, Filter, Calendar, IndianRupee, Trash2,
   RefreshCw, TrendingUp, BarChart2, Tag, ChevronDown, ChevronUp,
-  ExternalLink, ArrowLeft, CheckCircle2, Wallet, Phone, Smartphone, CreditCard
+  ExternalLink, ArrowLeft, CheckCircle2, Wallet, Phone, Smartphone, CreditCard,
+  ImagePlus, Eye, X
 } from 'lucide-react';
-import { getBillingRecords, deleteBillingRecord, updateBillingRecordPayment } from '../../api/billingRecords';
+import { getBillingRecords, deleteBillingRecord, updateBillingRecordPayment, uploadBillingRecordPhoto } from '../../api/billingRecords';
 import { formatINR } from './billUtils';
 import Pagination from '../../components/UI/Pagination';
 import ConfirmModal from '../../components/UI/ConfirmModal';
@@ -59,7 +60,13 @@ export default function PaymentRecords() {
   const [page, setPage] = useState(1);
   const [deleteId, setDeleteId] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
-  const [editingPaymentId, setEditingPaymentId] = useState(null); // row id being edited
+  const [editingPaymentId, setEditingPaymentId] = useState(null);
+
+  // Photo upload
+  const [uploadingId, setUploadingId] = useState(null);
+  const [viewPhotoUrl, setViewPhotoUrl] = useState(null);
+  const photoInputRef = useRef(null);
+  const photoTargetId = useRef(null);
 
   // Filters
   const [search, setSearch] = useState('');
@@ -68,6 +75,14 @@ export default function PaymentRecords() {
   const [dateTo, setDateTo] = useState('');
 
   const LIMIT = 15;
+
+  // Helper to build absolute photo URL
+  const getPhotoUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:')) return url;
+    const base = (import.meta.env.VITE_API_URL || '').replace(/\/api$/, '');
+    return `${base}${url}`;
+  };
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -151,7 +166,6 @@ export default function PaymentRecords() {
   const handleUpdatePayment = async (id, newMode) => {
     try {
       await updateBillingRecordPayment(id, newMode);
-      // Optimistically update local records
       setRecords(prev => prev.map(r => r.id === id ? { ...r, paymentMode: newMode } : r));
       toast.success(`Payment method updated to ${newMode}`);
     } catch {
@@ -161,8 +175,61 @@ export default function PaymentRecords() {
     }
   };
 
+  // Trigger hidden file input for the given record id
+  const triggerPhotoUpload = (id) => {
+    photoTargetId.current = id;
+    photoInputRef.current?.click();
+  };
+
+  const handlePhotoFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !photoTargetId.current) return;
+    e.target.value = '';
+
+    const id = photoTargetId.current;
+    setUploadingId(id);
+    try {
+      const res = await uploadBillingRecordPhoto(id, file);
+      const { photoUrl } = res.data;
+      setRecords(prev => prev.map(r => r.id === id ? { ...r, photoUrl } : r));
+      toast.success('Photo uploaded successfully');
+    } catch {
+      toast.error('Failed to upload photo');
+    } finally {
+      setUploadingId(null);
+      photoTargetId.current = null;
+    }
+  };
+
+
   return (
     <div className="space-y-6 animate-fade-in pb-12">
+      {/* Hidden photo file input */}
+      <input
+        ref={photoInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handlePhotoFileChange}
+      />
+
+      {/* Photo Lightbox */}
+      {viewPhotoUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setViewPhotoUrl(null)}
+        >
+          <div className="relative max-w-3xl w-full" onClick={e => e.stopPropagation()}>
+            <button
+              onClick={() => setViewPhotoUrl(null)}
+              className="absolute -top-10 right-0 text-white hover:text-gray-300 flex items-center gap-1 text-sm"
+            >
+              <X className="w-5 h-5" /> Close
+            </button>
+            <img src={viewPhotoUrl} alt="Reference" className="w-full max-h-[80vh] object-contain rounded-xl shadow-2xl" />
+          </div>
+        </div>
+      )}
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -533,6 +600,29 @@ export default function PaymentRecords() {
                           >
                             <FileText className="w-4 h-4" />
                           </Link>
+
+                          {/* Photo upload / view */}
+                          {r.photoUrl ? (
+                            <button
+                              onClick={() => setViewPhotoUrl(getPhotoUrl(r.photoUrl))}
+                              className="btn-icon text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                              title="View Reference Photo"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          ) : null}
+                          <button
+                            onClick={() => triggerPhotoUpload(r.id)}
+                            disabled={uploadingId === r.id}
+                            className="btn-icon text-blue-500 hover:text-blue-700 hover:bg-blue-50 disabled:opacity-40"
+                            title={r.photoUrl ? 'Replace Photo' : 'Upload Reference Photo'}
+                          >
+                            {uploadingId === r.id
+                              ? <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                              : <ImagePlus className="w-4 h-4" />
+                            }
+                          </button>
+
                           <button
                             onClick={() => setDeleteId(r.id)}
                             className="btn-icon text-rose-500 hover:text-rose-600 hover:bg-rose-50"
@@ -559,6 +649,32 @@ export default function PaymentRecords() {
               limit={LIMIT}
               onPageChange={setPage}
             />
+          </div>
+        )}
+
+        {/* Filtered Total Amount Bar */}
+        {!loading && records.length > 0 && (
+          <div className="px-5 py-3 border-t border-gray-100 bg-purple-50/60 flex items-center justify-between flex-wrap gap-2">
+            <span className="text-xs text-gray-500 font-medium">
+              {hasActiveFilters
+                ? <>Showing <span className="font-bold text-gray-700">{total}</span> filtered record{total !== 1 ? 's' : ''}</>
+                : <>Showing all <span className="font-bold text-gray-700">{total}</span> record{total !== 1 ? 's' : ''}</>
+              }
+            </span>
+            <div className="flex items-center gap-2">
+              {hasActiveFilters && (
+                <span className="text-xs text-purple-600 font-semibold bg-purple-100 px-2 py-0.5 rounded-full">
+                  Filtered
+                </span>
+              )}
+              <div className="flex items-center gap-1.5 bg-white border border-purple-200 rounded-xl px-3 py-1.5 shadow-sm">
+                <IndianRupee className="w-4 h-4 text-purple-600" />
+                <span className="text-xs text-gray-500 font-medium mr-1">Total:</span>
+                <span className="font-black text-purple-700 text-base font-mono">
+                  ₹ {formatINR(stats.totalRevenue || 0)}
+                </span>
+              </div>
+            </div>
           </div>
         )}
       </div>
