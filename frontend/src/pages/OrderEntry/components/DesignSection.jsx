@@ -77,7 +77,7 @@ export default function DesignSection({
             <label className="label">Design Notes</label>
             <textarea
               className="input min-h-[72px] resize-y"
-              placeholder={`Describe the ${meta.label.toLowerCase()} — depth, shape, embroidery details…`}
+              placeholder={`Describe the ${meta.label.toLowerCase()}: depth, shape, embroidery details…`}
               value={notes || ''}
               onChange={e => onNotesChange?.(e.target.value)}
               disabled={readOnly}

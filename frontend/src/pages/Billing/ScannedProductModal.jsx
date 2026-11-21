@@ -63,7 +63,7 @@ export default function ScannedProductModal({ product, onClose, onPrint, onAddTo
               <Tag className="w-3.5 h-3.5 text-brand-500" /> Category
             </div>
             <div className="text-lg font-bold text-gray-900 truncate">
-              {product.category || '—'}
+              {product.category || ''}
             </div>
           </div>
 
@@ -81,7 +81,7 @@ export default function ScannedProductModal({ product, onClose, onPrint, onAddTo
               <Calendar className="w-3.5 h-3.5 text-brand-500" /> Added Date
             </div>
             <div className="text-sm font-semibold text-gray-700 mt-1">
-              {product.createdAt ? format(new Date(product.createdAt), 'dd MMM yyyy') : '—'}
+              {product.createdAt ? format(new Date(product.createdAt), 'dd MMM yyyy') : ''}
             </div>
           </div>
         </div>

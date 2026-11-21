@@ -183,7 +183,7 @@ export default function PublicBillView() {
             <div>
               <div className="text-gray-400 font-medium uppercase tracking-wider text-[10px]">Date & Time</div>
               <div className="font-medium text-gray-800 mt-0.5">
-                {bill.date ? new Date(bill.date).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—'}
+                {bill.date ? new Date(bill.date).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : ''}
               </div>
             </div>
             <div>

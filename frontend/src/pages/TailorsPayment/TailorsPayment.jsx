@@ -185,7 +185,7 @@ export default function TailorsPayment() {
           <div>
             <h1 className="text-2xl font-black text-gray-900 tracking-tight">Tailors Payment</h1>
             <p className="text-sm text-gray-500">
-              {staff.length} tailor employee{staff.length !== 1 ? 's' : ''} — click any card to manage their work entries &amp; payments.
+              {staff.length} tailor employee{staff.length !== 1 ? 's' : ''}. Click any card to manage their work entries &amp; payments.
             </p>
           </div>
         </div>

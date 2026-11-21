@@ -276,7 +276,7 @@ export default function Materials() {
           <h1 className="font-display font-bold text-2xl text-gray-900 flex items-center gap-2">
             <Package className="w-7 h-7 text-purple-500" /> Materials
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">Track raw materials — stock in, stock out, and pricing.</p>
+          <p className="text-sm text-gray-500 mt-0.5">Track raw materials: stock in, stock out, and pricing.</p>
         </div>
         <button
           onClick={() => setShowForm(true)}

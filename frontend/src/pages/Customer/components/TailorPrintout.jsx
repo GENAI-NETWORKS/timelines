@@ -12,7 +12,7 @@ import { getItemMeta } from './ParticularRow';
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
 function fmt(d) {
-  try { return d ? format(new Date(d), 'dd MMM yyyy') : '—'; } catch { return '—'; }
+  try { return d ? format(new Date(d), 'dd MMM yyyy') : ''; } catch { return ''; }
 }
 
 function getImgUrl(url) {
@@ -64,7 +64,7 @@ function DesignBlock({ label, notes, canvasImgUrl, canvasDataUrl, designImgUrl, 
       {notes ? (
         <div className="tp-design-notes">{notes}</div>
       ) : (
-        <div className="tp-design-notes tp-placeholder">—</div>
+        <div className="tp-design-notes tp-placeholder"></div>
       )}
 
       {isArya && designImgUrl && (
@@ -92,8 +92,8 @@ function DesignBlock({ label, notes, canvasImgUrl, canvasDataUrl, designImgUrl, 
 /* ── Main print content ─────────────────────────────────────────────────── */
 export function TailorPrintContent({ order, customer, showPrices = false }) {
   const items     = order?.items || [];
-  const custName  = customer?.name  || order?.customer?.name  || '—';
-  const custPhone = customer?.phone || order?.customer?.phone || '—';
+  const custName  = customer?.name  || order?.customer?.name  || '';
+  const custPhone = customer?.phone || order?.customer?.phone || '';
 
   let grandTotal = 0;
 
@@ -102,7 +102,7 @@ export function TailorPrintContent({ order, customer, showPrices = false }) {
 
       {/* ── Fixed header for every printed page ─────────────────────── */}
       <div className="tp-page-header">
-        {custName} | ID: {order?.customer?.customerId || order?.customerId || '—'}
+        {custName} | ID: {order?.customer?.customerId || order?.customerId || ''}
       </div>
 
       {/* ── Shop header ─────────────────────────────────────────────── */}
@@ -118,7 +118,7 @@ export function TailorPrintContent({ order, customer, showPrices = false }) {
             <td className="tp-label-cell">Customer Name</td>
             <td className="tp-value-cell">{custName}</td>
             <td className="tp-label-cell">Address</td>
-            <td className="tp-value-cell">{customer?.address || order?.customer?.address || '—'}</td>
+            <td className="tp-value-cell">{customer?.address || order?.customer?.address || ''}</td>
           </tr>
           <tr>
             <td className="tp-label-cell">Order Date</td>
@@ -188,7 +188,7 @@ export function TailorPrintContent({ order, customer, showPrices = false }) {
             {/* Bag row */}
             {(details.bagNo || details.bagColour || item.details?.bagNo || item.details?.bagColour) && (
               <div className="tp-lining-row" style={{ marginTop: '2px' }}>
-                <strong>Bag Details:</strong> {details.bagNo || item.details?.bagNo || '—'} {(details.bagColour || item.details?.bagColour) ? `(${details.bagColour || item.details?.bagColour})` : ''}
+                <strong>Bag Details:</strong> {details.bagNo || item.details?.bagNo || ''} {(details.bagColour || item.details?.bagColour) ? `(${details.bagColour || item.details?.bagColour})` : ''}
               </div>
             )}
 

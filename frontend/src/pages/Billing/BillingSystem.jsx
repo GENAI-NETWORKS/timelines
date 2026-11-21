@@ -34,7 +34,7 @@ class QrErrorBoundary extends Component {
 
 // Mini QR Code preview component for table row
 function MiniQrCode({ product, value }) {
-  if (!value) return <span className="font-mono text-xs text-gray-400">—</span>;
+  if (!value) return null;
   const qrTarget = product ? getProductStickerUrl(product) : value;
   return (
     <QrErrorBoundary fallback={value}>
@@ -360,7 +360,7 @@ export default function BillingSystem() {
                     </td>
                     <td>
                       <span className="text-xs text-gray-600">
-                        {p.category || '—'}
+                        {p.category || ''}
                       </span>
                     </td>
                     <td className="text-right" onClick={(e) => e.stopPropagation()}>

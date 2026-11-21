@@ -174,7 +174,7 @@ function SubItemPanel({ sub, itemNumber, meta, orderId, itemId, onChange, onImag
                   <label className="text-[10px] text-gray-600 mb-0.5 uppercase">{m.label}</label>
                   <input
                     className="input text-sm py-1 px-1.5"
-                    placeholder="—"
+                    placeholder=""
                     value={sub[`measurement_${m.key}`] || ''}
                     onChange={e => update(`measurement_${m.key}`, e.target.value)}
                   />

@@ -809,7 +809,7 @@ export default function TailorDetail() {
             <div>
               <h3 className="font-bold text-gray-900 text-sm uppercase tracking-wider">Work Entries</h3>
               <p className="text-xs text-gray-400 mt-0.5">
-                {fromDate && toDate ? `${fmtDateDisplay(fromDate)} – ${fmtDateDisplay(toDate)}` : 'All Dates'} — {entries.length} entr{entries.length === 1 ? 'y' : 'ies'}
+                {fromDate && toDate ? `${fmtDateDisplay(fromDate)} to ${fmtDateDisplay(toDate)}` : 'All Dates'} • {entries.length} entr{entries.length === 1 ? 'y' : 'ies'}
               </p>
             </div>
             <button
@@ -861,12 +861,12 @@ export default function TailorDetail() {
                       >
                         <td className="px-3.5 py-3 text-xs text-gray-400 font-mono">{idx + 1}</td>
                         <td className="px-3.5 py-3 text-xs text-gray-700 font-medium whitespace-nowrap">
-                          {entry.entryDate ? new Date(entry.entryDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                          {entry.entryDate ? new Date(entry.entryDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}
                         </td>
-                        <td className="px-3.5 py-3 text-xs text-gray-800 font-semibold">{entry.customer || <span className="text-gray-300">—</span>}</td>
-                        <td className="px-3.5 py-3 text-xs font-mono text-purple-700 font-semibold">{entry.orderNo || <span className="text-gray-300">—</span>}</td>
-                        <td className="px-3.5 py-3 text-xs text-gray-800">{entry.item || <span className="text-gray-300">—</span>}</td>
-                        <td className="px-3.5 py-3 text-xs text-gray-600">{entry.subitem || <span className="text-gray-300">—</span>}</td>
+                        <td className="px-3.5 py-3 text-xs text-gray-800 font-semibold">{entry.customer || <span className="text-gray-300"></span>}</td>
+                        <td className="px-3.5 py-3 text-xs font-mono text-purple-700 font-semibold">{entry.orderNo || <span className="text-gray-300"></span>}</td>
+                        <td className="px-3.5 py-3 text-xs text-gray-800">{entry.item || <span className="text-gray-300"></span>}</td>
+                        <td className="px-3.5 py-3 text-xs text-gray-600">{entry.subitem || <span className="text-gray-300"></span>}</td>
 
                         {/* Photo column */}
                         <td className="px-3.5 py-3 text-xs">
@@ -891,7 +891,7 @@ export default function TailorDetail() {
                               </span>
                             </button>
                           ) : (
-                            <span className="text-gray-300 text-xs">—</span>
+                            <span className="text-gray-300 text-xs"></span>
                           )}
                         </td>
 

@@ -255,7 +255,7 @@ export default function SheetPrintModal({ products, initialSelected = [], onClos
           <div className="flex items-center gap-2">
             <QrCode className="w-4 h-4 text-brand-500" />
             <span className="text-sm font-semibold text-gray-800">Sticker Grid Size</span>
-            <span className="text-xs text-gray-400 ml-1">— fewer columns = bigger QR code</span>
+            <span className="text-xs text-gray-400 ml-1">(fewer columns = bigger QR code)</span>
           </div>
 
           {/* Quick Presets */}
@@ -317,7 +317,7 @@ export default function SheetPrintModal({ products, initialSelected = [], onClos
           <div className="flex items-center gap-2">
             <Type className="w-4 h-4 text-brand-500" />
             <span className="text-sm font-semibold text-gray-800">Text Size on Sticker</span>
-            <span className="text-xs text-gray-400 ml-1">— applies to shop name, product title, code &amp; price</span>
+            <span className="text-xs text-gray-400 ml-1">(applies to shop name, product title, code & price)</span>
           </div>
 
           {/* Font preset buttons */}
@@ -427,7 +427,7 @@ export default function SheetPrintModal({ products, initialSelected = [], onClos
             <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">
               Sheet Layout Preview
               <span className="ml-2 font-normal text-gray-400 normal-case">
-                ({cols} col × {rows} row — {sheetCapacity} stickers/sheet)
+                ({cols} col × {rows} row , {sheetCapacity} stickers/sheet)
               </span>
             </h4>
             <span className="text-xs text-gray-500">

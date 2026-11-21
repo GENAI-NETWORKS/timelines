@@ -147,10 +147,10 @@ export default function StickyNotesModal({ onClose }) {
             {notes.map(note => (
               <div key={note.id} className="sticky-note-box flex flex-col">
                 <div className="font-bold text-lg border-b border-black pb-1 mb-2 whitespace-pre-wrap">
-                  {note.customerName || '—'}{note.customerId && ` (ID: ${note.customerId})`}
+                  {note.customerName || ''}{note.customerId && ` (ID: ${note.customerId})`}
                 </div>
                 <div className="text-md font-semibold mb-3">
-                  Delivery: {note.deliveryDate || '—'}
+                  Delivery: {note.deliveryDate || ''}
                 </div>
                 <div className="flex-1 border border-dashed border-gray-400 p-2 text-sm whitespace-pre-wrap bg-yellow-50/50">
                   {note.text || 'No notes added.'}

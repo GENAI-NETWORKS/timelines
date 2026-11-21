@@ -333,17 +333,17 @@ export default function CustomerOrderList() {
 
                   {/* Order Date */}
                   <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                    {o.orderDate ? format(new Date(o.orderDate), 'dd MMM yy') : '—'}
+                    {o.orderDate ? format(new Date(o.orderDate), 'dd MMM yy') : ''}
                   </td>
 
                   {/* Delivery Date */}
                   <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                    {o.deliveryDate ? format(new Date(o.deliveryDate), 'dd MMM yy') : '—'}
+                    {o.deliveryDate ? format(new Date(o.deliveryDate), 'dd MMM yy') : ''}
                   </td>
 
                   {/* Items Count */}
                   <td className="px-4 py-3 text-gray-600 font-medium">
-                    {o._count?.items ?? '—'}
+                    {o._count?.items ?? ''}
                   </td>
 
                   {/* Status (Refined Editable Toggle) */}

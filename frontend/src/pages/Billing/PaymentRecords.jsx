@@ -482,7 +482,7 @@ export default function PaymentRecords() {
                         <div className="font-medium">
                           {r.billDate ? new Date(r.billDate).toLocaleDateString('en-IN', {
                             day: '2-digit', month: 'short', year: 'numeric'
-                          }) : '—'}
+                          }) : ''}
                         </div>
                         {r.createdAt && (
                           <div className="text-[10px] text-gray-400">
@@ -554,7 +554,7 @@ export default function PaymentRecords() {
                           {isExpanded ? <ChevronUp className="w-3.5 h-3.5 text-gray-400" /> : <ChevronDown className="w-3.5 h-3.5 text-gray-400" />}
                         </button>
                         <div className="text-[11px] text-gray-400 truncate max-w-[200px]">
-                          {itemsSummary || '—'}
+                          {itemsSummary || ''}
                         </div>
 
                         {/* Expanded items preview */}

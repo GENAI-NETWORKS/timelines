@@ -286,7 +286,7 @@ export default function InlineCanvas({ width = 460, height = 280, initialJSON, o
         {TOOLS.map(t => {
           const isActive = tool === t.id;
           if (t.id === 'select') return (
-            <button key={t.id} onClick={() => setTool(t.id)} title="Select / Move — or Double-click any object">
+            <button key={t.id} onClick={() => setTool(t.id)} title="Select / Move or Double-click any object">
               <span className={`flex items-center gap-1 px-2 h-7 rounded-md text-xs font-bold transition-all ${isActive ? 'bg-gradient-brand text-white shadow-sm' : 'text-gray-400 border border-dashed border-gray-500 hover:border-brand-400 hover:text-brand-300'}`}>
                 ↖ Select
               </span>

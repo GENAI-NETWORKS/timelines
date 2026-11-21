@@ -544,7 +544,7 @@ const ItemCard = React.memo(function ItemCard({ item, rowIndex, theme, onUpdate,
                               <label className={`block text-[10px] sm:text-xs font-semibold mb-1 truncate ${theme.text} flex items-center justify-between`}>
                                 {m.label} <span className="opacity-0 group-hover:opacity-100 text-gray-400 cursor-grab">⋮⋮</span>
                               </label>
-                              <input type="text" placeholder="—"
+                              <input type="text" placeholder=""
                                 className="w-full bg-white border border-surface-border rounded-lg px-2 py-1.5 text-sm text-gray-800 focus:outline-none focus:ring-1 focus:ring-brand-400 transition-colors"
                                 value={localSub[`measurement_${m.key}`] || ''}
                                 onChange={e => updateSub(`measurement_${m.key}`, e.target.value)}
@@ -589,7 +589,7 @@ const ItemCard = React.memo(function ItemCard({ item, rowIndex, theme, onUpdate,
                       <label className="block text-xs font-bold text-amber-700 uppercase tracking-wider mb-2">Description</label>
                       <textarea
                         className="w-full bg-white border border-amber-300 rounded-xl px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-amber-300 resize-none min-h-[120px]"
-                        placeholder="Describe the sample blouse — style, design details, special instructions for the tailor…"
+                        placeholder="Describe the sample blouse: style, design details, special instructions for the tailor…"
                         value={localSub.sampleBlouseDescription || ''}
                         onChange={e => updateSub('sampleBlouseDescription', e.target.value)}
                       />

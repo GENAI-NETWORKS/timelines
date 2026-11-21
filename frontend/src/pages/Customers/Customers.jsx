@@ -117,7 +117,7 @@ export default function Customers() {
                     )}
                   </td>
                   <td className="text-gray-500 text-xs text-right">
-                    {c.createdAt ? format(new Date(c.createdAt), 'dd MMM yyyy') : '—'}
+                    {c.createdAt ? format(new Date(c.createdAt), 'dd MMM yyyy') : ''}
                   </td>
                 </tr>
               ))}

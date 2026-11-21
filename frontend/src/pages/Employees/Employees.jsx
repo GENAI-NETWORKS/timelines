@@ -493,7 +493,7 @@ export default function Employees() {
                             {emp.phone}
                           </span>
                         ) : (
-                          <span className="text-gray-400">—</span>
+                          <span className="text-gray-400"></span>
                         )}
                       </td>
 

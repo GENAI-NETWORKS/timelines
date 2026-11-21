@@ -54,7 +54,7 @@ function RecordRow({ record, onDelete }) {
           </div>
           <div className="flex items-center gap-2 mt-0.5">
             <span className="text-[10px] text-gray-500">
-              {record.billDate ? new Date(record.billDate).toLocaleDateString('en-IN') : '—'}
+              {record.billDate ? new Date(record.billDate).toLocaleDateString('en-IN') : ''}
             </span>
             {record.customerName && record.customerName !== 'Walk-in Customer' && (
               <span className="text-[10px] text-gray-500 truncate">· {record.customerName}</span>
@@ -247,7 +247,7 @@ export default function BillRecordsPanel({ open, onClose }) {
           <StatCard
             icon={TrendingUp}
             label="Avg Bill Value"
-            value={total > 0 ? `₹${formatINR((stats.totalRevenue || 0) / total)}` : '—'}
+            value={total > 0 ? `₹${formatINR((stats.totalRevenue || 0) / total)}` : ''}
             color="blue"
           />
         </div>

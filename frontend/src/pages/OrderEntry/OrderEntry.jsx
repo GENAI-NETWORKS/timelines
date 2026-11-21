@@ -81,18 +81,18 @@ function PrintLayout({ form, orderId, templates }) {
     <div className="print-only print-order-layout">
       {/* Header */}
       <div className="print-header">
-        <h1>TIMELINES COSTUME DESIGNERS — ORDER FORM</h1>
+        <h1>TIMELINES COSTUME DESIGNERS: ORDER FORM</h1>
         <div className="print-header-grid">
-          <div><b>Order ID:</b> {orderId || '—'}</div>
+          <div><b>Order ID:</b> {orderId || ''}</div>
           <div><b>Date:</b> {form.orderDate}</div>
-          <div><b>Due Date:</b> {form.deliveryDate || '—'}</div>
+          <div><b>Due Date:</b> {form.deliveryDate || ''}</div>
           <div><b>Customer:</b> {form.customer.name}</div>
           <div><b>Phone:</b> {form.customer.phone}</div>
-          <div><b>Address:</b> {form.customer.address || '—'}</div>
-          <div><b>Bag/Ref:</b> {form.bagRef || '—'}</div>
+          <div><b>Address:</b> {form.customer.address || ''}</div>
+          <div><b>Bag/Ref:</b> {form.bagRef || ''}</div>
           <div><b>Sample:</b> {form.isSample ? 'YES' : 'NO'}</div>
           <div><b>Garment:</b> {form.garmentType}</div>
-          <div className="span-3"><b>Description:</b> {form.baseDescription || form.fabricNotes || '—'}</div>
+          <div className="span-3"><b>Description:</b> {form.baseDescription || form.fabricNotes || ''}</div>
         </div>
       </div>
 
@@ -108,8 +108,8 @@ function PrintLayout({ form, orderId, templates }) {
           </tbody>
         </table>
         <div className="print-row">
-          <b>Thread Colors:</b> {form.threadColors || '—'}
-          &nbsp;&nbsp;&nbsp;<b>Buttons:</b> {form.buttonsNeeded || '—'}
+          <b>Thread Colors:</b> {form.threadColors || ''}
+          &nbsp;&nbsp;&nbsp;<b>Buttons:</b> {form.buttonsNeeded || ''}
         </div>
       </div>
 
@@ -122,7 +122,7 @@ function PrintLayout({ form, orderId, templates }) {
           return (
             <div key={st} className="print-design-block">
               <div className="print-design-label">{label}</div>
-              <div className="print-design-notes">{sec.notes || '—'}</div>
+              <div className="print-design-notes">{sec.notes || ''}</div>
               {sec.sketchImageUrl && (
                 <img
                   src={`${import.meta.env.VITE_API_URL || ''}${sec.sketchImageUrl}`}
@@ -137,7 +137,7 @@ function PrintLayout({ form, orderId, templates }) {
 
       {/* Measurements */}
       <div className="print-section">
-        <h2>MEASUREMENTS — {form.garmentType}</h2>
+        <h2>MEASUREMENTS: {form.garmentType}</h2>
         <div className="print-measurements">
           {fields.map(f => (
             <div key={f.name} className="print-meas-cell">
@@ -151,7 +151,7 @@ function PrintLayout({ form, orderId, templates }) {
       {/* Footer */}
       <div className="print-footer">
         <div><b>Customer Confirmed:</b> {form.customerConfirmedAt ? format(new Date(form.customerConfirmedAt), 'dd MMM yyyy HH:mm') : '________________________'}</div>
-        <div><b>Special Instructions:</b> {form.specialInstructions || '—'}</div>
+        <div><b>Special Instructions:</b> {form.specialInstructions || ''}</div>
       </div>
     </div>
   );
@@ -382,7 +382,7 @@ export default function OrderEntry() {
             </button>
             <div>
               <h1 className="font-display font-bold text-2xl text-gray-900">
-                {isEdit ? `Edit Order — ${orderId}` : 'New Order'}
+                {isEdit ? `Edit Order: ${orderId}` : 'New Order'}
               </h1>
               <p className="text-sm text-gray-500 flex items-center gap-2">
                 {isEdit ? 'Update order details below' : 'Fill all sections and save'}
@@ -416,7 +416,7 @@ export default function OrderEntry() {
         </div>
 
         {/* ── Section A: Customer ─────────────────────────────────────────── */}
-        <Section id="customer" label="A — Customer" icon={User} color="text-blue-400" open={openSections.customer} onToggle={toggleSection}
+        <Section id="customer" label="A. Customer" icon={User} color="text-blue-400" open={openSections.customer} onToggle={toggleSection}
           badge={form.customer.name || null}
         >
           <CustomerPicker
@@ -426,7 +426,7 @@ export default function OrderEntry() {
         </Section>
 
         {/* ── Section B: Order Header ─────────────────────────────────────── */}
-        <Section id="header" label="B — Order Header" icon={FileText} color="text-brand-400" open={openSections.header} onToggle={toggleSection}
+        <Section id="header" label="B. Order Header" icon={FileText} color="text-brand-400" open={openSections.header} onToggle={toggleSection}
           badge={form.garmentType || null}
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -538,7 +538,7 @@ export default function OrderEntry() {
         </Section>
 
         {/* ── Section C: Particulars ──────────────────────────────────────── */}
-        <Section id="particulars" label="C — Particulars" icon={List} color="text-emerald-400" open={openSections.particulars} onToggle={toggleSection}
+        <Section id="particulars" label="C. Particulars" icon={List} color="text-emerald-400" open={openSections.particulars} onToggle={toggleSection}
           badge={form.particulars.filter(p => p.itemName.trim()).length > 0 ? `${form.particulars.filter(p => p.itemName.trim()).length} items` : null}
         >
           <ParticularsTable
@@ -552,7 +552,7 @@ export default function OrderEntry() {
         </Section>
 
         {/* ── Section D: Design Details ───────────────────────────────────── */}
-        <Section id="design" label="D — Design Details" icon={Palette} color="text-pink-400" open={openSections.design} onToggle={toggleSection}
+        <Section id="design" label="D. Design Details" icon={Palette} color="text-pink-400" open={openSections.design} onToggle={toggleSection}
           badge={form.designSections.some(s => s.notes?.trim() || s.sketchImageUrl) ? 'Has sketches' : null}
         >
           <div className="space-y-3">
@@ -584,7 +584,7 @@ export default function OrderEntry() {
         </Section>
 
         {/* ── Section E: Measurements ─────────────────────────────────────── */}
-        <Section id="measurements" label="E — Measurements" icon={Ruler} color="text-amber-400" open={openSections.measurements} onToggle={toggleSection}
+        <Section id="measurements" label="E. Measurements" icon={Ruler} color="text-amber-400" open={openSections.measurements} onToggle={toggleSection}
           badge={Object.keys(form.measurements).filter(k => form.measurements[k]).length > 0
             ? `${Object.keys(form.measurements).filter(k => form.measurements[k]).length} filled`
             : null}
