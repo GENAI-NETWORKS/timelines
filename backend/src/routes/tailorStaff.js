@@ -194,17 +194,31 @@ router.delete('/:id', protect, adminOnly, async (req, res, next) => {
 // WORK ENTRIES
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// GET /api/tailor-staff/:id/entries?month=YYYY-MM
+// GET /api/tailor-staff/:id/entries?fromDate=YYYY-MM-DD&toDate=YYYY-MM-DD
 router.get('/:id/entries', protect, adminOnly, async (req, res, next) => {
   try {
     await ensureTables().catch(() => {});
-    const { month } = req.query;
+    const { month, fromDate, toDate, startDate, endDate } = req.query;
+    const from = fromDate || startDate;
+    const to   = toDate   || endDate;
+
     let where = 'WHERE staffId = ?';
     const params = [req.params.id];
-    if (month) {
+
+    if (from && to) {
+      where += ' AND DATE(entryDate) >= ? AND DATE(entryDate) <= ?';
+      params.push(from, to);
+    } else if (from) {
+      where += ' AND DATE(entryDate) >= ?';
+      params.push(from);
+    } else if (to) {
+      where += ' AND DATE(entryDate) <= ?';
+      params.push(to);
+    } else if (month) {
       where += ' AND DATE_FORMAT(entryDate, "%Y-%m") = ?';
       params.push(month);
     }
+
     const [entries] = await db.query(
       `SELECT * FROM TailorWorkEntry ${where} ORDER BY entryDate ASC, createdAt ASC`,
       params

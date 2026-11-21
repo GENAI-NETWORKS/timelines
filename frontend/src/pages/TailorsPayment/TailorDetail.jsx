@@ -17,9 +17,32 @@ import toast from 'react-hot-toast';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 const fmt = (n) => Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const toISODate = (d) => d.toISOString().slice(0, 10);
-const nowMonth  = () => toISODate(new Date()).slice(0, 7);   // YYYY-MM
-const today     = () => toISODate(new Date());
+const toISODate = (d) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+const today = () => toISODate(new Date());
+const startOfMonth = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+};
+const endOfMonth = () => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = d.getMonth() + 1;
+  const lastDay = new Date(y, m, 0).getDate();
+  return `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+};
+
+const fmtDateDisplay = (isoStr) => {
+  if (!isoStr) return '';
+  const parts = isoStr.split('-');
+  if (parts.length < 3) return isoStr;
+  const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+};
 
 const getPhotoUrl = (url) => {
   if (!url) return '';
@@ -540,8 +563,9 @@ export default function TailorDetail() {
   const [loading,       setLoading]       = useState(true);
   const [savingPayment, setSavingPayment] = useState(false);
 
-  // Selected month filter
-  const [selectedMonth, setSelectedMonth] = useState(nowMonth);
+  // From Date to To Date filter
+  const [fromDate, setFromDate] = useState(startOfMonth);
+  const [toDate,   setToDate]   = useState(endOfMonth);
 
   // Modals
   const [modal,         setModal]         = useState(null); // 'create' | 'edit'
@@ -559,11 +583,11 @@ export default function TailorDetail() {
       .catch(() => { toast.error('Employee not found.'); navigate('/tailors-payment'); });
   }, [staffId, navigate]);
 
-  // ── Load entries for selected month ────────────────────────────────────────
+  // ── Load entries for selected date range ──────────────────────────────────
   const loadEntries = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await getWorkEntries(staffId, { month: selectedMonth });
+      const res = await getWorkEntries(staffId, { fromDate, toDate });
       setEntries(res.data.entries || []);
       setTotalEarned(res.data.totalEarned || 0);
     } catch {
@@ -571,7 +595,7 @@ export default function TailorDetail() {
     } finally {
       setLoading(false);
     }
-  }, [staffId, selectedMonth]);
+  }, [staffId, fromDate, toDate]);
 
   // ── Load payment history ────────────────────────────────────────────────────
   const loadHistory = useCallback(async () => {
@@ -671,17 +695,18 @@ export default function TailorDetail() {
   // ── Save Payment Details ────────────────────────────────────────────────────
   const handleSavePayment = async () => {
     if (totalEarned <= 0) {
-      toast.error('No earnings to save for this month.');
+      toast.error('No earnings to save for this date range.');
       return;
     }
     setSavingPayment(true);
+    const periodLabel = fromDate === toDate ? fromDate : `${fromDate} to ${toDate}`;
     try {
       await savePaymentHistory(staffId, {
-        monthYear:   selectedMonth,
+        monthYear:   periodLabel,
         totalAmount: totalEarned,
         notes:       '',
       });
-      toast.success(`Payment of ₹${fmt(totalEarned)} saved for ${selectedMonth}!`);
+      toast.success(`Payment of ₹${fmt(totalEarned)} saved (${periodLabel})!`);
       loadHistory();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to save payment.');
@@ -738,15 +763,38 @@ export default function TailorDetail() {
             </div>
           </div>
 
-          {/* Month picker */}
-          <div className="flex items-center gap-2">
-            <CalendarDays className="w-4 h-4 text-gray-400" />
-            <input
-              type="month"
-              value={selectedMonth}
-              onChange={e => setSelectedMonth(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-400"
-            />
+          {/* From Date to To Date Filter */}
+          <div className="flex items-center gap-2 flex-wrap bg-gray-50/80 border border-gray-200 rounded-xl px-3 py-1.5 shadow-xs">
+            <CalendarDays className="w-4 h-4 text-purple-600 flex-shrink-0" />
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="text-gray-500 font-bold uppercase text-[10px]">From:</span>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={e => setFromDate(e.target.value)}
+                className="bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-700 font-medium focus:outline-none focus:ring-1 focus:ring-purple-400"
+              />
+            </div>
+            <span className="text-gray-400 text-xs font-bold select-none">→</span>
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="text-gray-500 font-bold uppercase text-[10px]">To:</span>
+              <input
+                type="date"
+                value={toDate}
+                onChange={e => setToDate(e.target.value)}
+                className="bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-700 font-medium focus:outline-none focus:ring-1 focus:ring-purple-400"
+              />
+            </div>
+            {(fromDate !== startOfMonth() || toDate !== endOfMonth()) && (
+              <button
+                type="button"
+                onClick={() => { setFromDate(startOfMonth()); setToDate(endOfMonth()); }}
+                className="text-[11px] text-purple-600 hover:text-purple-800 font-semibold underline ml-1 cursor-pointer"
+                title="Reset to this month"
+              >
+                This Month
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -760,7 +808,9 @@ export default function TailorDetail() {
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
             <div>
               <h3 className="font-bold text-gray-900 text-sm uppercase tracking-wider">Work Entries</h3>
-              <p className="text-xs text-gray-400 mt-0.5">{selectedMonth} — {entries.length} entr{entries.length === 1 ? 'y' : 'ies'}</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {fromDate && toDate ? `${fmtDateDisplay(fromDate)} – ${fmtDateDisplay(toDate)}` : 'All Dates'} — {entries.length} entr{entries.length === 1 ? 'y' : 'ies'}
+              </p>
             </div>
             <button
               onClick={() => { setEntryForm({ ...ENTRY_EMPTY, entryDate: today() }); setModal('create'); }}
@@ -861,48 +911,52 @@ export default function TailorDetail() {
         {/* ── Right Sidebar ─────────────────────────────────────────────────── */}
         <div className="w-full lg:w-72 flex flex-col gap-5">
 
-          {/* Current Month History */}
+          {/* Saved Payment History */}
           <div className="card p-4">
             <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">
-              Current Month History
+              Payment History
             </h4>
             {history.length === 0 ? (
-              <p className="text-xs text-gray-400 italic">No payments saved for this month yet.</p>
+              <p className="text-xs text-gray-400 italic">No payments saved yet.</p>
             ) : (
               <div className="space-y-2.5">
-                {history
-                  .filter(h => h.monthYear === selectedMonth)
-                  .slice(0, 5)
-                  .map(h => (
-                    <div key={h.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
-                      <div>
-                        <div className="text-xs font-semibold text-gray-700">{h.monthYear}</div>
-                        {h.notes && <div className="text-[11px] text-gray-400">{h.notes}</div>}
-                      </div>
-                      <div className="font-bold text-purple-700 text-sm font-mono">₹{fmt(h.totalAmount)}</div>
+                {history.slice(0, 5).map(h => (
+                  <div key={h.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+                    <div>
+                      <div className="text-xs font-semibold text-gray-700">{h.monthYear}</div>
+                      {h.savedAt && (
+                        <div className="text-[10px] text-gray-400">
+                          {new Date(h.savedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </div>
+                      )}
+                      {h.notes && <div className="text-[11px] text-gray-400">{h.notes}</div>}
                     </div>
-                  ))}
-                {history.filter(h => h.monthYear === selectedMonth).length === 0 && (
-                  <p className="text-xs text-gray-400 italic">No saved payments for {selectedMonth}.</p>
+                    <div className="font-bold text-purple-700 text-sm font-mono">₹{fmt(h.totalAmount)}</div>
+                  </div>
+                ))}
+                {history.length > 5 && (
+                  <details className="mt-2">
+                    <summary className="text-xs text-purple-600 font-semibold cursor-pointer hover:text-purple-700 select-none">
+                      View all history ({history.length})
+                    </summary>
+                    <div className="mt-2 space-y-2 max-h-48 overflow-y-auto">
+                      {history.slice(5).map(h => (
+                        <div key={h.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+                          <div>
+                            <div className="text-xs font-semibold text-gray-700">{h.monthYear}</div>
+                            {h.savedAt && (
+                              <div className="text-[10px] text-gray-400">
+                                {new Date(h.savedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              </div>
+                            )}
+                          </div>
+                          <div className="font-bold text-gray-700 text-xs font-mono">₹{fmt(h.totalAmount)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
                 )}
               </div>
-            )}
-
-            {/* All past months */}
-            {history.filter(h => h.monthYear !== selectedMonth).length > 0 && (
-              <details className="mt-3">
-                <summary className="text-xs text-purple-600 font-semibold cursor-pointer hover:text-purple-700 select-none">
-                  View older history ({history.filter(h => h.monthYear !== selectedMonth).length})
-                </summary>
-                <div className="mt-2 space-y-2 max-h-48 overflow-y-auto">
-                  {history.filter(h => h.monthYear !== selectedMonth).map(h => (
-                    <div key={h.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
-                      <div className="text-xs font-semibold text-gray-700">{h.monthYear}</div>
-                      <div className="font-bold text-gray-700 text-xs font-mono">₹{fmt(h.totalAmount)}</div>
-                    </div>
-                  ))}
-                </div>
-              </details>
             )}
           </div>
 
