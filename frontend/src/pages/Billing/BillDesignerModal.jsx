@@ -342,7 +342,7 @@ export default function BillDesignerModal({
     const isA5 = paperSize === 'a5';
     const isA4 = paperSize === 'a4';
 
-    const qrSize = isA4 ? 140 : isA5 ? 120 : 100;
+    const qrSize = isA4 ? 220 : isA5 ? 190 : 170;
     const qrSvgHtml = showQrCode ? createQrSvgString(billQrUrl, { size: qrSize, margin: 4, ecLevel: 'L' }) : '';
 
     const html = `
@@ -473,11 +473,12 @@ export default function BillDesignerModal({
 
             .qrcode-section {
               text-align: center;
-              margin: ${isA4 ? '12px 0 6px' : '8px 0 4px'};
+              margin: ${isA4 ? '14px 0 8px' : '10px 0 6px'};
             }
             .qrcode-section svg {
               display: inline-block;
-              max-width: ${isA4 ? '130px' : isA5 ? '110px' : '95px'};
+              width: ${isA4 ? '200px' : isA5 ? '175px' : '155px'};
+              max-width: ${isA4 ? '200px' : isA5 ? '175px' : '155px'};
               height: auto;
             }
 
@@ -1429,10 +1430,10 @@ export default function BillDesignerModal({
                 {/* QR Code preview */}
                 {showQrCode && (
                   <div className="text-center pt-3 flex flex-col items-center">
-                    <div className="p-3 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col items-center">
-                      <QrCodeView value={billQrUrl} size={150} margin={4} />
-                      <div className="font-mono text-sm font-bold text-gray-800 tracking-wider mt-2">{billNo}</div>
-                      <div className="text-xs font-medium text-brand-600 mt-0.5">Scan QR Code to view digital bill</div>
+                    <div className="p-4 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col items-center">
+                      <QrCodeView value={billQrUrl} size={paperSize === 'thermal' ? 200 : paperSize === 'a5' ? 210 : 230} margin={4} />
+                      <div className="font-mono text-sm font-bold text-gray-800 tracking-wider mt-2.5">{billNo}</div>
+                      <div className="text-xs font-semibold text-brand-600 mt-1">Scan QR Code to view digital bill</div>
                     </div>
                   </div>
                 )}
