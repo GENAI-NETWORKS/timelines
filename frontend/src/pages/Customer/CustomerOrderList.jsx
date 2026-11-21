@@ -44,60 +44,24 @@ const STATUS_CONFIG = {
 
 // ── Interactive Status Toggle Dropdown ───────────────────────────────────────
 function StatusToggle({ status, onSelect, disabled }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
   const current = normalizeStatus(status);
   const config = STATUS_CONFIG[current] || STATUS_CONFIG['Not yet started'];
 
-  useEffect(() => {
-    const handleOutside = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handleOutside);
-    return () => document.removeEventListener('mousedown', handleOutside);
-  }, []);
-
   return (
-    <div ref={ref} className="relative inline-block text-left">
-      <button
-        type="button"
+    <div className="relative inline-block text-left" onClick={(e) => e.stopPropagation()}>
+      <select
+        value={current}
         disabled={disabled}
-        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
-        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition-all cursor-pointer shadow-xs ${config.badge}`}
+        onChange={(e) => onSelect(e.target.value)}
+        className={`text-xs font-semibold rounded-full pl-6 pr-7 py-1.5 border cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-400 appearance-none transition-all shadow-xs ${config.badge}`}
         title="Click to change order status"
       >
-        <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
-        <span>{config.label}</span>
-        <ChevronDown className={`w-3 h-3 opacity-60 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-
-      {open && (
-        <div className="absolute left-0 mt-1.5 w-44 rounded-xl bg-white shadow-xl border border-gray-100 py-1.5 z-40 animate-in fade-in zoom-in-95 duration-100">
-          <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">
-            Set Order Status
-          </div>
-          {Object.entries(STATUS_CONFIG).map(([key, item]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelect(key);
-                setOpen(false);
-              }}
-              className={`w-full text-left px-3 py-1.5 text-xs flex items-center justify-between gap-2 hover:bg-gray-50 transition-colors ${
-                current === key ? 'bg-purple-50/70 font-bold text-purple-900' : 'text-gray-700'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${item.dot}`} />
-                <span>{item.label}</span>
-              </div>
-              {current === key && <Check className="w-3.5 h-3.5 text-purple-600" />}
-            </button>
-          ))}
-        </div>
-      )}
+        <option value="Not yet started" className="bg-white text-gray-800 py-1">Not yet started</option>
+        <option value="On progress" className="bg-white text-gray-800 py-1">On progress</option>
+        <option value="Delivered" className="bg-white text-gray-800 py-1">Delivered</option>
+      </select>
+      <span className={`w-2 h-2 rounded-full absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none ${config.dot}`} />
+      <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-60 text-current" />
     </div>
   );
 }
