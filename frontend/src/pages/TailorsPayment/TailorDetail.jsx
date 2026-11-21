@@ -10,6 +10,7 @@ import {
   getPaymentHistory, savePaymentHistory
 } from '../../api/tailorStaff';
 import { searchCustomers } from '../../api/customers';
+import { getTailoringOrders } from '../../api/tailoringOrders';
 import Modal from '../../components/UI/Modal';
 import ConfirmModal from '../../components/UI/ConfirmModal';
 import toast from 'react-hot-toast';
@@ -189,6 +190,160 @@ function CustomerSelect({ value, onChange }) {
   );
 }
 
+// ── Order No Select Combobox ──────────────────────────────────────────────────
+function OrderNoSelect({ value, onChange, customerId, onSelectOrder }) {
+  const [open, setOpen] = useState(false);
+  const [orders, setOrders] = useState([]);
+  const [filter, setFilter] = useState('');
+  const [loading, setLoading] = useState(false);
+  const wrapperRef = useRef(null);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    getTailoringOrders({ limit: 100 })
+      .then(res => {
+        if (active) setOrders(res.data?.orders || []);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => { active = false; };
+  }, []);
+
+  // Close on outside click
+  useEffect(() => {
+    const handleOutside = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    let list = orders.filter(o => o.orderNo);
+    if (q) {
+      list = list.filter(o =>
+        (o.orderNo && o.orderNo.toLowerCase().includes(q)) ||
+        (o.customer?.name && o.customer.name.toLowerCase().includes(q)) ||
+        (o.customer?.customerId && o.customer.customerId.toLowerCase().includes(q)) ||
+        (o.customer?.phone && o.customer.phone.includes(q))
+      );
+    }
+    // If customerId is provided, sort matching customer's orders first
+    if (customerId) {
+      return [...list].sort((a, b) => {
+        const aMatch = a.customerId === customerId || a.customer?.customerId === customerId;
+        const bMatch = b.customerId === customerId || b.customer?.customerId === customerId;
+        if (aMatch && !bMatch) return -1;
+        if (!aMatch && bMatch) return 1;
+        return 0;
+      });
+    }
+    return list;
+  }, [orders, filter, customerId]);
+
+  const handleSelect = (ord) => {
+    onChange(ord.orderNo);
+    if (onSelectOrder) onSelectOrder(ord);
+    setFilter('');
+    setOpen(false);
+  };
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      <div className="relative">
+        <input
+          className="input pr-8 font-mono"
+          placeholder="Select order or enter No..."
+          value={value || ''}
+          onChange={(e) => {
+            onChange(e.target.value);
+            setFilter(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => {
+            setFilter('');
+            setOpen(true);
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+          title="Choose existing order"
+        >
+          <ChevronDown className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+      </div>
+
+      {open && (
+        <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-purple-200 rounded-xl shadow-xl max-h-60 overflow-y-auto">
+          {/* Quick search input */}
+          <div className="p-2 border-b border-gray-100 bg-gray-50/70 sticky top-0">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                className="w-full text-xs bg-white border border-gray-200 rounded-lg pl-8 pr-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-purple-400 font-sans"
+                placeholder="Search by order no, customer..."
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                autoFocus
+              />
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="p-4 text-center text-xs text-gray-400">Loading orders...</div>
+          ) : filtered.length === 0 ? (
+            <div className="p-4 text-center text-xs text-gray-400">No matching orders found</div>
+          ) : (
+            <div className="py-1 divide-y divide-gray-50">
+              {filtered.map((ord) => {
+                const isCustMatch = customerId && (ord.customerId === customerId || ord.customer?.customerId === customerId);
+                return (
+                  <button
+                    key={ord.id}
+                    type="button"
+                    onClick={() => handleSelect(ord)}
+                    className={`w-full text-left px-3 py-2 hover:bg-purple-50/70 flex items-center justify-between gap-2 transition-colors ${
+                      value === ord.orderNo ? 'bg-purple-50 text-purple-900 font-semibold' : ''
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono font-bold text-purple-700">{ord.orderNo}</span>
+                        {isCustMatch && (
+                          <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-semibold">
+                            This Customer
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-gray-500 truncate mt-0.5">
+                        {ord.customer?.name || 'Walk-in'} {ord.customer?.phone ? `• ${ord.customer.phone}` : ''}
+                      </div>
+                    </div>
+                    {ord.orderDate && (
+                      <span className="text-[11px] text-gray-400 font-mono flex-shrink-0">
+                        {new Date(ord.orderDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Add / Edit Entry Modal Form ───────────────────────────────────────────────
 function EntryModalForm({ value, onChange, onSubmit, onCancel, onDelete, loading, isEdit }) {
   const fileRef = useRef();
@@ -234,14 +389,23 @@ function EntryModalForm({ value, onChange, onSubmit, onCancel, onDelete, loading
           />
         </div>
 
-        {/* Order No */}
+        {/* Order No (Combobox / Select existing order or type custom) */}
         <div>
           <label className="label text-xs font-bold uppercase tracking-wider text-gray-600">Order No</label>
-          <input
-            className="input font-mono"
-            placeholder="e.g. ORD-1002"
+          <OrderNoSelect
             value={value.orderNo}
-            onChange={e => onChange({ ...value, orderNo: e.target.value })}
+            customerId={value.customer}
+            onChange={(val) => onChange({ ...value, orderNo: val })}
+            onSelectOrder={(ord) => {
+              const custId = ord.customer?.customerId || ord.customerId;
+              if (!value.customer && custId) {
+                onChange({
+                  ...value,
+                  orderNo: ord.orderNo,
+                  customer: custId,
+                });
+              }
+            }}
           />
         </div>
 
