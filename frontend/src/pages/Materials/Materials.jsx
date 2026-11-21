@@ -412,7 +412,7 @@ export default function Materials() {
                         ₹ {fmt(val)}
                       </td>
                       <td className="py-3.5 px-4 text-center">
-                        <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center justify-center gap-1">
                           <button
                             onClick={() => setEditItem(m)}
                             className="btn-icon text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"

@@ -136,7 +136,7 @@ function OrderNumberCell({ orderNo, orderId, onSave }) {
           setVal(orderNo || displayNo);
           setEditing(true);
         }}
-        className="opacity-0 group-hover/ord:opacity-100 text-gray-400 hover:text-purple-600 p-0.5 rounded transition-opacity"
+        className="opacity-70 hover:opacity-100 text-purple-600 hover:text-purple-800 p-0.5 rounded transition-opacity"
         title="Edit Order Number"
       >
         <Edit2 className="w-3 h-3" />
