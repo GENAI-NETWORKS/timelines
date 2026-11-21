@@ -33,6 +33,8 @@ export const getTailoringOrders = (params) => api.get('/tailoring-orders', { par
 export const getTailoringOrder  = (id)     => api.get(`/tailoring-orders/${id}`).then(parseRes);
 export const createTailoringOrder = (data) => api.post('/tailoring-orders', data).then(parseRes);
 export const updateTailoringOrder = (id, data) => api.put(`/tailoring-orders/${id}`, data).then(parseRes);
+export const updateOrderStatus    = (id, status)  => api.patch(`/tailoring-orders/${id}/status`, { status });
+export const updateOrderNumber    = (id, orderNo) => api.patch(`/tailoring-orders/${id}/order-number`, { orderNo });
 export const submitTailoringOrder = (id)   => api.patch(`/tailoring-orders/${id}/submit`);
 export const deleteTailoringOrder = (id)   => api.delete(`/tailoring-orders/${id}`);
 

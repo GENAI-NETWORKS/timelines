@@ -12,6 +12,38 @@ const { getStorage } = require('../utils/cloudinary');
 const storage = getStorage('timelines/tailoring');
 const upload = multer({ storage, limits: { fileSize: 15 * 1024 * 1024 } });
 
+// ── Ensure orderNo column exists ─────────────────────────────────────────────
+async function ensureOrderNoColumn() {
+  try {
+    await db.query("ALTER TABLE TailoringOrder ADD COLUMN orderNo VARCHAR(100) DEFAULT '' AFTER id");
+  } catch (_) {}
+}
+ensureOrderNoColumn().catch(() => {});
+
+// ── Auto-generate Order No (ORD-YYYY-XXXX) ───────────────────────────────────
+async function generateOrderNo() {
+  const year = new Date().getFullYear();
+  const prefix = `ORD-${year}-`;
+  const [rows] = await db.query(`SELECT orderNo FROM TailoringOrder WHERE orderNo LIKE ? ORDER BY orderNo DESC LIMIT 1`, [`${prefix}%`]);
+  const last = rows[0]?.orderNo;
+  const num = last ? parseInt(last.split('-')[2] || '0', 10) + 1 : 1;
+  return `${prefix}${String(num).padStart(4, '0')}`;
+}
+
+// ── Auto backfill older orders that don't have orderNo ───────────────────────
+async function backfillOrderNos() {
+  try {
+    const [rows] = await db.query("SELECT id, orderDate, createdAt FROM TailoringOrder WHERE orderNo IS NULL OR orderNo = '' ORDER BY createdAt ASC");
+    let count = 1;
+    for (const r of rows) {
+      const year = new Date(r.createdAt || r.orderDate || Date.now()).getFullYear();
+      const num = String(count++).padStart(4, '0');
+      await db.execute("UPDATE TailoringOrder SET orderNo=? WHERE id=?", [`ORD-${year}-${num}`, r.id]);
+    }
+  } catch (_) {}
+}
+backfillOrderNos().catch(() => {});
+
 // ── Auto-generate Customer ID ──────────────────────────────────────────────
 async function generateCustomerId() {
   const year = new Date().getFullYear();
@@ -117,9 +149,9 @@ router.get('/', protect, async (req, res, next) => {
     
     if (status) { whereClauses.push('o.status = ?'); params.push(status); }
     if (search) {
-      whereClauses.push('(c.name LIKE ? OR c.phone LIKE ? OR c.address LIKE ?)');
+      whereClauses.push('(o.orderNo LIKE ? OR c.name LIKE ? OR c.phone LIKE ? OR c.address LIKE ?)');
       const likeS = `%${search}%`;
-      params.push(likeS, likeS, likeS);
+      params.push(likeS, likeS, likeS, likeS);
     }
     
     let whereClause = whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : '';
@@ -159,7 +191,7 @@ router.post('/', protect, adminOnly, async (req, res, next) => {
   const conn = await db.getConnection();
   try {
     await conn.beginTransaction();
-    const { customerId, customerName, customerPhone, customerAddress, orderDate, deliveryDate, notes, bagNo, bagName } = req.body;
+    const { customerId, customerName, customerPhone, customerAddress, orderDate, deliveryDate, notes, bagNo, bagName, orderNo } = req.body;
     let resolvedCustomerId = customerId;
 
     if (!customerId && customerName) {
@@ -181,10 +213,11 @@ router.post('/', protect, adminOnly, async (req, res, next) => {
     }
 
     const id = uuidv4();
+    const finalOrderNo = orderNo?.trim() || await generateOrderNo();
     await conn.execute(
-      `INSERT INTO TailoringOrder (id, customerId, orderDate, deliveryDate, notes, bagNo, bagName, status, createdAt, updatedAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'Draft', NOW(), NOW())`,
-      [id, resolvedCustomerId, orderDate ? new Date(orderDate) : new Date(), deliveryDate ? new Date(deliveryDate) : null, notes || '', bagNo || '', bagName || '']
+      `INSERT INTO TailoringOrder (id, orderNo, customerId, orderDate, deliveryDate, notes, bagNo, bagName, status, createdAt, updatedAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Not yet started', NOW(), NOW())`,
+      [id, finalOrderNo, resolvedCustomerId, orderDate ? new Date(orderDate) : new Date(), deliveryDate ? new Date(deliveryDate) : null, notes || '', bagNo || '', bagName || '']
     );
 
     await conn.commit();
@@ -201,10 +234,11 @@ router.post('/', protect, adminOnly, async (req, res, next) => {
 // ── PUT /api/tailoring-orders/:id ─────────────────────────────────────────
 router.put('/:id', protect, adminOnly, async (req, res, next) => {
   try {
-    const { orderDate, deliveryDate, status, notes, bagNo, bagName } = req.body;
+    const { orderDate, deliveryDate, status, notes, bagNo, bagName, orderNo } = req.body;
     
     let query = `UPDATE TailoringOrder SET status=?, notes=?, bagNo=?, bagName=?, updatedAt=NOW()`;
     let params = [status, notes, bagNo, bagName];
+    if (orderNo !== undefined) { query += `, orderNo=?`; params.push(orderNo ? orderNo.trim() : ''); }
     if (orderDate !== undefined) { query += `, orderDate=?`; params.push(orderDate ? new Date(orderDate) : null); }
     if (deliveryDate !== undefined) { query += `, deliveryDate=?`; params.push(deliveryDate ? new Date(deliveryDate) : null); }
     query += ` WHERE id=?`;
@@ -214,6 +248,26 @@ router.put('/:id', protect, adminOnly, async (req, res, next) => {
     
     const order = await getOrderWithItems(req.params.id);
     res.json(order);
+  } catch (err) { next(err); }
+});
+
+// ── PATCH /api/tailoring-orders/:id/status ──────────────────────────────────
+router.patch('/:id/status', protect, adminOnly, async (req, res, next) => {
+  try {
+    const { status } = req.body;
+    if (!status) return res.status(400).json({ message: 'Status is required.' });
+    await db.execute('UPDATE TailoringOrder SET status=?, updatedAt=NOW() WHERE id=?', [status, req.params.id]);
+    res.json({ success: true, status });
+  } catch (err) { next(err); }
+});
+
+// ── PATCH /api/tailoring-orders/:id/order-number ────────────────────────────
+router.patch('/:id/order-number', protect, adminOnly, async (req, res, next) => {
+  try {
+    const { orderNo } = req.body;
+    if (!orderNo?.trim()) return res.status(400).json({ message: 'Order number is required.' });
+    await db.execute('UPDATE TailoringOrder SET orderNo=?, updatedAt=NOW() WHERE id=?', [orderNo.trim(), req.params.id]);
+    res.json({ success: true, orderNo: orderNo.trim() });
   } catch (err) { next(err); }
 });
 
