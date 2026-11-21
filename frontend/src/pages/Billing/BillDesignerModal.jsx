@@ -365,14 +365,14 @@ export default function BillDesignerModal({
               font-family: ${isThermal ? `'Courier New', Courier, monospace` : `'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`};
               color: #000;
               background: #fff;
-              font-size: ${isA4 ? '14px' : isA5 ? '12.5px' : '11.5px'};
-              line-height: ${isThermal ? '1.3' : '1.45'};
-              padding: ${isThermal ? '3px' : '0'};
+              font-size: ${isA4 ? '16px' : isA5 ? '15px' : '14px'};
+              line-height: ${isThermal ? '1.35' : '1.5'};
+              padding: ${isThermal ? '2px' : '0'};
               width: 100%;
             }
             .bill-wrapper {
-              width: ${isThermal ? '74mm' : '100%'};
-              max-width: ${isThermal ? '74mm' : '100%'};
+              width: ${isThermal ? '76mm' : '100%'};
+              max-width: ${isThermal ? '76mm' : '100%'};
               margin: 0 auto;
               padding: ${isThermal ? '4px 0' : '8px 0'};
             }
@@ -384,62 +384,62 @@ export default function BillDesignerModal({
 
             .store-header {
               text-align: center;
-              margin-bottom: ${isA4 ? '10px' : '6px'};
+              margin-bottom: ${isA4 ? '12px' : '8px'};
               padding-bottom: 4px;
             }
             .store-name {
-              font-size: ${isA4 ? '24px' : isA5 ? '20px' : '16px'};
+              font-size: ${isA4 ? '26px' : isA5 ? '22px' : '19px'};
               font-weight: 800;
               letter-spacing: 0.5px;
             }
             .store-sub {
-              font-size: ${isA4 ? '13px' : isA5 ? '11.5px' : '10px'};
+              font-size: ${isA4 ? '15px' : isA5 ? '13.5px' : '12.5px'};
               color: #333;
               margin-top: 2px;
             }
             .store-contact {
-              font-size: ${isA4 ? '13px' : isA5 ? '11.5px' : '10.5px'};
+              font-size: ${isA4 ? '15px' : isA5 ? '13.5px' : '12.5px'};
               margin-top: 2px;
             }
 
             .divider {
               border: none;
-              border-top: ${isThermal ? '1px dashed #000' : '1.5px dashed #000'};
+              border-top: ${isThermal ? '1.5px dashed #000' : '1.5px dashed #000'};
               margin: ${isA4 ? '10px 0' : '6px 0'};
             }
 
             .bill-title {
               text-align: center;
               font-weight: 800;
-              font-size: ${isA4 ? '16px' : isA5 ? '14px' : '12px'};
+              font-size: ${isA4 ? '18px' : isA5 ? '16px' : '15px'};
               letter-spacing: 1.5px;
               margin: 4px 0;
             }
 
             .meta-grid {
-              font-size: ${isA4 ? '13px' : isA5 ? '12px' : '11px'};
-              margin: ${isA4 ? '8px 0' : '4px 0'};
+              font-size: ${isA4 ? '15px' : isA5 ? '14px' : '13px'};
+              margin: ${isA4 ? '8px 0' : '5px 0'};
             }
             .meta-row {
               display: flex;
               justify-content: space-between;
-              margin-bottom: ${isA4 ? '4px' : '2px'};
+              margin-bottom: ${isA4 ? '4px' : '3px'};
             }
 
             table.items-table {
               width: 100%;
               border-collapse: collapse;
               margin: ${isA4 ? '10px 0' : '6px 0'};
-              font-size: ${isA4 ? '13.5px' : isA5 ? '12px' : '11px'};
+              font-size: ${isA4 ? '15px' : isA5 ? '14px' : '13px'};
             }
             table.items-table th {
-              border-top: ${isThermal ? '1px dashed #000' : '1.5px dashed #000'};
-              border-bottom: ${isThermal ? '1px dashed #000' : '1.5px dashed #000'};
-              padding: ${isA4 ? '8px 6px' : isA5 ? '6px 4px' : '4px 2px'};
+              border-top: ${isThermal ? '1.5px dashed #000' : '1.5px dashed #000'};
+              border-bottom: ${isThermal ? '1.5px dashed #000' : '1.5px dashed #000'};
+              padding: ${isA4 ? '8px 6px' : isA5 ? '6px 4px' : '5px 2px'};
               font-weight: 700;
             }
             table.items-table td {
-              padding: ${isA4 ? '7px 6px' : isA5 ? '5px 4px' : '3px 2px'};
+              padding: ${isA4 ? '7px 6px' : isA5 ? '5px 4px' : '4px 2px'};
               vertical-align: top;
               border-bottom: 1px dashed ${isThermal ? 'transparent' : '#eee'};
             }
@@ -447,28 +447,28 @@ export default function BillDesignerModal({
             .summary-row {
               display: flex;
               justify-content: space-between;
-              font-size: ${isA4 ? '13.5px' : isA5 ? '12px' : '11px'};
-              margin-bottom: ${isA4 ? '4px' : '2px'};
+              font-size: ${isA4 ? '15px' : isA5 ? '14px' : '13px'};
+              margin-bottom: ${isA4 ? '4px' : '3px'};
             }
             .grand-total-row {
               display: flex;
               justify-content: space-between;
-              font-size: ${isA4 ? '19px' : isA5 ? '17px' : '15px'};
+              font-size: ${isA4 ? '22px' : isA5 ? '20px' : '18px'};
               font-weight: 800;
-              padding: ${isA4 ? '8px 0' : '5px 0'};
-              border-top: ${isThermal ? '1px dashed #000' : '2px dashed #000'};
-              border-bottom: ${isThermal ? '1px dashed #000' : '2px dashed #000'};
-              margin: ${isA4 ? '8px 0' : '4px 0'};
+              padding: ${isA4 ? '8px 0' : '6px 0'};
+              border-top: ${isThermal ? '1.5px dashed #000' : '2px dashed #000'};
+              border-bottom: ${isThermal ? '1.5px dashed #000' : '2px dashed #000'};
+              margin: ${isA4 ? '8px 0' : '5px 0'};
             }
 
             .words-block {
-              font-size: ${isA4 ? '12.5px' : isA5 ? '11px' : '10px'};
+              font-size: ${isA4 ? '14px' : isA5 ? '13px' : '12px'};
               font-style: italic;
-              margin: ${isA4 ? '8px 0' : '4px 0'};
+              margin: ${isA4 ? '8px 0' : '5px 0'};
               text-align: center;
               background: #f9fafb;
               border: 1px dashed #ddd;
-              padding: ${isA4 ? '6px 10px' : '4px'};
+              padding: ${isA4 ? '6px 10px' : '5px'};
             }
 
             .qrcode-section {
@@ -477,13 +477,13 @@ export default function BillDesignerModal({
             }
             .qrcode-section svg {
               display: inline-block;
-              max-width: ${isA4 ? '130px' : isA5 ? '110px' : '90px'};
+              max-width: ${isA4 ? '130px' : isA5 ? '110px' : '95px'};
               height: auto;
             }
 
             .footer-notes {
               text-align: center;
-              font-size: ${isA4 ? '12px' : isA5 ? '11px' : '10px'};
+              font-size: ${isA4 ? '14px' : isA5 ? '13px' : '12px'};
               color: #444;
               margin-top: ${isA4 ? '10px' : '6px'};
               line-height: 1.4;
@@ -493,7 +493,7 @@ export default function BillDesignerModal({
               margin-top: 35px;
               display: flex;
               justify-content: space-between;
-              font-size: 12px;
+              font-size: 14px;
               font-weight: 600;
             }
 
@@ -552,7 +552,7 @@ export default function BillDesignerModal({
                     <td class="text-left">${idx + 1}</td>
                     <td class="text-left">
                       <div class="bold">${it.name}</div>
-                      ${it.barcode ? `<div style="font-size: 10px; color: #555;">${it.barcode}</div>` : ''}
+                      ${it.barcode ? `<div style="font-size: ${isA4 ? '12px' : '11px'}; color: #555;">${it.barcode}</div>` : ''}
                     </td>
                     <td class="text-center">${it.quantity}</td>
                     <td class="text-right">${formatINR(it.price)}</td>
@@ -565,7 +565,7 @@ export default function BillDesignerModal({
             <hr class="divider" />
 
             <!-- Summary Totals -->
-            <div class="meta-row" style="font-size: ${isA4 ? '13px' : '11px'}; margin-bottom: 4px;">
+            <div class="meta-row" style="font-size: ${isA4 ? '15px' : '13px'}; margin-bottom: 4px;">
               <span>Total Items: <strong>${totalItemsCount}</strong></span>
               <span>Total Qty: <strong>${totalQuantity}</strong></span>
             </div>
@@ -615,10 +615,10 @@ export default function BillDesignerModal({
             ${showQrCode && qrSvgHtml ? `
               <div class="qrcode-section">
                 ${qrSvgHtml}
-                <div style="font-family: monospace; font-size: ${isA4 ? '11px' : '9px'}; font-weight: bold; margin-top: 3px;">
+                <div style="font-family: monospace; font-size: ${isA4 ? '13px' : '12px'}; font-weight: bold; margin-top: 3px;">
                   ${billNo}
                 </div>
-                <div style="font-size: ${isA4 ? '10px' : '8.5px'}; color: #666; margin-top: 1px;">
+                <div style="font-size: ${isA4 ? '12px' : '11px'}; color: #666; margin-top: 1px;">
                   Scan QR to view digital bill
                 </div>
               </div>
@@ -627,7 +627,7 @@ export default function BillDesignerModal({
             <hr class="divider" />
             <div class="footer-notes">
               <p>${footerNotes}</p>
-              <p style="font-size: ${isA4 ? '11px' : '9px'}; margin-top: 3px; color: #666;">Goods once sold cannot be returned without bill.</p>
+              <p style="font-size: ${isA4 ? '13px' : '11px'}; margin-top: 3px; color: #666;">Goods once sold cannot be returned without bill.</p>
             </div>
 
             ${!isThermal ? `
@@ -1284,10 +1284,10 @@ export default function BillDesignerModal({
               <div
                 className={`bg-white border border-gray-300 shadow-md mx-auto p-4 transition-all ${
                   paperSize === 'thermal'
-                    ? 'max-w-[340px] font-mono text-[11px] leading-tight text-gray-900'
+                    ? 'max-w-[360px] font-mono text-[13px] leading-snug text-gray-900'
                     : paperSize === 'a5'
-                    ? 'max-w-[440px] text-xs text-gray-900'
-                    : 'w-full text-xs text-gray-900'
+                    ? 'max-w-[460px] text-sm text-gray-900'
+                    : 'w-full text-sm text-gray-900'
                 }`}
                 style={{
                   fontFamily: paperSize === 'thermal' ? "'Courier New', Courier, monospace" : 'inherit',
@@ -1295,27 +1295,27 @@ export default function BillDesignerModal({
               >
                 {/* Store Header */}
                 {showStoreHeader && (
-                  <div className="text-center space-y-0.5 pb-2">
-                    <div className="font-extrabold text-sm tracking-wide text-gray-900 uppercase">
+                  <div className="text-center space-y-1 pb-2">
+                    <div className="font-extrabold text-base md:text-lg tracking-wide text-gray-900 uppercase">
                       {storeInfo.name}
                     </div>
-                    {storeInfo.tagline && <div className="text-[10px] text-gray-600">{storeInfo.tagline}</div>}
-                    {storeInfo.address && <div className="text-[10px] text-gray-600">{storeInfo.address}</div>}
-                    {storeInfo.phone && <div className="text-[10px] text-gray-600">Ph: {storeInfo.phone}</div>}
+                    {storeInfo.tagline && <div className="text-xs text-gray-600">{storeInfo.tagline}</div>}
+                    {storeInfo.address && <div className="text-xs text-gray-600">{storeInfo.address}</div>}
+                    {storeInfo.phone && <div className="text-xs text-gray-600">Ph: {storeInfo.phone}</div>}
                     {storeInfo.gstin && (
-                      <div className="text-[10px] font-bold text-gray-800">GSTIN: {storeInfo.gstin}</div>
+                      <div className="text-xs font-bold text-gray-800">GSTIN: {storeInfo.gstin}</div>
                     )}
                   </div>
                 )}
 
-                <div className="border-t border-dashed border-gray-400 my-1.5" />
-                <div className="text-center font-bold text-xs uppercase tracking-wider">
+                <div className="border-t border-dashed border-gray-400 my-2" />
+                <div className="text-center font-extrabold text-sm uppercase tracking-wider">
                   RETAIL CASH MEMO / BILL
                 </div>
-                <div className="border-t border-dashed border-gray-400 my-1.5" />
+                <div className="border-t border-dashed border-gray-400 my-2" />
 
                 {/* Metadata */}
-                <div className="space-y-0.5 text-[10.5px]">
+                <div className="space-y-1 text-xs">
                   <div className="flex justify-between">
                     <span>Bill No: <strong>{billNo}</strong></span>
                     <span>Date: {formattedDateTime}</span>
@@ -1332,10 +1332,10 @@ export default function BillDesignerModal({
                   )}
                 </div>
 
-                <div className="border-t border-dashed border-gray-400 my-1.5" />
+                <div className="border-t border-dashed border-gray-400 my-2" />
 
                 {/* Items List */}
-                <table className="w-full text-[10.5px]">
+                <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-dashed border-gray-400 text-gray-700">
                       <th className="text-left py-1 w-5">#</th>
@@ -1354,12 +1354,12 @@ export default function BillDesignerModal({
                       </tr>
                     ) : (
                       items.map((it, idx) => (
-                        <tr key={it.id} className="py-0.5">
+                        <tr key={it.id} className="py-1">
                           <td className="text-left align-top">{idx + 1}</td>
                           <td className="text-left align-top font-semibold">
-                            {it.name}
+                            <div>{it.name}</div>
                             {it.barcode && (
-                              <div className="text-[9px] text-gray-400 font-normal">Code: {it.barcode}</div>
+                              <div className="text-[11px] text-gray-400 font-normal">Code: {it.barcode}</div>
                             )}
                           </td>
                           <td className="text-center align-top">{it.quantity}</td>
@@ -1373,10 +1373,10 @@ export default function BillDesignerModal({
                   </tbody>
                 </table>
 
-                <div className="border-t border-dashed border-gray-400 my-1.5" />
+                <div className="border-t border-dashed border-gray-400 my-2" />
 
                 {/* Subtotals & Calculations */}
-                <div className="space-y-0.5 text-[10.5px]">
+                <div className="space-y-1 text-xs">
                   <div className="flex justify-between text-gray-500">
                     <span>Total Items: {totalItemsCount}</span>
                     <span>Total Qty: {totalQuantity}</span>
@@ -1396,11 +1396,11 @@ export default function BillDesignerModal({
                   {showTaxBreakup && taxRate > 0 && (
                     <>
                       <div className="flex justify-between text-gray-600">
-                        <span>CGST ({taxRate / 2}%):</span>
+                        <span>CGST (${taxRate / 2}%):</span>
                         <span>₹ {formatINR(cgstAmount)}</span>
                       </div>
                       <div className="flex justify-between text-gray-600">
-                        <span>SGST ({taxRate / 2}%):</span>
+                        <span>SGST (${taxRate / 2}%):</span>
                         <span>₹ {formatINR(sgstAmount)}</span>
                       </div>
                     </>
@@ -1414,14 +1414,14 @@ export default function BillDesignerModal({
                   )}
                 </div>
 
-                <div className="border-t-2 border-b-2 border-dashed border-gray-900 my-1.5 py-1 flex justify-between text-sm font-extrabold text-gray-900">
+                <div className="border-t-2 border-b-2 border-dashed border-gray-900 my-2 py-1.5 flex justify-between text-base font-black text-gray-900">
                   <span>NET PAYABLE:</span>
                   <span>₹ {formatINR(grandTotal)}</span>
                 </div>
 
                 {/* Amount in words */}
                 {showWords && wordsTotal && (
-                  <div className="text-[9.5px] italic text-center py-1 bg-gray-50 rounded my-1 text-gray-700">
+                  <div className="text-xs italic text-center py-1.5 bg-gray-50 rounded my-1 text-gray-700">
                     {wordsTotal}
                   </div>
                 )}
@@ -1431,8 +1431,8 @@ export default function BillDesignerModal({
                   <div className="text-center pt-3 flex flex-col items-center">
                     <div className="p-3 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col items-center">
                       <QrCodeView value={billQrUrl} size={150} margin={4} />
-                      <div className="font-mono text-xs font-bold text-gray-800 tracking-wider mt-2">{billNo}</div>
-                      <div className="text-[10px] font-medium text-brand-600 mt-0.5">Scan QR Code to view digital bill</div>
+                      <div className="font-mono text-sm font-bold text-gray-800 tracking-wider mt-2">{billNo}</div>
+                      <div className="text-xs font-medium text-brand-600 mt-0.5">Scan QR Code to view digital bill</div>
                     </div>
                   </div>
                 )}
@@ -1440,7 +1440,7 @@ export default function BillDesignerModal({
                 <div className="border-t border-dashed border-gray-400 my-2" />
 
                 {/* Footer notes */}
-                <div className="text-center text-[9.5px] text-gray-500 space-y-0.5">
+                <div className="text-center text-xs text-gray-500 space-y-1">
                   <p>{footerNotes}</p>
                   <p>*** Have a Wonderful Day ***</p>
                 </div>
