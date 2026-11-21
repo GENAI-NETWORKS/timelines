@@ -272,20 +272,11 @@ export default function TailorDetail() {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="font-black text-xl text-gray-900 uppercase tracking-wide">{staff.name}</h2>
-                <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                  staff.payType === 'Piece' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'
-                }`}>{staff.payType}</span>
               </div>
               <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500">
                 <span className="font-semibold text-purple-600">ID: {staff.employeeId}</span>
                 <span className="text-gray-400">•</span>
                 <span className="font-medium text-blue-600">{staff.role}</span>
-                {staff.ratePerPiece > 0 && (
-                  <>
-                    <span className="text-gray-400">•</span>
-                    <span>₹{fmt(staff.ratePerPiece)}/piece</span>
-                  </>
-                )}
               </div>
             </div>
           </div>

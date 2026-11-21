@@ -12,9 +12,8 @@ import Modal from '../../components/UI/Modal';
 import ConfirmModal from '../../components/UI/ConfirmModal';
 import toast from 'react-hot-toast';
 
-const PAY_TYPES = ['Piece', 'Rate'];
-const ROLES     = ['Tailoring', 'Cutting', 'Embroidery', 'Finishing', 'Stitching', 'Other'];
-const EMPTY     = { employeeId: '', name: '', role: 'Tailoring', payType: 'Piece', ratePerPiece: '' };
+const ROLES = ['Tailoring', 'Cutting', 'Embroidery', 'Finishing', 'Stitching', 'Other'];
+const EMPTY = { employeeId: '', name: '', role: 'Tailoring' };
 
 // ── Role badge colour ─────────────────────────────────────────────────────────
 const roleBg = (role) => {
@@ -32,7 +31,7 @@ const roleBg = (role) => {
 function StaffForm({ value, onChange, onSubmit, loading, onCancel, submitLabel, isEdit }) {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="space-y-4">
         {/* Employee ID */}
         <div>
           <label className="label text-xs font-bold uppercase tracking-wider text-gray-600">
@@ -67,30 +66,6 @@ function StaffForm({ value, onChange, onSubmit, loading, onCancel, submitLabel, 
           <select className="select" value={value.role} onChange={e => onChange({ ...value, role: e.target.value })}>
             {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
           </select>
-        </div>
-
-        {/* Pay Type */}
-        <div>
-          <label className="label text-xs font-bold uppercase tracking-wider text-gray-600">Pay Type</label>
-          <select className="select" value={value.payType} onChange={e => onChange({ ...value, payType: e.target.value })}>
-            {PAY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-        </div>
-
-        {/* Rate per piece */}
-        <div className="sm:col-span-2">
-          <label className="label text-xs font-bold uppercase tracking-wider text-gray-600">
-            Rate per Piece / Hour (₹) — optional
-          </label>
-          <input
-            className="input"
-            type="number"
-            min="0"
-            step="0.01"
-            value={value.ratePerPiece}
-            onChange={e => onChange({ ...value, ratePerPiece: e.target.value })}
-            placeholder="0.00"
-          />
         </div>
       </div>
 
@@ -143,8 +118,6 @@ export default function TailorsPayment() {
         employeeId:  formData.employeeId.trim() || undefined,
         name:        formData.name.trim(),
         role:        formData.role,
-        payType:     formData.payType,
-        ratePerPiece: parseFloat(formData.ratePerPiece) || 0,
       });
       toast.success('Employee added!');
       setModal(null);
@@ -163,10 +136,8 @@ export default function TailorsPayment() {
     setFormLoading(true);
     try {
       await updateTailorStaff(editId, {
-        name:         formData.name.trim(),
-        role:         formData.role,
-        payType:      formData.payType,
-        ratePerPiece: parseFloat(formData.ratePerPiece) || 0,
+        name: formData.name.trim(),
+        role: formData.role,
       });
       toast.success('Employee updated!');
       setModal(null);
@@ -194,11 +165,9 @@ export default function TailorsPayment() {
     e.stopPropagation();
     setEditId(s.id);
     setFormData({
-      employeeId:   s.employeeId,
-      name:         s.name,
-      role:         s.role,
-      payType:      s.payType,
-      ratePerPiece: s.ratePerPiece ?? '',
+      employeeId: s.employeeId,
+      name:       s.name,
+      role:       s.role,
     });
     setModal('edit');
   };
@@ -279,23 +248,10 @@ export default function TailorsPayment() {
 
               {/* Card bottom */}
               <div className="flex items-center gap-2">
-                {/* Pay type badge */}
-                <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                  s.payType === 'Piece'
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'bg-amber-100 text-amber-700'
-                }`}>
-                  {s.payType}
-                </span>
-
                 {/* Role badge */}
-                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${roleBg(s.role)}`}>
+                <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${roleBg(s.role)}`}>
                   {s.role}
                 </span>
-
-                {s.ratePerPiece > 0 && (
-                  <span className="text-xs text-gray-400 ml-auto">₹{Number(s.ratePerPiece).toFixed(0)}/pc</span>
-                )}
 
                 {/* Edit / Delete buttons */}
                 <div
