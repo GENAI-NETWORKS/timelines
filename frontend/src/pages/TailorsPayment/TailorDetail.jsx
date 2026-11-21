@@ -1,14 +1,15 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Plus, Trash2, Save, CalendarDays,
-  Upload, Eye, X, Image as ImageIcon
+  Upload, Eye, X, Image as ImageIcon, Search, ChevronDown, User
 } from 'lucide-react';
 import {
   getTailorStaffMember,
   getWorkEntries, createWorkEntry, updateWorkEntry, deleteWorkEntry,
   getPaymentHistory, savePaymentHistory
 } from '../../api/tailorStaff';
+import { searchCustomers } from '../../api/customers';
 import Modal from '../../components/UI/Modal';
 import ConfirmModal from '../../components/UI/ConfirmModal';
 import toast from 'react-hot-toast';
@@ -63,6 +64,131 @@ function PhotoLightbox({ url, title, onClose }) {
   );
 }
 
+// ── Customer Select Combobox ──────────────────────────────────────────────────
+function CustomerSelect({ value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [customers, setCustomers] = useState([]);
+  const [filter, setFilter] = useState('');
+  const [loading, setLoading] = useState(false);
+  const wrapperRef = useRef(null);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    searchCustomers('')
+      .then(res => {
+        if (active) setCustomers(res.data || []);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => { active = false; };
+  }, []);
+
+  // Close on outside click
+  useEffect(() => {
+    const handleOutside = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    if (!q) return customers;
+    return customers.filter(c =>
+      (c.name && c.name.toLowerCase().includes(q)) ||
+      (c.customerId && c.customerId.toLowerCase().includes(q)) ||
+      (c.phone && c.phone.includes(q))
+    );
+  }, [customers, filter]);
+
+  const handleSelect = (c) => {
+    // Once chosen, customer ID only is visible on outer
+    onChange(c.customerId);
+    setFilter('');
+    setOpen(false);
+  };
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      <div className="relative">
+        <input
+          className="input pr-8 font-mono"
+          placeholder="Select customer or enter ID..."
+          value={value || ''}
+          onChange={(e) => {
+            onChange(e.target.value);
+            setFilter(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => {
+            setFilter('');
+            setOpen(true);
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+        >
+          <ChevronDown className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+      </div>
+
+      {open && (
+        <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-purple-200 rounded-xl shadow-xl max-h-60 overflow-y-auto">
+          {/* Quick search input */}
+          <div className="p-2 border-b border-gray-100 bg-gray-50/70 sticky top-0">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                className="w-full text-xs bg-white border border-gray-200 rounded-lg pl-8 pr-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-purple-400 font-sans"
+                placeholder="Search by customer name, ID, or phone..."
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                autoFocus
+              />
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="p-4 text-center text-xs text-gray-400">Loading customers...</div>
+          ) : filtered.length === 0 ? (
+            <div className="p-4 text-center text-xs text-gray-400">No matching customers found</div>
+          ) : (
+            <div className="py-1 divide-y divide-gray-50">
+              {filtered.map((c) => (
+                <button
+                  key={c.customerId}
+                  type="button"
+                  onClick={() => handleSelect(c)}
+                  className={`w-full text-left px-3 py-2 hover:bg-purple-50/70 flex items-center justify-between gap-2 transition-colors ${
+                    value === c.customerId ? 'bg-purple-50 text-purple-900 font-semibold' : ''
+                  }`}
+                >
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold text-gray-800 truncate">{c.name}</div>
+                    {c.phone && <div className="text-[11px] text-gray-400 font-mono">{c.phone}</div>}
+                  </div>
+                  <span className="text-[11px] font-mono font-bold bg-purple-100 text-purple-700 px-2 py-0.5 rounded-md flex-shrink-0">
+                    {c.customerId}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Add / Edit Entry Modal Form ───────────────────────────────────────────────
 function EntryModalForm({ value, onChange, onSubmit, onCancel, onDelete, loading, isEdit }) {
   const fileRef = useRef();
@@ -97,14 +223,14 @@ function EntryModalForm({ value, onChange, onSubmit, onCancel, onDelete, loading
           />
         </div>
 
-        {/* Customer */}
+        {/* Customer (Name & ID in dropdown, Customer ID only on outer) */}
         <div>
-          <label className="label text-xs font-bold uppercase tracking-wider text-gray-600">Customer</label>
-          <input
-            className="input"
-            placeholder="Customer name"
+          <label className="label text-xs font-bold uppercase tracking-wider text-gray-600">
+            Customer ID
+          </label>
+          <CustomerSelect
             value={value.customer}
-            onChange={e => onChange({ ...value, customer: e.target.value })}
+            onChange={(val) => onChange({ ...value, customer: val })}
           />
         </div>
 
