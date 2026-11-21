@@ -14,12 +14,33 @@ const allowedOrigins = [
   process.env.CLIENT_URL,
 ].filter(Boolean);
 
+// Helper: is this a private/LAN IP origin?
+function isLocalNetworkOrigin(origin) {
+  try {
+    const url = new URL(origin);
+    const host = url.hostname;
+    // 192.168.x.x
+    if (/^192\.168\.\d+\.\d+$/.test(host)) return true;
+    // 10.x.x.x
+    if (/^10\.\d+\.\d+\.\d+$/.test(host)) return true;
+    // 172.16.x.x – 172.31.x.x
+    if (/^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/.test(host)) return true;
+    // localhost / 127.x
+    if (host === 'localhost' || /^127\.\d+\.\d+\.\d+$/.test(host)) return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (mobile apps, curl, Postman)
     if (!origin) return callback(null, true);
     // Allow any vercel.app subdomain for preview deployments
     if (origin.endsWith('.vercel.app')) return callback(null, true);
+    // Allow any device on the local network (LAN access)
+    if (isLocalNetworkOrigin(origin)) return callback(null, true);
     if (allowedOrigins.includes(origin)) return callback(null, true);
     callback(new Error(`CORS: origin ${origin} not allowed`));
   },
