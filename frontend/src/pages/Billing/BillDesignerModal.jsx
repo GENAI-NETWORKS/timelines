@@ -2,16 +2,259 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Printer, Plus, Minus, Trash2, Search, QrCode, ShoppingCart,
   Settings2, RefreshCw, Check, IndianRupee, Store, User, FileText,
-  Sliders, ArrowRight, Clock, ShieldCheck, Tag, X, ChevronDown, ChevronUp, History
+  Sliders, ArrowRight, Clock, ShieldCheck, Tag, X, ChevronDown, ChevronUp, History,
+  Loader
 } from 'lucide-react';
 import Modal from '../../components/UI/Modal';
 import QrCodeView from './QrCodeView';
 import { createQrSvgString } from './qrCodeGenerator';
 import { numberToWordsIndian, generateBillNumber, formatINR, encodeBillToPayload } from './billUtils';
 import { saveBillingRecord } from '../../api/billingRecords';
+import { searchCustomers } from '../../api/customers';
 import toast from 'react-hot-toast';
 
 const HISTORY_KEY = 'timelines_billing_history';
+
+// ── Customer Select Dropdown Combobox ───────────────────────────────────────
+function CustomerSelectDropdown({
+  customerName,
+  setCustomerName,
+  customerPhone,
+  setCustomerPhone
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const wrapperRef = useRef(null);
+  const searchInputRef = useRef(null);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    searchCustomers('')
+      .then((res) => {
+        if (active) setCustomers(Array.isArray(res.data) ? res.data : []);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => { active = false; };
+  }, []);
+
+  // Close on outside click
+  useEffect(() => {
+    const handleOutside = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return customers;
+    return customers.filter(
+      (c) =>
+        (c.name && c.name.toLowerCase().includes(q)) ||
+        (c.phone && c.phone.includes(q)) ||
+        (c.customerId && c.customerId.toLowerCase().includes(q))
+    );
+  }, [customers, search]);
+
+  const handleSelect = (cust) => {
+    if (!cust) {
+      setCustomerName('Walk-in Customer');
+      setCustomerPhone('');
+      toast.success('Selected Walk-in Customer');
+    } else {
+      setCustomerName(cust.name || 'Customer');
+      setCustomerPhone(cust.phone || '');
+      toast.success(`Selected: ${cust.name}`);
+    }
+    setOpen(false);
+    setSearch('');
+  };
+
+  const handleUseTyped = () => {
+    if (search.trim()) {
+      setCustomerName(search.trim());
+      setOpen(false);
+      setSearch('');
+    }
+  };
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      <div className="flex items-center justify-between mb-1">
+        <label className="label mb-0 flex items-center gap-1">
+          <User className="w-3 h-3 text-purple-600" /> Customer Name
+        </label>
+        {customerName !== 'Walk-in Customer' && (
+          <button
+            type="button"
+            onClick={() => handleSelect(null)}
+            className="text-[10px] text-purple-600 hover:underline"
+            title="Reset to Walk-in Customer"
+          >
+            Walk-in
+          </button>
+        )}
+      </div>
+
+      {/* Main Trigger Input */}
+      <div className="relative">
+        <input
+          type="text"
+          className="input text-xs pr-8 font-medium cursor-pointer"
+          placeholder="Select customer or type name..."
+          value={customerName}
+          onChange={(e) => setCustomerName(e.target.value)}
+          onClick={() => {
+            setOpen(true);
+            setTimeout(() => searchInputRef.current?.focus(), 50);
+          }}
+          onFocus={() => {
+            setOpen(true);
+            setTimeout(() => searchInputRef.current?.focus(), 50);
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(!open);
+            if (!open) setTimeout(() => searchInputRef.current?.focus(), 50);
+          }}
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-purple-600 p-1"
+          title="Toggle customer list"
+        >
+          <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${open ? 'rotate-180 text-purple-600' : ''}`} />
+        </button>
+      </div>
+
+      {/* Linked Phone Number display / edit */}
+      {customerName !== 'Walk-in Customer' && (
+        <div className="mt-1 flex items-center gap-1.5 text-[11px]">
+          <span className="font-mono text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200 flex items-center gap-1">
+            <span>📞</span>
+            <input
+              type="text"
+              value={customerPhone}
+              onChange={(e) => setCustomerPhone(e.target.value)}
+              placeholder="Add phone..."
+              className="bg-transparent border-none p-0 focus:outline-none w-28 text-[11px] font-mono text-purple-900"
+              title="Customer phone number"
+            />
+          </span>
+        </div>
+      )}
+
+      {/* Dropdown Menu */}
+      {open && (
+        <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-purple-200 rounded-xl shadow-xl max-h-72 flex flex-col overflow-hidden text-xs">
+          {/* Quick Search Header */}
+          <div className="p-2 border-b border-gray-100 bg-gray-50/80 sticky top-0">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                className="w-full text-xs bg-white border border-gray-200 rounded-lg pl-8 pr-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-purple-400"
+                placeholder="Search by name, phone, or ID..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (filtered.length > 0) handleSelect(filtered[0]);
+                    else handleUseTyped();
+                  }
+                  if (e.key === 'Escape') setOpen(false);
+                }}
+              />
+            </div>
+          </div>
+
+          {/* List Options */}
+          <div className="overflow-y-auto divide-y divide-gray-50 flex-1">
+            {/* Walk-in Customer Option */}
+            <button
+              type="button"
+              onClick={() => handleSelect(null)}
+              className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-purple-50 transition-colors ${
+                customerName === 'Walk-in Customer' ? 'bg-purple-50/80 font-bold text-purple-900' : 'text-gray-700'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-[11px]">🚶</span>
+                <div>
+                  <div className="font-semibold text-gray-800">Walk-in Customer</div>
+                  <div className="text-[10px] text-gray-400">Regular walk-in / anonymous customer</div>
+                </div>
+              </div>
+              {customerName === 'Walk-in Customer' && <Check className="w-3.5 h-3.5 text-purple-600 flex-shrink-0" />}
+            </button>
+
+            {/* Custom typed option if user typed something new */}
+            {search.trim() && search.trim() !== 'Walk-in Customer' && (
+              <button
+                type="button"
+                onClick={handleUseTyped}
+                className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-purple-50 transition-colors text-purple-700 bg-purple-50/40"
+              >
+                <Plus className="w-3.5 h-3.5 text-purple-600 flex-shrink-0" />
+                <span className="truncate">
+                  Use "<strong>{search.trim()}</strong>" as customer name
+                </span>
+              </button>
+            )}
+
+            {loading ? (
+              <div className="p-4 text-center text-xs text-gray-400 flex items-center justify-center gap-2">
+                <Loader className="w-3.5 h-3.5 animate-spin text-purple-600" />
+                <span>Loading customers...</span>
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="p-4 text-center text-xs text-gray-400">
+                No matching customers found.
+              </div>
+            ) : (
+              filtered.map((c) => {
+                const isSelected = customerName === c.name;
+                return (
+                  <button
+                    key={c.customerId || c.id}
+                    type="button"
+                    onClick={() => handleSelect(c)}
+                    className={`w-full text-left px-3 py-2 hover:bg-purple-50 flex items-center justify-between gap-2 transition-colors ${
+                      isSelected ? 'bg-purple-50 text-purple-900 font-bold' : 'text-gray-700'
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <div className="font-semibold text-gray-900 truncate">{c.name}</div>
+                      <div className="text-[10px] text-gray-500 font-mono flex items-center gap-2">
+                        {c.phone && <span>📞 {c.phone}</span>}
+                        {c.customerId && (
+                          <span className="bg-gray-100 text-gray-600 px-1 py-0.2 rounded text-[9px]">
+                            {c.customerId}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {isSelected && <Check className="w-3.5 h-3.5 text-purple-600 flex-shrink-0" />}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function BillDesignerModal({
   availableProducts = [],
@@ -932,16 +1175,12 @@ export default function BillDesignerModal({
                   />
                 </div>
 
-                <div>
-                  <label className="label">Customer Name</label>
-                  <input
-                    type="text"
-                    className="input text-xs"
-                    placeholder="Walk-in Customer"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                  />
-                </div>
+                <CustomerSelectDropdown
+                  customerName={customerName}
+                  setCustomerName={setCustomerName}
+                  customerPhone={customerPhone}
+                  setCustomerPhone={setCustomerPhone}
+                />
               </div>
             </div>
 
