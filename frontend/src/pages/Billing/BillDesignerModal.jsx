@@ -11,6 +11,8 @@ import { createQrSvgString } from './qrCodeGenerator';
 import { numberToWordsIndian, generateBillNumber, formatINR, encodeBillToPayload } from './billUtils';
 import { saveBillingRecord } from '../../api/billingRecords';
 import { searchCustomers } from '../../api/customers';
+import { getAssignableUsers } from '../../api/panelUsers';
+import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 
 const HISTORY_KEY = 'timelines_billing_history';
@@ -270,6 +272,8 @@ export default function BillDesignerModal({
     gstin: '33AAAAA0000A1Z5',
   }));
 
+  const { user } = useAuth();
+
   // Bill Metadata
   const [billNo, setBillNo] = useState(() => generateBillNumber());
   const [billDate, setBillDate] = useState(() => {
@@ -277,7 +281,8 @@ export default function BillDesignerModal({
     const pad = (n) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   });
-  const [cashier, setCashier] = useState('Admin');
+  const [cashier, setCashier] = useState(() => user?.name || 'Admin');
+  const [panelUsers, setPanelUsers] = useState([]);
   const [customerName, setCustomerName] = useState('Walk-in Customer');
   const [customerPhone, setCustomerPhone] = useState('');
   const [paymentMode, setPaymentMode] = useState('Cash');
@@ -290,6 +295,18 @@ export default function BillDesignerModal({
   useEffect(() => {
     setIsSubmitted(false);
   }, [billNo]);
+
+  // Fetch panel users for cashier dropdown
+  useEffect(() => {
+    getAssignableUsers()
+      .then(res => {
+        const users = res.data || [];
+        setPanelUsers(users);
+        // Default to logged-in user's name if available
+        if (user?.name) setCashier(user.name);
+      })
+      .catch(() => {});
+  }, []);
 
   // Paper Size: Defaults to A4 (Fit to Paper)
   const [paperSize, setPaperSize] = useState('a4'); // 'a4' (Fit to Paper), 'a5' (Half Sheet), 'thermal' (80mm Roll)
@@ -1086,9 +1103,25 @@ export default function BillDesignerModal({
               </div>
               <div>
                 <label className="label">Billed By (Cashier)</label>
+                <select
+                  className="input text-xs mb-1"
+                  value={panelUsers.some(u => u.name === cashier) ? cashier : '__other__'}
+                  onChange={(e) => {
+                    if (e.target.value !== '__other__') setCashier(e.target.value);
+                  }}
+                >
+                  {panelUsers.length === 0 && (
+                    <option value="Admin">Admin</option>
+                  )}
+                  {panelUsers.map(u => (
+                    <option key={u.id} value={u.name}>{u.name} ({u.role})</option>
+                  ))}
+                  <option value="__other__">— Type custom name —</option>
+                </select>
                 <input
                   type="text"
                   className="input text-xs"
+                  placeholder="Custom cashier name..."
                   value={cashier}
                   onChange={(e) => setCashier(e.target.value)}
                 />
