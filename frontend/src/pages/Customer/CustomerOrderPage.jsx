@@ -44,6 +44,7 @@ function CustomerStep({ onOrderCreated }) {
     bagName: '',
     assignedToId: '',
     assignedToName: '',
+    entryByName: '',
   });
   const [creating, setCreating] = useState(false);
   const debounceRef = useRef(null);
@@ -95,6 +96,7 @@ function CustomerStep({ onOrderCreated }) {
         bagName:      newForm.bagName,
         assignedToId:   newForm.assignedToId || null,
         assignedToName: newForm.assignedToName || '',
+        entryByName:    newForm.entryByName || '',
         ...(mode === 'search' && selected
           ? { customerId: selected.customerId }
           : { customerName: name, customerPhone: phone, customerAddress: address }),
@@ -150,6 +152,22 @@ function CustomerStep({ onOrderCreated }) {
           <option value="">Unassigned (Can be assigned later)</option>
           {assignableUsers.map(u => (
             <option key={u.id} value={u.id}>
+              {u.name} ({u.role})
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="mt-4">
+        <label className="label">Entry Done By</label>
+        <select
+          className="input"
+          value={newForm.entryByName || ''}
+          onChange={e => setNewForm(f => ({ ...f, entryByName: e.target.value }))}
+        >
+          <option value="">— Select person —</option>
+          <option value="Admin">Admin</option>
+          {assignableUsers.map(u => (
+            <option key={u.id} value={u.name}>
               {u.name} ({u.role})
             </option>
           ))}

@@ -12,7 +12,7 @@ const { getStorage } = require('../utils/cloudinary');
 const storage = getStorage('timelines/tailoring');
 const upload = multer({ storage, limits: { fileSize: 15 * 1024 * 1024 } });
 
-// ── Ensure orderNo and assignedTo columns exist ──────────────────────────────
+// ── Ensure orderNo, assignedTo, entryBy columns exist ────────────────────────
 async function ensureOrderNoColumn() {
   try {
     await db.query("ALTER TABLE TailoringOrder ADD COLUMN orderNo VARCHAR(100) DEFAULT '' AFTER id");
@@ -22,6 +22,9 @@ async function ensureOrderNoColumn() {
   } catch (_) {}
   try {
     await db.query("ALTER TABLE TailoringOrder ADD COLUMN assignedToName VARCHAR(255) DEFAULT ''");
+  } catch (_) {}
+  try {
+    await db.query("ALTER TABLE TailoringOrder ADD COLUMN entryByName VARCHAR(255) DEFAULT ''");
   } catch (_) {}
 }
 ensureOrderNoColumn().catch(() => {});
@@ -272,7 +275,7 @@ router.post('/', protect, requirePermission('orders'), async (req, res, next) =>
   const conn = await db.getConnection();
   try {
     await conn.beginTransaction();
-    const { customerId, customerName, customerPhone, customerAddress, orderDate, deliveryDate, notes, bagNo, bagName, orderNo, assignedToId = '', assignedToName = '' } = req.body;
+    const { customerId, customerName, customerPhone, customerAddress, orderDate, deliveryDate, notes, bagNo, bagName, orderNo, assignedToId = '', assignedToName = '', entryByName = '' } = req.body;
     let resolvedCustomerId = customerId;
 
     if (!customerId && customerName) {
@@ -296,9 +299,9 @@ router.post('/', protect, requirePermission('orders'), async (req, res, next) =>
     const id = uuidv4();
     const finalOrderNo = orderNo?.trim() || await generateOrderNo();
     await conn.execute(
-      `INSERT INTO TailoringOrder (id, orderNo, customerId, orderDate, deliveryDate, notes, bagNo, bagName, assignedToId, assignedToName, status, createdAt, updatedAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Not yet started', NOW(), NOW())`,
-      [id, finalOrderNo, resolvedCustomerId, orderDate ? new Date(orderDate) : new Date(), deliveryDate ? new Date(deliveryDate) : null, notes || '', bagNo || '', bagName || '', assignedToId || '', assignedToName || '']
+      `INSERT INTO TailoringOrder (id, orderNo, customerId, orderDate, deliveryDate, notes, bagNo, bagName, assignedToId, assignedToName, entryByName, status, createdAt, updatedAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Not yet started', NOW(), NOW())`,
+      [id, finalOrderNo, resolvedCustomerId, orderDate ? new Date(orderDate) : new Date(), deliveryDate ? new Date(deliveryDate) : null, notes || '', bagNo || '', bagName || '', assignedToId || '', assignedToName || '', entryByName || '']
     );
 
     await conn.commit();
