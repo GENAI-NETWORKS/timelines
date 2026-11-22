@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   Users, UserSquare2, ShoppingBag, Clock, TrendingUp, CheckCircle,
   AlertTriangle, Loader, Package, Plus, Receipt, IndianRupee,
-  Scissors, ArrowRight, Eye, FileText, Sparkles, ChevronRight
+  Scissors, ArrowRight, Eye, FileText, Sparkles, ChevronRight,
+  AlertCircle
 } from 'lucide-react';
 import { getCustomers } from '../../api/customers';
 import { getEmployees } from '../../api/employees';
@@ -19,10 +20,13 @@ const fmt = (n) => Number(n || 0).toLocaleString('en-IN', { maximumFractionDigit
 
 const normalizeStatus = (s) => {
   if (!s) return 'Not yet started';
-  const l = s.toLowerCase();
+  const l = s.trim().toLowerCase();
   if (l === 'delivered') return 'Delivered';
-  if (l.includes('progress') || l === 'submitted' || l === 'ready') return 'On progress';
-  return 'Not yet started';
+  if (l === 'stitching completed' || l.includes('stitching')) return 'Stitching Completed';
+  if (l === 'not yet checked' || (l.includes('checked') && !l.includes('uncheck'))) return 'Not yet Checked';
+  if (l === 'on progress' || l.includes('progress') || l === 'submitted' || l === 'ready' || l === 'in progress') return 'On Progress';
+  if (l === 'not yet started' || l.includes('not yet') || l === 'draft' || l === 'pending') return 'Not yet started';
+  return s;
 };
 
 const STATUS_CONFIG = {
@@ -31,10 +35,20 @@ const STATUS_CONFIG = {
     badge: 'bg-amber-50 text-amber-700 border-amber-200',
     dot:   'bg-amber-400',
   },
-  'On progress': {
-    label: 'On progress',
+  'On Progress': {
+    label: 'On Progress',
     badge: 'bg-blue-50 text-blue-700 border-blue-200',
     dot:   'bg-blue-500 animate-pulse',
+  },
+  'Stitching Completed': {
+    label: 'Stitching Completed',
+    badge: 'bg-purple-50 text-purple-700 border-purple-200',
+    dot:   'bg-purple-500',
+  },
+  'Not yet Checked': {
+    label: 'Not yet Checked',
+    badge: 'bg-rose-50 text-rose-700 border-rose-200',
+    dot:   'bg-rose-400',
   },
   'Delivered': {
     label: 'Delivered',
@@ -87,6 +101,8 @@ export default function Dashboard() {
             ordersRes,
             notStartedRes,
             onProgressRes,
+            stitchingRes,
+            notCheckedRes,
             deliveredRes,
             materialsRes,
             billingRes,
@@ -96,7 +112,9 @@ export default function Dashboard() {
             getEmployees({ limit: 1 }),
             getTailoringOrders({ limit: 6 }),
             getTailoringOrders({ status: 'Not yet started', limit: 1 }),
-            getTailoringOrders({ status: 'On progress', limit: 1 }),
+            getTailoringOrders({ status: 'On Progress', limit: 1 }),
+            getTailoringOrders({ status: 'Stitching Completed', limit: 1 }),
+            getTailoringOrders({ status: 'Not yet Checked', limit: 1 }),
             getTailoringOrders({ status: 'Delivered', limit: 1 }),
             getMaterials(),
             getBillingRecords({ limit: 5 }),
@@ -129,6 +147,8 @@ export default function Dashboard() {
             totalOrders:        val(ordersRes,      r => r.data.total),
             notStarted:         val(notStartedRes,  r => r.data.total),
             onProgress:         val(onProgressRes,  r => r.data.total),
+            stitchingCompleted: val(stitchingRes,   r => r.data.total),
+            notChecked:         val(notCheckedRes,  r => r.data.total),
             delivered:          val(deliveredRes,   r => r.data.total),
             billingRevenue:     billingStats.totalRevenue || 0,
             billingCount:       billingStats.totalBills || 0,
@@ -232,7 +252,7 @@ export default function Dashboard() {
                     View All Orders <ChevronRight className="w-3 h-3" />
                   </Link>
                 </div>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                   <StatCard
                     icon={ShoppingBag}
                     label="Total Orders"
@@ -240,7 +260,7 @@ export default function Dashboard() {
                     sub="All customer bookings"
                     color="bg-purple-600"
                     to="/customer/list"
-                    badge="Orders"
+                    badge="All"
                   />
                   <StatCard
                     icon={Clock}
@@ -255,10 +275,28 @@ export default function Dashboard() {
                     icon={TrendingUp}
                     label="On Progress"
                     value={stats?.onProgress}
-                    sub="Currently in stitching"
+                    sub="In active stitching"
                     color="bg-blue-600"
-                    to="/customer/list?status=On progress"
+                    to="/customer/list?status=On Progress"
                     badge="Active"
+                  />
+                  <StatCard
+                    icon={Scissors}
+                    label="Stitching Done"
+                    value={stats?.stitchingCompleted}
+                    sub="Stitching finished"
+                    color="bg-purple-700"
+                    to="/customer/list?status=Stitching Completed"
+                    badge="Stitched"
+                  />
+                  <StatCard
+                    icon={AlertCircle}
+                    label="Not Checked"
+                    value={stats?.notChecked}
+                    sub="Awaiting quality check"
+                    color="bg-rose-500"
+                    to="/customer/list?status=Not yet Checked"
+                    badge="QC"
                   />
                   <StatCard
                     icon={CheckCircle}

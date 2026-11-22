@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Plus, Search, Edit2, Trash2, Loader, Printer, Eye, X,
   Check, ChevronDown, FileText
@@ -18,10 +18,13 @@ import { format } from 'date-fns';
 // ── Status Config & Normalizer ───────────────────────────────────────────────
 const normalizeStatus = (s) => {
   if (!s) return 'Not yet started';
-  const l = s.toLowerCase();
+  const l = s.trim().toLowerCase();
   if (l === 'delivered') return 'Delivered';
-  if (l.includes('progress') || l === 'submitted' || l === 'ready') return 'On progress';
-  return 'Not yet started';
+  if (l === 'stitching completed' || l.includes('stitching')) return 'Stitching Completed';
+  if (l === 'not yet checked' || (l.includes('checked') && !l.includes('uncheck'))) return 'Not yet Checked';
+  if (l === 'on progress' || l.includes('progress') || l === 'submitted' || l === 'ready' || l === 'in progress') return 'On Progress';
+  if (l === 'not yet started' || l.includes('not yet') || l === 'draft' || l === 'pending') return 'Not yet started';
+  return s;
 };
 
 const STATUS_CONFIG = {
@@ -30,10 +33,20 @@ const STATUS_CONFIG = {
     badge: 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100',
     dot:   'bg-amber-400',
   },
-  'On progress': {
-    label: 'On progress',
+  'On Progress': {
+    label: 'On Progress',
     badge: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100',
     dot:   'bg-blue-500 animate-pulse',
+  },
+  'Stitching Completed': {
+    label: 'Stitching Completed',
+    badge: 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100',
+    dot:   'bg-purple-500',
+  },
+  'Not yet Checked': {
+    label: 'Not yet Checked',
+    badge: 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100',
+    dot:   'bg-rose-400',
   },
   'Delivered': {
     label: 'Delivered',
@@ -57,7 +70,9 @@ function StatusToggle({ status, onSelect, disabled }) {
         title="Click to change order status"
       >
         <option value="Not yet started" className="bg-white text-gray-800 py-1">Not yet started</option>
-        <option value="On progress" className="bg-white text-gray-800 py-1">On progress</option>
+        <option value="On Progress" className="bg-white text-gray-800 py-1">On Progress</option>
+        <option value="Stitching Completed" className="bg-white text-gray-800 py-1">Stitching Completed</option>
+        <option value="Not yet Checked" className="bg-white text-gray-800 py-1">Not yet Checked</option>
         <option value="Delivered" className="bg-white text-gray-800 py-1">Delivered</option>
       </select>
       <span className={`w-2 h-2 rounded-full absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none ${config.dot}`} />
@@ -148,17 +163,26 @@ function OrderNumberCell({ orderNo, orderId, onSave }) {
 // ═════════════════════════════════════════════════════════════════════════════
 export default function CustomerOrderList() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [orders,          setOrders]          = useState([]);
   const [total,           setTotal]           = useState(0);
   const [page,            setPage]            = useState(1);
   const [search,          setSearch]          = useState('');
-  const [filterStatus,    setFilterStatus]    = useState('');
+  const [filterStatus,    setFilterStatus]    = useState(searchParams.get('status') || '');
   const [loading,         setLoading]         = useState(true);
   const [deleteId,        setDeleteId]        = useState(null);
   const [previewOrder,    setPreviewOrder]    = useState(null);
   const [printOrder,      setPrintOrder]      = useState(null);
   const [showStickyNotes, setShowStickyNotes] = useState(false);
   const LIMIT = 20;
+
+  // Sync if URL query param changes
+  useEffect(() => {
+    const s = searchParams.get('status');
+    if (s !== null) {
+      setFilterStatus(s);
+    }
+  }, [searchParams]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -263,12 +287,18 @@ export default function CustomerOrderList() {
 
         {/* Quick Status Filter Pills */}
         <div className="flex items-center gap-1.5 flex-wrap">
-          {['All', 'Not yet started', 'On progress', 'Delivered'].map(s => {
+          {['All', 'Not yet started', 'On Progress', 'Stitching Completed', 'Not yet Checked', 'Delivered'].map(s => {
             const active = (s === 'All' && !filterStatus) || filterStatus === s;
             return (
               <button
                 key={s}
-                onClick={() => { setFilterStatus(s === 'All' ? '' : s); setPage(1); }}
+                onClick={() => {
+                  const next = s === 'All' ? '' : s;
+                  setFilterStatus(next);
+                  setPage(1);
+                  if (next) setSearchParams({ status: next });
+                  else setSearchParams({});
+                }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   active
                     ? 'bg-purple-600 text-white shadow-sm'

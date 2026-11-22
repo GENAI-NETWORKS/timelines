@@ -147,7 +147,16 @@ router.get('/', protect, async (req, res, next) => {
     let whereClauses = [];
     let params = [];
     
-    if (status) { whereClauses.push('o.status = ?'); params.push(status); }
+    if (status) {
+      if (status === 'On Progress' || status === 'On progress') {
+        whereClauses.push('(o.status = "On Progress" OR o.status = "On progress" OR o.status = "Submitted" OR o.status = "Ready" OR o.status = "In Progress")');
+      } else if (status === 'Not yet started') {
+        whereClauses.push('(o.status = "Not yet started" OR o.status = "Draft" OR o.status IS NULL OR o.status = "")');
+      } else {
+        whereClauses.push('o.status = ?');
+        params.push(status);
+      }
+    }
     if (search) {
       whereClauses.push('(o.orderNo LIKE ? OR c.name LIKE ? OR c.phone LIKE ? OR c.address LIKE ?)');
       const likeS = `%${search}%`;
