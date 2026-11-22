@@ -34,13 +34,10 @@ ensureColumns().catch(err => console.error('Employee ensureColumns error:', err)
 
 const resolvePhoto = (file) => {
   if (!file) return { proofUrl: '', proofPublicId: '' };
-  if (file.path && (file.path.startsWith('http://') || file.path.startsWith('https://'))) {
-    return { proofUrl: file.path, proofPublicId: file.filename || '' };
-  }
-  if (file.filename) {
+  if (file.buffer) {
     return {
-      proofUrl: `/uploads/timelines_employees/${file.filename}`,
-      proofPublicId: file.filename,
+      proofUrl: `data:${file.mimetype};base64,${file.buffer.toString('base64')}`,
+      proofPublicId: '',
     };
   }
   return { proofUrl: '', proofPublicId: '' };

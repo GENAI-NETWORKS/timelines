@@ -21,13 +21,10 @@ const upload = multer({
 
 const resolvePhoto = (file) => {
   if (!file) return { photoUrl: '', photoPublicId: '' };
-  if (file.path && (file.path.startsWith('http://') || file.path.startsWith('https://'))) {
-    return { photoUrl: file.path, photoPublicId: file.filename || '' };
-  }
-  if (file.filename) {
+  if (file.buffer) {
     return {
-      photoUrl: `/uploads/timelines_tailor-work-entries/${file.filename}`,
-      photoPublicId: file.filename,
+      photoUrl: `data:${file.mimetype};base64,${file.buffer.toString('base64')}`,
+      photoPublicId: '',
     };
   }
   return { photoUrl: '', photoPublicId: '' };

@@ -356,7 +356,7 @@ router.post('/:id/sketch', protect, adminOnly, upload.single('sketch'), async (r
     const [rows] = await db.query(`SELECT orderId FROM DesignOrder WHERE orderId = ?`, [req.params.id]);
     if (rows.length === 0) return res.status(404).json({ message: 'Order not found.' });
     
-    const sketchUrl = req.file.path;
+    const sketchUrl = req.file ? `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}` : null;
     const sketchJSON = req.body.sketchJSON || null;
     
     await db.execute(
@@ -394,7 +394,7 @@ router.post('/:id/section-sketch', protect, adminOnly, upload.single('sketch'), 
     const [rows] = await db.query(`SELECT orderId FROM DesignOrder WHERE orderId = ?`, [req.params.id]);
     if (rows.length === 0) return res.status(404).json({ message: 'Order not found.' });
 
-    const sketchUrl = req.file ? req.file.path : null;
+    const sketchUrl = req.file ? `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}` : null;
 
     const [existing] = await db.query(`SELECT id FROM OrderDesignSection WHERE orderId = ? AND sectionType = ?`, [req.params.id, sectionType]);
     if (existing.length > 0) {

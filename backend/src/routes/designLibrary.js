@@ -3,24 +3,21 @@
  *
  * Admin-managed default reference images for Front / Back / Sleeve design sections.
  * Up to 20 images per section.
- * Images stored in: Cloudinary
- * Metadata stored in: MySQL (DesignLibrary table)
+ * Images stored as Base64 data-URLs in MySQL (no Cloudinary / external storage).
  */
 const express = require('express');
 const router  = express.Router();
 const multer  = require('multer');
 const { protect, adminOnly } = require('../middleware/auth');
 const db = require('../utils/db');
-const { getStorage, cloudinary } = require('../utils/cloudinary');
 const { v4: uuidv4 } = require('uuid');
 
 const SECTIONS = ['front', 'back', 'sleeve'];
 const MAX_PER_SECTION = 20;
 
-// ── Multer (Cloudinary) ────────────────────────────────────────────────────
-const storage = getStorage('timelines/design-library');
+// Memory storage — convert buffer to base64 in route handler
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) cb(null, true);
@@ -62,21 +59,20 @@ router.post('/:itemType/:section', protect, adminOnly, upload.single('image'), a
 
     // Check count limit
     const [[{ count }]] = await db.query(`SELECT COUNT(*) as count FROM DesignLibrary WHERE itemType = ? AND section = ?`, [itemType, section]);
-    
     if (count >= MAX_PER_SECTION) {
-      // Delete from cloudinary if limit reached
-      if (req.file.filename) {
-        await cloudinary.uploader.destroy(req.file.filename);
-      }
       return res.status(400).json({ error: `Max ${MAX_PER_SECTION} images allowed per section` });
     }
+
+    // Convert to base64 data URL — stored directly in MySQL
+    const dataUrl = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+    const filename = `${Date.now()}-${req.file.originalname}`;
 
     const entry = {
       id: uuidv4(),
       itemType,
       section,
-      filename: req.file.filename, // Cloudinary public_id
-      url: req.file.path,          // Cloudinary secure_url
+      filename,
+      url: dataUrl,
     };
 
     await db.execute(
@@ -106,19 +102,12 @@ router.delete('/:itemType/:section/:id', protect, adminOnly, async (req, res) =>
     const { itemType, section, id } = req.params;
     if (!SECTIONS.includes(section)) return res.status(400).json({ error: 'Invalid section' });
 
-    const [rows] = await db.query(`SELECT filename FROM DesignLibrary WHERE id = ? AND itemType = ? AND section = ?`, [id, itemType, section]);
+    const [rows] = await db.query(`SELECT id FROM DesignLibrary WHERE id = ? AND itemType = ? AND section = ?`, [id, itemType, section]);
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Image not found' });
     }
 
-    const { filename } = rows[0];
-
-    // Delete from Cloudinary
-    if (filename) {
-      await cloudinary.uploader.destroy(filename).catch(e => console.error('Cloudinary destroy error:', e));
-    }
-
-    // Delete from DB
+    // Delete from DB only (no external service)
     await db.execute(`DELETE FROM DesignLibrary WHERE id = ?`, [id]);
 
     res.json({ message: 'Image deleted' });

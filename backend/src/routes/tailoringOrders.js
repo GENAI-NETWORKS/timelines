@@ -26,6 +26,17 @@ async function ensureOrderNoColumn() {
   try {
     await db.query("ALTER TABLE TailoringOrder ADD COLUMN entryByName VARCHAR(255) DEFAULT ''");
   } catch (_) {}
+  // Ensure subItems and details columns are MEDIUMTEXT to hold base64 image data
+  try {
+    await db.query("ALTER TABLE TailoringOrderItem MODIFY COLUMN subItems MEDIUMTEXT");
+  } catch (_) {}
+  try {
+    await db.query("ALTER TABLE TailoringOrderItem MODIFY COLUMN details MEDIUMTEXT");
+  } catch (_) {}
+  // Ensure DesignLibrary.url column can hold base64 image data
+  try {
+    await db.query("ALTER TABLE DesignLibrary MODIFY COLUMN url MEDIUMTEXT");
+  } catch (_) {}
 }
 ensureOrderNoColumn().catch(() => {});
 
@@ -526,7 +537,7 @@ router.post('/:id/items/:itemId/upload', protect, upload.single('image'), async 
     const item = rows[0];
     if (!item) return res.status(404).json({ message: 'Item not found.' });
 
-    const imageUrl = req.file.path;
+    const imageUrl = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
 
     if (!subItemNumber || subItemNumber === 'null' || subItemNumber === 'undefined') {
       let detailsRaw = item.details;
@@ -571,7 +582,7 @@ router.post('/:id/items/:itemId/canvas', protect, upload.single('canvas'), async
     const item = rows[0];
     if (!item) return res.status(404).json({ message: 'Item not found.' });
 
-    const imageUrl = req.file ? req.file.path : null;
+    const imageUrl = req.file ? `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}` : null;
     const subNum = parseInt(subItemNumber);
     let subsRaw = item.subItems;
     if (typeof subsRaw === 'string') {

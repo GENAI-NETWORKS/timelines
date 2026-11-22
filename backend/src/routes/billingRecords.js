@@ -61,16 +61,13 @@ async function ensureTable() {
 
 ensureTable().catch(err => console.error('BillingRecord table init error:', err));
 
-// Helper to resolve photo from multer file
+// Helper to resolve photo from multer file (memory storage → base64 data URL)
 const resolvePhoto = (file) => {
   if (!file) return { photoUrl: '', photoPublicId: '' };
-  if (file.path && (file.path.startsWith('http://') || file.path.startsWith('https://'))) {
-    return { photoUrl: file.path, photoPublicId: file.filename || '' };
-  }
-  if (file.filename) {
+  if (file.buffer) {
     return {
-      photoUrl: `/uploads/timelines_billing-records/${file.filename}`,
-      photoPublicId: file.filename,
+      photoUrl: `data:${file.mimetype};base64,${file.buffer.toString('base64')}`,
+      photoPublicId: '',
     };
   }
   return { photoUrl: '', photoPublicId: '' };

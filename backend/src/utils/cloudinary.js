@@ -1,53 +1,27 @@
-const path = require('path');
-const fs = require('fs');
+/**
+ * cloudinary.js  — REPLACED with memory-based storage
+ *
+ * Images are stored as Base64 data-URLs directly in MySQL.
+ * No external service (Cloudinary / disk) needed.
+ * Compatible with any hosting including Hostinger.
+ */
 const multer = require('multer');
-const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
-const isCloudinaryConfigured = Boolean(
-  process.env.CLOUDINARY_CLOUD_NAME &&
-  process.env.CLOUDINARY_API_KEY &&
-  process.env.CLOUDINARY_API_SECRET
-);
+// Memory storage — file bytes available as req.file.buffer
+const memStorage = multer.memoryStorage();
 
-if (isCloudinaryConfigured) {
-  cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
-  });
-}
+/**
+ * Returns a multer memoryStorage instance (folderName kept for API compatibility).
+ * Call site: const storage = getStorage('timelines/tailoring');
+ */
+const getStorage = (_folderName) => memStorage;
 
-const getStorage = (folderName) => {
-  if (isCloudinaryConfigured) {
-    return new CloudinaryStorage({
-      cloudinary: cloudinary,
-      params: {
-        folder: folderName,
-        allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'heic'],
-      },
-    });
-  }
-
-  // Fallback to local disk storage when Cloudinary credentials are not configured
-  const safeFolder = (folderName || 'uploads').replace(/[^a-zA-Z0-9_-]/g, '_');
-  const uploadDir = path.join(__dirname, '../../uploads', safeFolder);
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  }
-
-  return multer.diskStorage({
-    destination: (req, file, cb) => cb(null, uploadDir),
-    filename: (req, file, cb) => {
-      const ext = path.extname(file.originalname).toLowerCase();
-      const safeName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
-      cb(null, safeName);
-    },
-  });
+// Stub cloudinary object so old delete calls don't crash
+const cloudinary = {
+  uploader: {
+    destroy: async () => ({ result: 'ok' }),
+  },
+  config: () => {},
 };
 
-module.exports = {
-  cloudinary,
-  getStorage,
-  isCloudinaryConfigured
-};
+module.exports = { cloudinary, getStorage, isCloudinaryConfigured: false };
