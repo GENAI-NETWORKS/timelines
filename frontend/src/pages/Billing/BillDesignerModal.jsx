@@ -3,7 +3,7 @@ import {
   Printer, Plus, Minus, Trash2, Search, QrCode, ShoppingCart,
   Settings2, RefreshCw, Check, IndianRupee, Store, User, FileText,
   Sliders, ArrowRight, Clock, ShieldCheck, Tag, X, ChevronDown, ChevronUp, History,
-  Loader
+  Loader, CheckCircle2
 } from 'lucide-react';
 import Modal from '../../components/UI/Modal';
 import QrCodeView from './QrCodeView';
@@ -283,6 +283,13 @@ export default function BillDesignerModal({
   const [paymentMode, setPaymentMode] = useState('Cash');
   const [cashTendered, setCashTendered] = useState('');
   const [footerNotes, setFooterNotes] = useState('Thank you for shopping with us! Please visit again.');
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Reset submitted state whenever a new bill is generated/changed
+  useEffect(() => {
+    setIsSubmitted(false);
+  }, [billNo]);
 
   // Paper Size: Defaults to A4 (Fit to Paper)
   const [paperSize, setPaperSize] = useState('a4'); // 'a4' (Fit to Paper), 'a5' (Half Sheet), 'thermal' (80mm Roll)
@@ -437,6 +444,7 @@ export default function BillDesignerModal({
     setItems([]);
     setBillNo(generateBillNumber());
     setCashTendered('');
+    setIsSubmitted(false);
     toast.success('Bill cleared');
   };
 
@@ -552,6 +560,42 @@ export default function BillDesignerModal({
     toast.success(`Loaded Bill ${histBill.billNo}`);
   };
 
+  // Submit bill to payment records database (one-time save)
+  const handleSubmitBill = async () => {
+    if (items.length === 0) {
+      toast.error('Add at least one item before submitting the bill');
+      return;
+    }
+    if (isSubmitted) {
+      toast('Bill already submitted to Payment Records', { icon: 'ℹ️' });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      saveToHistory();
+      await saveBillingRecord({
+        billNo,
+        billDate,
+        customerName,
+        customerPhone,
+        paymentMode,
+        items,
+        subtotal,
+        discountAmount,
+        taxRate,
+        grandTotal,
+      });
+      setIsSubmitted(true);
+      toast.success(`Bill ${billNo} submitted & saved to Payment Records!`);
+    } catch (err) {
+      console.error('Submit bill error:', err);
+      toast.error(err?.response?.data?.message || 'Failed to submit bill to payment records');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // High-Precision Print Engine that fits the paper and includes scannable QR Code
   const handlePrint = () => {
     if (items.length === 0) {
@@ -560,20 +604,6 @@ export default function BillDesignerModal({
     }
 
     saveToHistory();
-
-    // Auto-save bill to payment records DB
-    saveBillingRecord({
-      billNo,
-      billDate,
-      customerName,
-      customerPhone,
-      paymentMode,
-      items,
-      subtotal,
-      discountAmount,
-      taxRate,
-      grandTotal,
-    }).catch((err) => console.warn('Bill record save failed (non-critical):', err));
 
     const printWin = window.open('', '_blank', 'width=850,height=950');
     if (!printWin) {
@@ -975,6 +1005,20 @@ export default function BillDesignerModal({
               className="btn-sm btn-ghost text-rose-600 hover:bg-rose-50"
             >
               <Trash2 className="w-3.5 h-3.5" /> Clear Bill
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSubmitBill}
+              disabled={items.length === 0 || isSubmitting || isSubmitted}
+              className={`btn-sm font-semibold flex items-center gap-1.5 shadow-sm transition-all ${
+                isSubmitted
+                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 cursor-default'
+                  : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-100 cursor-pointer'
+              }`}
+            >
+              {isSubmitting ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+              {isSubmitted ? 'Submitted ✓' : 'Submit Bill'}
             </button>
 
             <button
@@ -1687,15 +1731,42 @@ export default function BillDesignerModal({
               </div>
             </div>
 
-            {/* Print Action in Preview Column */}
-            <button
-              type="button"
-              onClick={handlePrint}
-              disabled={items.length === 0}
-              className="w-full btn-primary py-3 text-sm font-bold flex items-center justify-center gap-2 shadow-lg"
-            >
-              <Printer className="w-5 h-5" /> Print Bill
-            </button>
+            {/* Actions in Preview Column: Submit Bill & Print Bill */}
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleSubmitBill}
+                disabled={items.length === 0 || isSubmitting || isSubmitted}
+                className={`py-3 px-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-md transition-all ${
+                  isSubmitted
+                    ? 'bg-emerald-50 text-emerald-800 border-2 border-emerald-300 cursor-default shadow-xs'
+                    : 'bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white shadow-emerald-200 cursor-pointer'
+                }`}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader className="w-4 h-4 animate-spin" /> Submitting...
+                  </>
+                ) : isSubmitted ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Submitted
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" /> Submit Bill
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={handlePrint}
+                disabled={items.length === 0}
+                className="py-3 px-4 btn-primary rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-all cursor-pointer"
+              >
+                <Printer className="w-5 h-5" /> Print Bill
+              </button>
+            </div>
           </div>
         </div>
       </div>
