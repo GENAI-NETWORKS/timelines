@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../utils/db');
-const { protect, adminOnly } = require('../middleware/auth');
+const { protect, adminOnly, requirePermission } = require('../middleware/auth');
 const { logCreate, logUpdate, logDelete } = require('../utils/auditLogger');
 
 // ─── Auto-generate Customer ID: TC-YYYY-XXXX ─────────────────────────────
@@ -73,7 +73,7 @@ router.get('/:id', protect, async (req, res, next) => {
 });
 
 // POST /api/customers
-router.post('/', protect, adminOnly, async (req, res, next) => {
+router.post('/', protect, requirePermission('customers'), async (req, res, next) => {
   try {
     const { name, phone, address = '', email = '', notes = '' } = req.body;
     const customerId = await generateCustomerId();
@@ -90,7 +90,7 @@ router.post('/', protect, adminOnly, async (req, res, next) => {
 });
 
 // PUT /api/customers/:id
-router.put('/:id', protect, adminOnly, async (req, res, next) => {
+router.put('/:id', protect, requirePermission('customers'), async (req, res, next) => {
   try {
     const [rows] = await db.query(`SELECT * FROM Customer WHERE customerId = ?`, [req.params.id]);
     const old = rows[0];
@@ -109,7 +109,7 @@ router.put('/:id', protect, adminOnly, async (req, res, next) => {
 });
 
 // DELETE /api/customers/:id
-router.delete('/:id', protect, adminOnly, async (req, res, next) => {
+router.delete('/:id', protect, requirePermission('customers'), async (req, res, next) => {
   try {
     const [rows] = await db.query(`SELECT * FROM Customer WHERE customerId = ?`, [req.params.id]);
     const customer = rows[0];

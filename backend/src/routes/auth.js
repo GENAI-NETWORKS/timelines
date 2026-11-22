@@ -25,6 +25,21 @@ router.post('/login', async (req, res, next) => {
     });
 
     const { password: _, ...safeUser } = user;
+    if (safeUser.role === 'admin') {
+      safeUser.permissions = {
+        customers: true,
+        orders: true,
+        billing: true,
+        paymentRecords: true,
+        materials: true,
+        tailorsPayment: true,
+        employees: true,
+      };
+    } else if (safeUser.permissions && typeof safeUser.permissions === 'string') {
+      try { safeUser.permissions = JSON.parse(safeUser.permissions); } catch { safeUser.permissions = {}; }
+    } else if (!safeUser.permissions) {
+      safeUser.permissions = {};
+    }
     res.json({ token, user: safeUser });
   } catch (err) { next(err); }
 });

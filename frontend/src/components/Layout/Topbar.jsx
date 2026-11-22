@@ -15,6 +15,7 @@ const pageTitles = {
   '/tailors-payment': 'Tailors Payment',
   '/payment-records': 'Payment Records',
   '/billing':         'Billing System',
+  '/panel-access':    'Panel Access & Permissions',
 };
 
 export default function Topbar() {

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../utils/db');
-const { protect, adminOnly } = require('../middleware/auth');
+const { protect, adminOnly, requirePermission } = require('../middleware/auth');
 const { v4: uuidv4 } = require('uuid');
 
 // Generate unique barcode: E.g., TL-XXXXXX or numeric timestamp-based
@@ -55,7 +55,7 @@ router.get('/barcode/:barcode', protect, async (req, res, next) => {
 });
 
 // POST /api/billing-products — create new product
-router.post('/', protect, adminOnly, async (req, res, next) => {
+router.post('/', protect, requirePermission('billing'), async (req, res, next) => {
   try {
     const { name, price, quantity, category = '', barcode: customBarcode } = req.body;
     if (!name || name.trim() === '') {
@@ -87,7 +87,7 @@ router.post('/', protect, adminOnly, async (req, res, next) => {
 });
 
 // PUT /api/billing-products/:id — update product
-router.put('/:id', protect, adminOnly, async (req, res, next) => {
+router.put('/:id', protect, requirePermission('billing'), async (req, res, next) => {
   try {
     const { name, price, quantity, category = '', barcode } = req.body;
     const numPrice = parseFloat(price) || 0;
@@ -107,7 +107,7 @@ router.put('/:id', protect, adminOnly, async (req, res, next) => {
 });
 
 // DELETE /api/billing-products/:id — delete product
-router.delete('/:id', protect, adminOnly, async (req, res, next) => {
+router.delete('/:id', protect, requirePermission('billing'), async (req, res, next) => {
   try {
     await db.execute('DELETE FROM BillingProduct WHERE id = ?', [req.params.id]);
     res.json({ message: 'Product deleted.' });

@@ -27,9 +27,10 @@ import PaymentRecords from './pages/Billing/PaymentRecords';
 import Materials from './pages/Materials/Materials';
 import TailorsPayment from './pages/TailorsPayment/TailorsPayment';
 import TailorDetail from './pages/TailorsPayment/TailorDetail';
+import PanelAccess from './pages/PanelAccess/PanelAccess';
 
-function ProtectedRoute({ children, adminOnly = false }) {
-  const { user, loading } = useAuth();
+function ProtectedRoute({ children, adminOnly = false, permission = null }) {
+  const { user, loading, isAdmin, hasPermission } = useAuth();
   if (loading) {
     return (
       <div className="min-h-screen bg-surface flex items-center justify-center">
@@ -43,7 +44,8 @@ function ProtectedRoute({ children, adminOnly = false }) {
     );
   }
   if (!user) return <Navigate to="/login" replace />;
-  if (adminOnly && user.role !== 'admin') return <Navigate to="/" replace />;
+  if (adminOnly && !isAdmin) return <Navigate to="/" replace />;
+  if (permission && !isAdmin && !hasPermission(permission)) return <Navigate to="/" replace />;
   return children;
 }
 
@@ -59,17 +61,18 @@ function AppRoutes() {
             <Layout>
               <Routes>
                 <Route path="/" element={<Dashboard />} />
-                <Route path="/customers" element={<Customers />} />
-                <Route path="/employees" element={<ProtectedRoute adminOnly><Employees /></ProtectedRoute>} />
-                <Route path="/employee-details" element={<ProtectedRoute adminOnly><Employees /></ProtectedRoute>} />
-                <Route path="/customer"        element={<ProtectedRoute adminOnly><CustomerOrderPage /></ProtectedRoute>} />
-                <Route path="/customer/list"   element={<ProtectedRoute adminOnly><CustomerOrderList /></ProtectedRoute>} />
-                <Route path="/billing"         element={<ProtectedRoute adminOnly><BillingSystem /></ProtectedRoute>} />
-                <Route path="/payment-records" element={<ProtectedRoute adminOnly><PaymentRecords /></ProtectedRoute>} />
-                <Route path="/materials"        element={<ProtectedRoute adminOnly><Materials />       </ProtectedRoute>} />
-                <Route path="/tailors-payment"      element={<ProtectedRoute adminOnly><TailorsPayment /></ProtectedRoute>} />
-                <Route path="/tailors-payment/:staffId" element={<ProtectedRoute adminOnly><TailorDetail /></ProtectedRoute>} />
-                <Route path="/customer/:id"    element={<ProtectedRoute adminOnly><CustomerOrderPage /></ProtectedRoute>} />
+                <Route path="/customers" element={<ProtectedRoute permission="customers"><Customers /></ProtectedRoute>} />
+                <Route path="/employees" element={<ProtectedRoute permission="employees"><Employees /></ProtectedRoute>} />
+                <Route path="/employee-details" element={<ProtectedRoute permission="employees"><Employees /></ProtectedRoute>} />
+                <Route path="/customer"        element={<ProtectedRoute permission="orders"><CustomerOrderPage /></ProtectedRoute>} />
+                <Route path="/customer/list"   element={<ProtectedRoute permission="orders"><CustomerOrderList /></ProtectedRoute>} />
+                <Route path="/billing"         element={<ProtectedRoute permission="billing"><BillingSystem /></ProtectedRoute>} />
+                <Route path="/payment-records" element={<ProtectedRoute permission="paymentRecords"><PaymentRecords /></ProtectedRoute>} />
+                <Route path="/materials"        element={<ProtectedRoute permission="materials"><Materials /></ProtectedRoute>} />
+                <Route path="/tailors-payment"      element={<ProtectedRoute permission="tailorsPayment"><TailorsPayment /></ProtectedRoute>} />
+                <Route path="/tailors-payment/:staffId" element={<ProtectedRoute permission="tailorsPayment"><TailorDetail /></ProtectedRoute>} />
+                <Route path="/customer/:id"    element={<ProtectedRoute permission="orders"><CustomerOrderPage /></ProtectedRoute>} />
+                <Route path="/panel-access"    element={<ProtectedRoute adminOnly><PanelAccess /></ProtectedRoute>} />
                 <Route path="/orders" element={<DesignOrders />} />
                 <Route path="/orders/new" element={
                   <ProtectedRoute adminOnly><OrderEntry /></ProtectedRoute>

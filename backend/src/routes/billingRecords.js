@@ -4,9 +4,15 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const db = require('../utils/db');
-const { protect, adminOnly } = require('../middleware/auth');
+const { protect, adminOnly, requirePermission } = require('../middleware/auth');
 const { getStorage, cloudinary, isCloudinaryConfigured } = require('../utils/cloudinary');
 const { v4: uuidv4 } = require('uuid');
+
+const requireBillingAccess = (req, res, next) => {
+  if (!req.user) return res.status(401).json({ message: 'Not authenticated.' });
+  if (req.user.role === 'admin' || req.user.permissions?.billing || req.user.permissions?.paymentRecords) return next();
+  return res.status(403).json({ message: 'Access denied. Requires billing or paymentRecords permission.' });
+};
 
 // Multer for photo uploads (Cloudinary or local disk fallback)
 const storage = getStorage('timelines/billing-records');
@@ -71,7 +77,7 @@ const resolvePhoto = (file) => {
 };
 
 // GET /api/billing-records  — list with filters + pagination
-router.get('/', protect, adminOnly, async (req, res, next) => {
+router.get('/', protect, requireBillingAccess, async (req, res, next) => {
   try {
     const {
       search = '',
@@ -148,7 +154,7 @@ router.get('/', protect, adminOnly, async (req, res, next) => {
 });
 
 // POST /api/billing-records  — save a bill (called automatically on print)
-router.post('/', protect, adminOnly, async (req, res, next) => {
+router.post('/', protect, requireBillingAccess, async (req, res, next) => {
   try {
     const {
       billNo, billDate, customerName = 'Walk-in Customer', customerPhone = '',
@@ -193,7 +199,7 @@ router.post('/', protect, adminOnly, async (req, res, next) => {
 });
 
 // PATCH /api/billing-records/:id  — update payment method only
-router.patch('/:id', protect, adminOnly, async (req, res, next) => {
+router.patch('/:id', protect, requireBillingAccess, async (req, res, next) => {
   try {
     const { paymentMode } = req.body;
     const allowed = ['Cash', 'UPI', 'Scanner', 'phone number'];
@@ -213,7 +219,7 @@ router.patch('/:id', protect, adminOnly, async (req, res, next) => {
 });
 
 // PATCH /api/billing-records/:id/photo  — upload / replace reference photo
-router.patch('/:id/photo', protect, adminOnly, upload.single('photo'), async (req, res, next) => {
+router.patch('/:id/photo', protect, requireBillingAccess, upload.single('photo'), async (req, res, next) => {
   try {
     const [rows] = await db.query('SELECT * FROM BillingRecord WHERE id = ?', [req.params.id]);
     if (!rows.length) return res.status(404).json({ message: 'Record not found.' });
@@ -246,7 +252,7 @@ router.patch('/:id/photo', protect, adminOnly, upload.single('photo'), async (re
 });
 
 // DELETE /api/billing-records/:id
-router.delete('/:id', protect, adminOnly, async (req, res, next) => {
+router.delete('/:id', protect, requireBillingAccess, async (req, res, next) => {
   try {
     await db.execute('DELETE FROM BillingRecord WHERE id = ?', [req.params.id]);
     res.json({ message: 'Record deleted.' });

@@ -4,7 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const db = require('../utils/db');
-const { protect, adminOnly } = require('../middleware/auth');
+const { protect, adminOnly, requirePermission } = require('../middleware/auth');
 const bcrypt = require('bcryptjs');
 const { logCreate, logUpdate, logDelete } = require('../utils/auditLogger');
 const { getStorage, cloudinary, isCloudinaryConfigured } = require('../utils/cloudinary');
@@ -114,7 +114,7 @@ router.get('/:id', protect, async (req, res, next) => {
 });
 
 // POST /api/employees  (with optional proof photo)
-router.post('/', protect, adminOnly, upload.single('proof'), async (req, res, next) => {
+router.post('/', protect, requirePermission('employees'), upload.single('proof'), async (req, res, next) => {
   try {
     await ensureColumns().catch(() => {});
     const { employeeId: customId, name, role = 'Tailor', phone = '', email = '', address = '', joiningDate, status = 'active', notes = '' } = req.body;
@@ -174,7 +174,7 @@ router.post('/', protect, adminOnly, upload.single('proof'), async (req, res, ne
 });
 
 // PUT /api/employees/:id  (with optional new proof photo)
-router.put('/:id', protect, adminOnly, upload.single('proof'), async (req, res, next) => {
+router.put('/:id', protect, requirePermission('employees'), upload.single('proof'), async (req, res, next) => {
   try {
     await ensureColumns().catch(() => {});
     const [rows] = await db.query(`SELECT * FROM Employee WHERE employeeId = ?`, [req.params.id]);
@@ -227,7 +227,7 @@ router.put('/:id', protect, adminOnly, upload.single('proof'), async (req, res, 
 });
 
 // DELETE /api/employees/:id
-router.delete('/:id', protect, adminOnly, async (req, res, next) => {
+router.delete('/:id', protect, requirePermission('employees'), async (req, res, next) => {
   try {
     const [rows] = await db.query(`SELECT * FROM Employee WHERE employeeId = ?`, [req.params.id]);
     const employee = rows[0];

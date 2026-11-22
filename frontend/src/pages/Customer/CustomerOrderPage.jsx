@@ -14,10 +14,11 @@ import { format } from 'date-fns';
 
 import {
   createTailoringOrder, getTailoringOrder,
-  updateTailoringOrder, submitTailoringOrder,
+  updateTailoringOrder, submitTailoringOrder, assignTailoringOrder,
   addOrderItem, updateOrderItem, deleteOrderItem, saveItemCanvas,
 } from '../../api/tailoringOrders';
 import { searchCustomers } from '../../api/customers';
+import { getAssignableUsers } from '../../api/panelUsers';
 
 import QuickEntryTable from './components/QuickEntryTable';
 import DesignModal from './components/DesignModal';
@@ -31,10 +32,27 @@ function CustomerStep({ onOrderCreated }) {
   const [results, setResults]   = useState([]);
   const [searching, setSearching] = useState(false);
   const [selected, setSelected] = useState(null);
-  const [newForm, setNewForm]   = useState({ name: '', phone: '', address: '', orderDate: new Date().toISOString().slice(0, 10), deliveryDate: '', bagNo: '', bagName: '' });
+  const [assignableUsers, setAssignableUsers] = useState([]);
+  const [newForm, setNewForm]   = useState({
+    name: '',
+    phone: '',
+    address: '',
+    orderDate: new Date().toISOString().slice(0, 10),
+    deliveryDate: '',
+    bagNo: '',
+    bagName: '',
+    assignedToId: '',
+    assignedToName: '',
+  });
   const [creating, setCreating] = useState(false);
   const debounceRef = useRef(null);
   const wrapperRef  = useRef(null);
+
+  useEffect(() => {
+    getAssignableUsers()
+      .then(res => setAssignableUsers(res.data || []))
+      .catch(() => {});
+  }, []);
 
   const doSearch = useCallback((q) => {
     clearTimeout(debounceRef.current);
@@ -74,6 +92,8 @@ function CustomerStep({ onOrderCreated }) {
         deliveryDate: dd,
         bagNo:        newForm.bagNo,
         bagName:      newForm.bagName,
+        assignedToId:   newForm.assignedToId || null,
+        assignedToName: newForm.assignedToName || '',
         ...(mode === 'search' && selected
           ? { customerId: selected.customerId }
           : { customerName: name, customerPhone: phone, customerAddress: address }),
@@ -111,6 +131,28 @@ function CustomerStep({ onOrderCreated }) {
           <input id="bag-name" className="input" placeholder="e.g. Red Bag, Cover..." value={newForm.bagName}
             onChange={e => setNewForm(f => ({ ...f, bagName: e.target.value }))} />
         </div>
+      </div>
+      <div className="mt-4">
+        <label className="label">Assign Work To (Panel User)</label>
+        <select
+          className="input"
+          value={newForm.assignedToId || ''}
+          onChange={e => {
+            const sel = assignableUsers.find(u => u.id === e.target.value);
+            setNewForm(f => ({
+              ...f,
+              assignedToId: e.target.value,
+              assignedToName: sel ? sel.name : ''
+            }));
+          }}
+        >
+          <option value="">Unassigned (Can be assigned later)</option>
+          {assignableUsers.map(u => (
+            <option key={u.id} value={u.id}>
+              {u.name} ({u.role})
+            </option>
+          ))}
+        </select>
       </div>
     </>
   );
@@ -219,7 +261,27 @@ export default function CustomerOrderPage() {
   const [submitting,setSubmitting]= useState(false);
   const [savingAll, setSavingAll] = useState(false);
   const [designModalState, setDesignModalState] = useState(null); // { item, activeSub, section }
+  const [assignableUsers, setAssignableUsers] = useState([]);
   const saveTimers  = useRef({});
+
+  useEffect(() => {
+    getAssignableUsers()
+      .then(res => setAssignableUsers(res.data || []))
+      .catch(() => {});
+  }, []);
+
+  const handleOrderAssign = async (assignedToId) => {
+    if (!order) return;
+    const sel = assignableUsers.find(u => u.id === assignedToId);
+    const assignedToName = sel ? sel.name : '';
+    try {
+      await assignTailoringOrder(order.id, { assignedToId, assignedToName });
+      setOrder(prev => ({ ...prev, assignedToId, assignedToName }));
+      toast.success(assignedToName ? `Order assigned to ${assignedToName}` : 'Order unassigned');
+    } catch {
+      toast.error('Failed to update assignment');
+    }
+  };
 
   const mapLoadedItem = (i, local = null) => {
     let details = i.details;
@@ -442,7 +504,20 @@ export default function CustomerOrderPage() {
             </p>
           </div>
           {order && (
-            <div className="flex gap-2 ml-auto flex-wrap justify-end">
+            <div className="flex gap-2 ml-auto flex-wrap items-center justify-end">
+              <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-xl px-3 py-1.5 shadow-xs">
+                <span className="text-xs font-semibold text-gray-500 uppercase">Assigned To:</span>
+                <select
+                  value={order.assignedToId || ''}
+                  onChange={(e) => handleOrderAssign(e.target.value)}
+                  className="text-xs font-semibold text-purple-700 bg-purple-50 border-0 rounded-lg px-2 py-1 cursor-pointer focus:ring-1 focus:ring-purple-400"
+                >
+                  <option value="">Unassigned</option>
+                  {assignableUsers.map(u => (
+                    <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+                  ))}
+                </select>
+              </div>
               <button onClick={handlePrint} className="btn-secondary">
                 <Printer className="w-4 h-4" /> Print
               </button>

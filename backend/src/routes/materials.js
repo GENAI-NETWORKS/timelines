@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../utils/db');
-const { protect, adminOnly } = require('../middleware/auth');
+const { protect, adminOnly, requirePermission } = require('../middleware/auth');
 const { v4: uuidv4 } = require('uuid');
 
 // Ensure Materials table exists
@@ -31,7 +31,7 @@ const fmtIST = (dt) => {
 };
 
 // GET /api/materials  — list all with optional search
-router.get('/', protect, adminOnly, async (req, res, next) => {
+router.get('/', protect, requirePermission('materials'), async (req, res, next) => {
   try {
     await ensureTable().catch(() => {});
     const { search = '' } = req.query;
@@ -58,7 +58,7 @@ router.get('/', protect, adminOnly, async (req, res, next) => {
 });
 
 // GET /api/materials/:id  — single
-router.get('/:id', protect, adminOnly, async (req, res, next) => {
+router.get('/:id', protect, requirePermission('materials'), async (req, res, next) => {
   try {
     const [rows] = await db.query('SELECT * FROM Materials WHERE id = ?', [req.params.id]);
     if (!rows.length) return res.status(404).json({ message: 'Material not found.' });
@@ -70,7 +70,7 @@ router.get('/:id', protect, adminOnly, async (req, res, next) => {
 });
 
 // POST /api/materials  — create
-router.post('/', protect, adminOnly, async (req, res, next) => {
+router.post('/', protect, requirePermission('materials'), async (req, res, next) => {
   try {
     await ensureTable().catch(() => {});
     const { name, stockIn = 0, stockOut = 0, pricing = 0, unit = 'pcs', notes = '' } = req.body;
@@ -90,7 +90,7 @@ router.post('/', protect, adminOnly, async (req, res, next) => {
 });
 
 // PUT /api/materials/:id  — full update
-router.put('/:id', protect, adminOnly, async (req, res, next) => {
+router.put('/:id', protect, requirePermission('materials'), async (req, res, next) => {
   try {
     const { name, stockIn, stockOut, pricing, unit = 'pcs', notes = '' } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ message: 'Name is required.' });
@@ -109,7 +109,7 @@ router.put('/:id', protect, adminOnly, async (req, res, next) => {
 });
 
 // DELETE /api/materials/:id
-router.delete('/:id', protect, adminOnly, async (req, res, next) => {
+router.delete('/:id', protect, requirePermission('materials'), async (req, res, next) => {
   try {
     const [existing] = await db.query('SELECT id FROM Materials WHERE id = ?', [req.params.id]);
     if (!existing.length) return res.status(404).json({ message: 'Material not found.' });

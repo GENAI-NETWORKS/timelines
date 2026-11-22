@@ -2,24 +2,25 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, ShoppingBag, QrCode, LogOut, Wallet, Package,
-  Scissors, Menu, UserCheck
+  Scissors, Menu, UserCheck, ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { logout } from '../../api/auth';
 
 const navItems = [
   { to: '/',                 label: 'Dashboard',        icon: LayoutDashboard },
-  { to: '/customers',        label: 'Customers',        icon: Users,          adminOnly: true },
-  { to: '/customer/list',    label: 'All Orders',       icon: ShoppingBag,    adminOnly: true },
-  { to: '/billing',          label: 'Billing System',   icon: QrCode,         adminOnly: true },
-  { to: '/payment-records',  label: 'Payment Records',  icon: Wallet,         adminOnly: true },
-  { to: '/materials',        label: 'Materials',        icon: Package,        adminOnly: true },
-  { to: '/tailors-payment',  label: 'Tailors Payment',  icon: Scissors,       adminOnly: true },
-  { to: '/employees',        label: 'Employee Details', icon: UserCheck,      adminOnly: true },
+  { to: '/customers',        label: 'Customers',        icon: Users,          permission: 'customers' },
+  { to: '/customer/list',    label: 'All Orders',       icon: ShoppingBag,    permission: 'orders' },
+  { to: '/billing',          label: 'Billing System',   icon: QrCode,         permission: 'billing' },
+  { to: '/payment-records',  label: 'Payment Records',  icon: Wallet,         permission: 'paymentRecords' },
+  { to: '/materials',        label: 'Materials',        icon: Package,        permission: 'materials' },
+  { to: '/tailors-payment',  label: 'Tailors Payment',  icon: Scissors,       permission: 'tailorsPayment' },
+  { to: '/employees',        label: 'Employee Details', icon: UserCheck,      permission: 'employees' },
+  { to: '/panel-access',     label: 'Panel Access',     icon: ShieldCheck,    adminOnly: true },
 ];
 
 export default function Sidebar({ open, onToggle }) {
-  const { user, isAdmin, logoutUser } = useAuth();
+  const { user, isAdmin, hasPermission, logoutUser } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -28,7 +29,11 @@ export default function Sidebar({ open, onToggle }) {
     navigate('/login');
   };
 
-  const filtered = navItems.filter((n) => !n.adminOnly || isAdmin);
+  const filtered = navItems.filter((n) => {
+    if (n.adminOnly) return isAdmin;
+    if (!n.permission) return true;
+    return isAdmin || hasPermission(n.permission);
+  });
 
   return (
     <aside className={`

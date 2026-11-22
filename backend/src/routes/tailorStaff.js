@@ -4,7 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const db = require('../utils/db');
-const { protect, adminOnly } = require('../middleware/auth');
+const { protect, adminOnly, requirePermission } = require('../middleware/auth');
 const { getStorage, cloudinary, isCloudinaryConfigured } = require('../utils/cloudinary');
 const { v4: uuidv4 } = require('uuid');
 
@@ -105,7 +105,7 @@ async function nextStaffId() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // GET /api/tailor-staff
-router.get('/', protect, adminOnly, async (req, res, next) => {
+router.get('/', protect, requirePermission('tailorsPayment'), async (req, res, next) => {
   try {
     await ensureTables().catch(() => {});
     const { search = '' } = req.query;
@@ -125,7 +125,7 @@ router.get('/', protect, adminOnly, async (req, res, next) => {
 });
 
 // GET /api/tailor-staff/:id
-router.get('/:id', protect, adminOnly, async (req, res, next) => {
+router.get('/:id', protect, requirePermission('tailorsPayment'), async (req, res, next) => {
   try {
     await ensureTables().catch(() => {});
     const [rows] = await db.query(`SELECT * FROM TailorStaff WHERE id = ?`, [req.params.id]);
@@ -135,7 +135,7 @@ router.get('/:id', protect, adminOnly, async (req, res, next) => {
 });
 
 // POST /api/tailor-staff
-router.post('/', protect, adminOnly, async (req, res, next) => {
+router.post('/', protect, requirePermission('tailorsPayment'), async (req, res, next) => {
   try {
     await ensureTables().catch(() => {});
     const { employeeId: customId, name, role = 'Tailoring' } = req.body;
@@ -161,7 +161,7 @@ router.post('/', protect, adminOnly, async (req, res, next) => {
 });
 
 // PUT /api/tailor-staff/:id
-router.put('/:id', protect, adminOnly, async (req, res, next) => {
+router.put('/:id', protect, requirePermission('tailorsPayment'), async (req, res, next) => {
   try {
     const [rows] = await db.query('SELECT * FROM TailorStaff WHERE id = ?', [req.params.id]);
     if (!rows.length) return res.status(404).json({ message: 'Staff not found.' });
@@ -179,7 +179,7 @@ router.put('/:id', protect, adminOnly, async (req, res, next) => {
 });
 
 // DELETE /api/tailor-staff/:id  (cascade deletes entries + history)
-router.delete('/:id', protect, adminOnly, async (req, res, next) => {
+router.delete('/:id', protect, requirePermission('tailorsPayment'), async (req, res, next) => {
   try {
     const [rows] = await db.query('SELECT id FROM TailorStaff WHERE id = ?', [req.params.id]);
     if (!rows.length) return res.status(404).json({ message: 'Staff not found.' });
@@ -195,7 +195,7 @@ router.delete('/:id', protect, adminOnly, async (req, res, next) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // GET /api/tailor-staff/:id/entries?fromDate=YYYY-MM-DD&toDate=YYYY-MM-DD
-router.get('/:id/entries', protect, adminOnly, async (req, res, next) => {
+router.get('/:id/entries', protect, requirePermission('tailorsPayment'), async (req, res, next) => {
   try {
     await ensureTables().catch(() => {});
     const { month, fromDate, toDate, startDate, endDate } = req.query;
@@ -232,7 +232,7 @@ router.get('/:id/entries', protect, adminOnly, async (req, res, next) => {
 });
 
 // POST /api/tailor-staff/:id/entries  (supports optional photo)
-router.post('/:id/entries', protect, adminOnly, upload.single('photo'), async (req, res, next) => {
+router.post('/:id/entries', protect, requirePermission('tailorsPayment'), upload.single('photo'), async (req, res, next) => {
   try {
     await ensureTables().catch(() => {});
     const [staff] = await db.query('SELECT id FROM TailorStaff WHERE id = ?', [req.params.id]);
@@ -256,7 +256,7 @@ router.post('/:id/entries', protect, adminOnly, upload.single('photo'), async (r
 });
 
 // PUT /api/tailor-staff/:id/entries/:entryId  (supports photo update)
-router.put('/:id/entries/:entryId', protect, adminOnly, upload.single('photo'), async (req, res, next) => {
+router.put('/:id/entries/:entryId', protect, requirePermission('tailorsPayment'), upload.single('photo'), async (req, res, next) => {
   try {
     const [existing] = await db.query('SELECT * FROM TailorWorkEntry WHERE id = ? AND staffId = ?', [req.params.entryId, req.params.id]);
     if (!existing.length) return res.status(404).json({ message: 'Entry not found.' });
@@ -308,7 +308,7 @@ router.put('/:id/entries/:entryId', protect, adminOnly, upload.single('photo'), 
 });
 
 // DELETE /api/tailor-staff/:id/entries/:entryId
-router.delete('/:id/entries/:entryId', protect, adminOnly, async (req, res, next) => {
+router.delete('/:id/entries/:entryId', protect, requirePermission('tailorsPayment'), async (req, res, next) => {
   try {
     const [rows] = await db.query('SELECT photoPublicId FROM TailorWorkEntry WHERE id = ? AND staffId = ?', [req.params.entryId, req.params.id]);
     if (rows.length && rows[0].photoPublicId) {
@@ -331,7 +331,7 @@ router.delete('/:id/entries/:entryId', protect, adminOnly, async (req, res, next
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // GET /api/tailor-staff/:id/payment-history
-router.get('/:id/payment-history', protect, adminOnly, async (req, res, next) => {
+router.get('/:id/payment-history', protect, requirePermission('tailorsPayment'), async (req, res, next) => {
   try {
     await ensureTables().catch(() => {});
     const [history] = await db.query(
@@ -343,7 +343,7 @@ router.get('/:id/payment-history', protect, adminOnly, async (req, res, next) =>
 });
 
 // POST /api/tailor-staff/:id/payment-history
-router.post('/:id/payment-history', protect, adminOnly, async (req, res, next) => {
+router.post('/:id/payment-history', protect, requirePermission('tailorsPayment'), async (req, res, next) => {
   try {
     await ensureTables().catch(() => {});
     const { monthYear, totalAmount, notes = '' } = req.body;

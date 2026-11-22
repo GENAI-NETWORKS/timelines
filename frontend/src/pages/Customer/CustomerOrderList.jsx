@@ -6,8 +6,9 @@ import {
 } from 'lucide-react';
 import {
   getTailoringOrders, getTailoringOrder, deleteTailoringOrder,
-  updateOrderStatus, updateOrderNumber
+  updateOrderStatus, updateOrderNumber, assignTailoringOrder
 } from '../../api/tailoringOrders';
+import { getAssignableUsers } from '../../api/panelUsers';
 import TailorPrintout, { TailorPrintContent } from './components/TailorPrintout';
 import ConfirmModal from '../../components/UI/ConfirmModal';
 import Pagination from '../../components/UI/Pagination';
@@ -174,6 +175,13 @@ export default function CustomerOrderList() {
   const [previewOrder,    setPreviewOrder]    = useState(null);
   const [printOrder,      setPrintOrder]      = useState(null);
   const [showStickyNotes, setShowStickyNotes] = useState(false);
+  const [assignableUsers, setAssignableUsers] = useState([]);
+
+  useEffect(() => {
+    getAssignableUsers()
+      .then(res => setAssignableUsers(res.data || []))
+      .catch(() => {});
+  }, []);
   const LIMIT = 20;
 
   // Sync if URL query param changes
@@ -223,6 +231,19 @@ export default function CustomerOrderList() {
       toast.success(`Order number updated to "${newOrderNo}"`);
     } catch {
       toast.error('Failed to update order number.');
+    }
+  };
+
+  // ── Assign Work handler ────────────────────────────────────────────────────
+  const handleAssignChange = async (orderId, assignedToId) => {
+    const selectedUser = assignableUsers.find(u => u.id === assignedToId);
+    const assignedToName = selectedUser ? selectedUser.name : '';
+    try {
+      await assignTailoringOrder(orderId, { assignedToId, assignedToName });
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, assignedToId, assignedToName } : o));
+      toast.success(assignedToName ? `Order assigned to ${assignedToName}` : 'Order unassigned');
+    } catch {
+      toast.error('Failed to update work assignment.');
     }
   };
 
@@ -318,7 +339,7 @@ export default function CustomerOrderList() {
           <table className="w-full text-sm">
             <thead className="bg-surface-elevated border-b border-surface-border">
               <tr>
-                {['Order No', 'Customer', 'Order Date', 'Delivery Date', 'Items', 'Status', 'Actions'].map(h => (
+                {['Order No', 'Customer', 'Order Date', 'Delivery Date', 'Items', 'Status', 'Assigned To', 'Actions'].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
@@ -326,14 +347,14 @@ export default function CustomerOrderList() {
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center">
+                  <td colSpan={8} className="px-4 py-10 text-center">
                     <Loader className="w-6 h-6 text-brand-400 animate-spin mx-auto mb-2" />
                     <span className="text-xs text-gray-400">Loading customer orders…</span>
                   </td>
                 </tr>
               ) : orders.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-gray-500 text-sm">
+                  <td colSpan={8} className="px-4 py-10 text-center text-gray-500 text-sm">
                     No orders found.
                   </td>
                 </tr>
@@ -342,9 +363,9 @@ export default function CustomerOrderList() {
                   {/* Order Number (Editable) */}
                   <td className="px-4 py-3">
                     <OrderNumberCell
-                      orderNo={o.orderNo}
-                      orderId={o.id}
-                      onSave={handleOrderNoChange}
+                       orderNo={o.orderNo}
+                       orderId={o.id}
+                       onSave={handleOrderNoChange}
                     />
                   </td>
 
@@ -382,6 +403,23 @@ export default function CustomerOrderList() {
                       status={o.status}
                       onSelect={(newStatus) => handleStatusChange(o.id, newStatus)}
                     />
+                  </td>
+
+                  {/* Assigned To (Panel User) */}
+                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                    <select
+                      value={o.assignedToId || ''}
+                      onChange={(e) => handleAssignChange(o.id, e.target.value)}
+                      className="text-xs font-medium rounded-lg px-2.5 py-1.5 border border-gray-200 bg-white hover:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-400 text-gray-700 max-w-[150px] truncate"
+                      title="Assign work to panel user"
+                    >
+                      <option value="">Unassigned</option>
+                      {assignableUsers.map(u => (
+                        <option key={u.id} value={u.id}>
+                          {u.name} ({u.role})
+                        </option>
+                      ))}
+                    </select>
                   </td>
 
                   {/* Actions */}

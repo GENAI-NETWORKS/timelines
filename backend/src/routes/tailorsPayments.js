@@ -4,7 +4,7 @@ const multer  = require('multer');
 const path    = require('path');
 const fs      = require('fs');
 const db      = require('../utils/db');
-const { protect, adminOnly } = require('../middleware/auth');
+const { protect, adminOnly, requirePermission } = require('../middleware/auth');
 const { getStorage, cloudinary, isCloudinaryConfigured } = require('../utils/cloudinary');
 const { v4: uuidv4 } = require('uuid');
 
@@ -67,7 +67,7 @@ const resolvePhoto = (file) => {
 };
 
 // ── GET /api/tailors-payments ─────────────────────────────────────────────────
-router.get('/', protect, adminOnly, async (req, res, next) => {
+router.get('/', protect, requirePermission('tailorsPayment'), async (req, res, next) => {
   try {
     await ensureTable().catch(() => {});
     const { search = '' } = req.query;
@@ -87,7 +87,7 @@ router.get('/', protect, adminOnly, async (req, res, next) => {
 });
 
 // ── GET /api/tailors-payments/:id ─────────────────────────────────────────────
-router.get('/:id', protect, adminOnly, async (req, res, next) => {
+router.get('/:id', protect, requirePermission('tailorsPayment'), async (req, res, next) => {
   try {
     await ensureTable().catch(() => {});
     const [rows] = await db.query('SELECT * FROM TailorsPayment WHERE id = ?', [req.params.id]);
@@ -97,7 +97,7 @@ router.get('/:id', protect, adminOnly, async (req, res, next) => {
 });
 
 // ── POST /api/tailors-payments  — create (with optional photo) ────────────────
-router.post('/', protect, adminOnly, upload.single('photo'), async (req, res, next) => {
+router.post('/', protect, requirePermission('tailorsPayment'), upload.single('photo'), async (req, res, next) => {
   try {
     await ensureTable().catch(() => {});
     const { name, amount = 0, customerId, productName = '', notes = '' } = req.body;
@@ -122,7 +122,7 @@ router.post('/', protect, adminOnly, upload.single('photo'), async (req, res, ne
 });
 
 // ── PUT /api/tailors-payments/:id  — update (with optional new photo) ─────────
-router.put('/:id', protect, adminOnly, upload.single('photo'), async (req, res, next) => {
+router.put('/:id', protect, requirePermission('tailorsPayment'), upload.single('photo'), async (req, res, next) => {
   try {
     await ensureTable().catch(() => {});
     const { name, amount, customerId, productName = '', notes = '' } = req.body;
@@ -167,7 +167,7 @@ router.put('/:id', protect, adminOnly, upload.single('photo'), async (req, res, 
 });
 
 // ── DELETE /api/tailors-payments/:id ─────────────────────────────────────────
-router.delete('/:id', protect, adminOnly, async (req, res, next) => {
+router.delete('/:id', protect, requirePermission('tailorsPayment'), async (req, res, next) => {
   try {
     const [rows] = await db.query('SELECT * FROM TailorsPayment WHERE id = ?', [req.params.id]);
     if (!rows.length) return res.status(404).json({ message: 'Not found.' });

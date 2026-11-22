@@ -35,8 +35,18 @@ export function AuthProvider({ children }) {
 
   const isAdmin = user?.role === 'admin';
 
+  const hasPermission = (key) => {
+    if (isAdmin) return true;
+    if (!user || !user.permissions) return false;
+    let perms = user.permissions;
+    if (typeof perms === 'string') {
+      try { perms = JSON.parse(perms); } catch { return false; }
+    }
+    return Boolean(perms[key]);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, loginUser, logoutUser, isAdmin }}>
+    <AuthContext.Provider value={{ user, loading, loginUser, logoutUser, isAdmin, hasPermission }}>
       {children}
     </AuthContext.Provider>
   );

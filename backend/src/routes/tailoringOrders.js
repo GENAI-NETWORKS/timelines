@@ -4,7 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const db = require('../utils/db');
-const { protect, adminOnly } = require('../middleware/auth');
+const { protect, adminOnly, requirePermission } = require('../middleware/auth');
 const { v4: uuidv4 } = require('uuid');
 
 // ── Multer ─────────────────────────────────────────────────────────────────
@@ -12,10 +12,16 @@ const { getStorage } = require('../utils/cloudinary');
 const storage = getStorage('timelines/tailoring');
 const upload = multer({ storage, limits: { fileSize: 15 * 1024 * 1024 } });
 
-// ── Ensure orderNo column exists ─────────────────────────────────────────────
+// ── Ensure orderNo and assignedTo columns exist ──────────────────────────────
 async function ensureOrderNoColumn() {
   try {
     await db.query("ALTER TABLE TailoringOrder ADD COLUMN orderNo VARCHAR(100) DEFAULT '' AFTER id");
+  } catch (_) {}
+  try {
+    await db.query("ALTER TABLE TailoringOrder ADD COLUMN assignedToId VARCHAR(64) DEFAULT ''");
+  } catch (_) {}
+  try {
+    await db.query("ALTER TABLE TailoringOrder ADD COLUMN assignedToName VARCHAR(255) DEFAULT ''");
   } catch (_) {}
 }
 ensureOrderNoColumn().catch(() => {});
@@ -158,9 +164,9 @@ router.get('/', protect, async (req, res, next) => {
       }
     }
     if (search) {
-      whereClauses.push('(o.orderNo LIKE ? OR c.name LIKE ? OR c.phone LIKE ? OR c.address LIKE ?)');
+      whereClauses.push('(o.orderNo LIKE ? OR o.assignedToName LIKE ? OR c.name LIKE ? OR c.phone LIKE ? OR c.address LIKE ?)');
       const likeS = `%${search}%`;
-      params.push(likeS, likeS, likeS, likeS);
+      params.push(likeS, likeS, likeS, likeS, likeS);
     }
     
     let whereClause = whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : '';
@@ -196,11 +202,11 @@ router.get('/:id', protect, async (req, res, next) => {
 });
 
 // ── POST /api/tailoring-orders ────────────────────────────────────────────
-router.post('/', protect, adminOnly, async (req, res, next) => {
+router.post('/', protect, requirePermission('orders'), async (req, res, next) => {
   const conn = await db.getConnection();
   try {
     await conn.beginTransaction();
-    const { customerId, customerName, customerPhone, customerAddress, orderDate, deliveryDate, notes, bagNo, bagName, orderNo } = req.body;
+    const { customerId, customerName, customerPhone, customerAddress, orderDate, deliveryDate, notes, bagNo, bagName, orderNo, assignedToId = '', assignedToName = '' } = req.body;
     let resolvedCustomerId = customerId;
 
     if (!customerId && customerName) {
@@ -224,9 +230,9 @@ router.post('/', protect, adminOnly, async (req, res, next) => {
     const id = uuidv4();
     const finalOrderNo = orderNo?.trim() || await generateOrderNo();
     await conn.execute(
-      `INSERT INTO TailoringOrder (id, orderNo, customerId, orderDate, deliveryDate, notes, bagNo, bagName, status, createdAt, updatedAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Not yet started', NOW(), NOW())`,
-      [id, finalOrderNo, resolvedCustomerId, orderDate ? new Date(orderDate) : new Date(), deliveryDate ? new Date(deliveryDate) : null, notes || '', bagNo || '', bagName || '']
+      `INSERT INTO TailoringOrder (id, orderNo, customerId, orderDate, deliveryDate, notes, bagNo, bagName, assignedToId, assignedToName, status, createdAt, updatedAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Not yet started', NOW(), NOW())`,
+      [id, finalOrderNo, resolvedCustomerId, orderDate ? new Date(orderDate) : new Date(), deliveryDate ? new Date(deliveryDate) : null, notes || '', bagNo || '', bagName || '', assignedToId || '', assignedToName || '']
     );
 
     await conn.commit();
@@ -241,15 +247,17 @@ router.post('/', protect, adminOnly, async (req, res, next) => {
 });
 
 // ── PUT /api/tailoring-orders/:id ─────────────────────────────────────────
-router.put('/:id', protect, adminOnly, async (req, res, next) => {
+router.put('/:id', protect, requirePermission('orders'), async (req, res, next) => {
   try {
-    const { orderDate, deliveryDate, status, notes, bagNo, bagName, orderNo } = req.body;
+    const { orderDate, deliveryDate, status, notes, bagNo, bagName, orderNo, assignedToId, assignedToName } = req.body;
     
     let query = `UPDATE TailoringOrder SET status=?, notes=?, bagNo=?, bagName=?, updatedAt=NOW()`;
     let params = [status, notes, bagNo, bagName];
     if (orderNo !== undefined) { query += `, orderNo=?`; params.push(orderNo ? orderNo.trim() : ''); }
     if (orderDate !== undefined) { query += `, orderDate=?`; params.push(orderDate ? new Date(orderDate) : null); }
     if (deliveryDate !== undefined) { query += `, deliveryDate=?`; params.push(deliveryDate ? new Date(deliveryDate) : null); }
+    if (assignedToId !== undefined) { query += `, assignedToId=?`; params.push(assignedToId || ''); }
+    if (assignedToName !== undefined) { query += `, assignedToName=?`; params.push(assignedToName || ''); }
     query += ` WHERE id=?`;
     params.push(req.params.id);
     
@@ -260,8 +268,20 @@ router.put('/:id', protect, adminOnly, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ── PATCH /api/tailoring-orders/:id/assign ────────────────────────────────
+router.patch('/:id/assign', protect, requirePermission('orders'), async (req, res, next) => {
+  try {
+    const { assignedToId = '', assignedToName = '' } = req.body;
+    await db.execute(
+      'UPDATE TailoringOrder SET assignedToId=?, assignedToName=?, updatedAt=NOW() WHERE id=?',
+      [assignedToId || '', assignedToName || '', req.params.id]
+    );
+    res.json({ success: true, assignedToId, assignedToName });
+  } catch (err) { next(err); }
+});
+
 // ── PATCH /api/tailoring-orders/:id/status ──────────────────────────────────
-router.patch('/:id/status', protect, adminOnly, async (req, res, next) => {
+router.patch('/:id/status', protect, requirePermission('orders'), async (req, res, next) => {
   try {
     const { status } = req.body;
     if (!status) return res.status(400).json({ message: 'Status is required.' });
@@ -271,7 +291,7 @@ router.patch('/:id/status', protect, adminOnly, async (req, res, next) => {
 });
 
 // ── PATCH /api/tailoring-orders/:id/order-number ────────────────────────────
-router.patch('/:id/order-number', protect, adminOnly, async (req, res, next) => {
+router.patch('/:id/order-number', protect, requirePermission('orders'), async (req, res, next) => {
   try {
     const { orderNo } = req.body;
     if (!orderNo?.trim()) return res.status(400).json({ message: 'Order number is required.' });
@@ -281,7 +301,7 @@ router.patch('/:id/order-number', protect, adminOnly, async (req, res, next) => 
 });
 
 // ── PATCH /api/tailoring-orders/:id/submit ────────────────────────────────
-router.patch('/:id/submit', protect, adminOnly, async (req, res, next) => {
+router.patch('/:id/submit', protect, requirePermission('orders'), async (req, res, next) => {
   try {
     await db.execute(`UPDATE TailoringOrder SET status=?, updatedAt=NOW() WHERE id=?`, ['Submitted', req.params.id]);
     const order = await getOrderWithItems(req.params.id);
@@ -290,7 +310,7 @@ router.patch('/:id/submit', protect, adminOnly, async (req, res, next) => {
 });
 
 // ── DELETE /api/tailoring-orders/:id ──────────────────────────────────────
-router.delete('/:id', protect, adminOnly, async (req, res, next) => {
+router.delete('/:id', protect, requirePermission('orders'), async (req, res, next) => {
   const conn = await db.getConnection();
   try {
     await conn.beginTransaction();
@@ -324,7 +344,7 @@ router.delete('/:id', protect, adminOnly, async (req, res, next) => {
 });
 
 // ── POST /api/tailoring-orders/:id/items ──────────────────────────────────
-router.post('/:id/items', protect, adminOnly, async (req, res, next) => {
+router.post('/:id/items', protect, requirePermission('orders'), async (req, res, next) => {
   try {
     const { itemType, quantity = 1, details = {}, subItems } = req.body;
     const [[{ count }]] = await db.query(`SELECT COUNT(*) as count FROM TailoringOrderItem WHERE orderId = ?`, [req.params.id]);
@@ -347,7 +367,7 @@ router.post('/:id/items', protect, adminOnly, async (req, res, next) => {
 });
 
 // ── PUT /api/tailoring-orders/:id/items/:itemId ───────────────────────────
-router.put('/:id/items/:itemId', protect, adminOnly, async (req, res, next) => {
+router.put('/:id/items/:itemId', protect, requirePermission('orders'), async (req, res, next) => {
   try {
     const { quantity, details, subItems, sortOrder } = req.body;
     const [rows] = await db.query(`SELECT * FROM TailoringOrderItem WHERE id = ?`, [req.params.itemId]);
@@ -393,7 +413,7 @@ router.put('/:id/items/:itemId', protect, adminOnly, async (req, res, next) => {
 });
 
 // ── DELETE /api/tailoring-orders/:id/items/:itemId ────────────────────────
-router.delete('/:id/items/:itemId', protect, adminOnly, async (req, res, next) => {
+router.delete('/:id/items/:itemId', protect, requirePermission('orders'), async (req, res, next) => {
   try {
     await db.execute(`DELETE FROM TailoringOrderItem WHERE id = ?`, [req.params.itemId]);
     res.json({ message: 'Item deleted.' });
@@ -401,7 +421,7 @@ router.delete('/:id/items/:itemId', protect, adminOnly, async (req, res, next) =
 });
 
 // ── POST /:id/items/:itemId/upload ────────────────────────────────────────
-router.post('/:id/items/:itemId/upload', protect, adminOnly, upload.single('image'), async (req, res, next) => {
+router.post('/:id/items/:itemId/upload', protect, requirePermission('orders'), upload.single('image'), async (req, res, next) => {
   try {
     const { subItemNumber, field } = req.body;
     const allowedFields = ['referenceImageUrl', 'frontDesignImageUrl', 'backDesignImageUrl', 'sleeveDesignImageUrl', 'sampleBlouseImageUrl', 'measurementBlouseImageUrl'];
@@ -443,7 +463,7 @@ router.post('/:id/items/:itemId/upload', protect, adminOnly, upload.single('imag
 });
 
 // ── POST /:id/items/:itemId/canvas ────────────────────────────────────────
-router.post('/:id/items/:itemId/canvas', protect, adminOnly, upload.single('canvas'), async (req, res, next) => {
+router.post('/:id/items/:itemId/canvas', protect, requirePermission('orders'), upload.single('canvas'), async (req, res, next) => {
   try {
     const { subItemNumber, section, canvasJSON } = req.body;
     if (!['front', 'back', 'sleeve'].includes(section)) {
