@@ -88,7 +88,7 @@ function CustomerSelectDropdown({
   };
 
   return (
-    <div ref={wrapperRef} className="relative">
+    <div ref={wrapperRef} className={`relative ${open ? 'z-50' : 'z-20'}`}>
       <div className="flex items-center justify-between mb-1">
         <label className="label mb-0 flex items-center gap-1">
           <User className="w-3 h-3 text-purple-600" /> Customer Name
@@ -154,7 +154,7 @@ function CustomerSelectDropdown({
 
       {/* Dropdown Menu */}
       {open && (
-        <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-purple-200 rounded-xl shadow-xl max-h-72 flex flex-col overflow-hidden text-xs">
+        <div className="absolute z-50 right-0 w-[300px] sm:w-[340px] max-w-[calc(100vw-2rem)] mt-1 bg-white border border-purple-200 rounded-xl shadow-2xl max-h-72 flex flex-col overflow-hidden text-xs">
           {/* Quick Search Header */}
           <div className="p-2 border-b border-gray-100 bg-gray-50/80 sticky top-0">
             <div className="relative">
@@ -1144,7 +1144,7 @@ export default function BillDesignerModal({
           {/* LEFT: Bill Builder (7 Cols) */}
           <div className="lg:col-span-7 space-y-4">
             {/* Bill Meta Row: Bill No, Date, Customer */}
-            <div className="card p-3.5 space-y-3">
+            <div className="card p-3.5 space-y-3 relative z-30">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                 <div>
                   <label className="label flex items-center justify-between">
@@ -1185,7 +1185,7 @@ export default function BillDesignerModal({
             </div>
 
             {/* Product Scanner / Picker & Custom Item Bar */}
-            <div className="card p-3.5 space-y-2">
+            <div className="card p-3.5 space-y-2 relative z-10">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
                   <ShoppingCart className="w-4 h-4 text-brand-600" /> Add Items to Bill
