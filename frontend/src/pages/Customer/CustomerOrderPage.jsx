@@ -19,6 +19,7 @@ import {
 } from '../../api/tailoringOrders';
 import { searchCustomers } from '../../api/customers';
 import { getAssignableUsers } from '../../api/panelUsers';
+import { useAuth } from '../../context/AuthContext';
 
 import QuickEntryTable from './components/QuickEntryTable';
 import DesignModal from './components/DesignModal';
@@ -253,6 +254,8 @@ function CustomerStep({ onOrderCreated }) {
 export default function CustomerOrderPage() {
   const { id: editId } = useParams();
   const navigate = useNavigate();
+  const { user, isAdmin } = useAuth();
+  const isStaff = !isAdmin;
 
   const [order,     setOrder]     = useState(null);   // TailoringOrder from server
   const [items,     setItems]     = useState([]);      // local item array
@@ -475,7 +478,7 @@ export default function CustomerOrderPage() {
   return (
     <>
       {/* Tailor printout (hidden on screen) */}
-      <TailorPrintout order={order ? { ...order, items } : null} customer={order?.customer} />
+      <TailorPrintout order={order ? { ...order, items } : null} customer={order?.customer} showPrices={!isStaff} />
 
       {/* Screen UI */}
       <div className="space-y-6 animate-fade-in no-print">
@@ -507,16 +510,22 @@ export default function CustomerOrderPage() {
             <div className="flex gap-2 ml-auto flex-wrap items-center justify-end">
               <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-xl px-3 py-1.5 shadow-xs">
                 <span className="text-xs font-semibold text-gray-500 uppercase">Assigned To:</span>
-                <select
-                  value={order.assignedToId || ''}
-                  onChange={(e) => handleOrderAssign(e.target.value)}
-                  className="text-xs font-semibold text-purple-700 bg-purple-50 border-0 rounded-lg px-2 py-1 cursor-pointer focus:ring-1 focus:ring-purple-400"
-                >
-                  <option value="">Unassigned</option>
-                  {assignableUsers.map(u => (
-                    <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
-                  ))}
-                </select>
+                {isAdmin ? (
+                  <select
+                    value={order.assignedToId || ''}
+                    onChange={(e) => handleOrderAssign(e.target.value)}
+                    className="text-xs font-semibold text-purple-700 bg-purple-50 border-0 rounded-lg px-2 py-1 cursor-pointer focus:ring-1 focus:ring-purple-400"
+                  >
+                    <option value="">Unassigned</option>
+                    {assignableUsers.map(u => (
+                      <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="text-xs font-semibold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg">
+                    {order.assignedToName || user?.name || 'Assigned'}
+                  </span>
+                )}
               </div>
               <button onClick={handlePrint} className="btn-secondary">
                 <Printer className="w-4 h-4" /> Print
@@ -546,7 +555,7 @@ export default function CustomerOrderPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 flex-wrap">
                   <p className="font-semibold text-gray-900">{order.customer?.name}</p>
-                  {order.customer?.phone && (
+                  {!isStaff && order.customer?.phone && (
                     <a
                       href={`tel:${order.customer.phone}`}
                       className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 hover:bg-emerald-100 transition-colors"
@@ -582,6 +591,7 @@ export default function CustomerOrderPage() {
             <QuickEntryTable
               orderId={order.id}
               items={items}
+              hidePrices={isStaff}
               onAdd={handleAddItem}
               onUpdate={handleUpdateItem}
               onDelete={handleDeleteItem}

@@ -71,7 +71,7 @@ function AppRoutes() {
                 <Route path="/materials"        element={<ProtectedRoute permission="materials"><Materials /></ProtectedRoute>} />
                 <Route path="/tailors-payment"      element={<ProtectedRoute permission="tailorsPayment"><TailorsPayment /></ProtectedRoute>} />
                 <Route path="/tailors-payment/:staffId" element={<ProtectedRoute permission="tailorsPayment"><TailorDetail /></ProtectedRoute>} />
-                <Route path="/customer/:id"    element={<ProtectedRoute permission="orders"><CustomerOrderPage /></ProtectedRoute>} />
+                <Route path="/customer/:id"    element={<CustomerOrderPage />} />
                 <Route path="/panel-access"    element={<ProtectedRoute adminOnly><PanelAccess /></ProtectedRoute>} />
                 <Route path="/orders" element={<DesignOrders />} />
                 <Route path="/orders/new" element={

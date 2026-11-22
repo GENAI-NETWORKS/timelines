@@ -143,6 +143,16 @@ const getOrderWithItems = async (id) => {
   return order;
 };
 
+// Helper: check if user can access / modify an order
+const canAccessOrEditOrder = async (req, orderId) => {
+  if (req.user.role === 'admin') return true;
+  if (req.user.permissions?.orders) return true;
+  if (!orderId) return false;
+  const [rows] = await db.query('SELECT assignedToId, assignedToName FROM TailoringOrder WHERE id = ?', [orderId]);
+  if (!rows.length) return false;
+  return rows[0].assignedToId === req.user.id || rows[0].assignedToName === req.user.name;
+};
+
 // ── GET /api/tailoring-orders ──────────────────────────────────────────────
 router.get('/', protect, async (req, res, next) => {
   try {
@@ -152,6 +162,12 @@ router.get('/', protect, async (req, res, next) => {
     
     let whereClauses = [];
     let params = [];
+
+    // If staff user without global orders permission, only return orders assigned to them
+    if (req.user.role !== 'admin' && !req.user.permissions?.orders) {
+      whereClauses.push('(o.assignedToId = ? OR o.assignedToName = ?)');
+      params.push(req.user.id, req.user.name);
+    }
     
     if (status) {
       if (status === 'On Progress' || status === 'On progress') {
@@ -188,7 +204,16 @@ router.get('/', protect, async (req, res, next) => {
       LIMIT ? OFFSET ?
     `, [...params, take, skip]);
     
-    res.json({ orders: rows.map(formatOrderList), total, page: parseInt(page), limit: take });
+    const isStaff = req.user.role !== 'admin';
+    const formattedOrders = rows.map(r => {
+      const o = formatOrderList(r);
+      if (isStaff && o.customer) {
+        delete o.customer.phone;
+      }
+      return o;
+    });
+
+    res.json({ orders: formattedOrders, total, page: parseInt(page), limit: take });
   } catch (err) { next(err); }
 });
 
@@ -197,6 +222,47 @@ router.get('/:id', protect, async (req, res, next) => {
   try {
     const order = await getOrderWithItems(req.params.id);
     if (!order) return res.status(404).json({ message: 'Order not found.' });
+
+    const isStaff = req.user.role !== 'admin';
+    const hasOrderPerm = Boolean(req.user.permissions?.orders);
+    const isAssigned = order.assignedToId === req.user.id || order.assignedToName === req.user.name;
+
+    if (isStaff && !hasOrderPerm && !isAssigned) {
+      return res.status(403).json({ message: 'You do not have permission to view this order.' });
+    }
+
+    // Hide customer phone number and price details for staff
+    if (isStaff) {
+      if (order.customer) {
+        delete order.customer.phone;
+      }
+      if (Array.isArray(order.items)) {
+        order.items = order.items.map(item => {
+          const itemCopy = { ...item };
+          if (itemCopy.details) {
+            const d = { ...itemCopy.details };
+            delete d.price;
+            delete d.stitchingPrice;
+            delete d.sourcePrice;
+            delete d.liningPrice;
+            delete d.aryaWorkPrice;
+            itemCopy.details = d;
+          }
+          if (Array.isArray(itemCopy.subItems)) {
+            itemCopy.subItems = itemCopy.subItems.map(sub => {
+              const subCopy = { ...sub };
+              delete subCopy.price;
+              delete subCopy.sourcePrice;
+              delete subCopy.liningPrice;
+              delete subCopy.aryaWorkPrice;
+              return subCopy;
+            });
+          }
+          return itemCopy;
+        });
+      }
+    }
+
     res.json(order);
   } catch (err) { next(err); }
 });
@@ -281,8 +347,10 @@ router.patch('/:id/assign', protect, requirePermission('orders'), async (req, re
 });
 
 // ── PATCH /api/tailoring-orders/:id/status ──────────────────────────────────
-router.patch('/:id/status', protect, requirePermission('orders'), async (req, res, next) => {
+router.patch('/:id/status', protect, async (req, res, next) => {
   try {
+    const allowed = await canAccessOrEditOrder(req, req.params.id);
+    if (!allowed) return res.status(403).json({ message: 'You do not have permission to update status for this order.' });
     const { status } = req.body;
     if (!status) return res.status(400).json({ message: 'Status is required.' });
     await db.execute('UPDATE TailoringOrder SET status=?, updatedAt=NOW() WHERE id=?', [status, req.params.id]);
@@ -367,8 +435,11 @@ router.post('/:id/items', protect, requirePermission('orders'), async (req, res,
 });
 
 // ── PUT /api/tailoring-orders/:id/items/:itemId ───────────────────────────
-router.put('/:id/items/:itemId', protect, requirePermission('orders'), async (req, res, next) => {
+router.put('/:id/items/:itemId', protect, async (req, res, next) => {
   try {
+    const allowed = await canAccessOrEditOrder(req, req.params.id);
+    if (!allowed) return res.status(403).json({ message: 'You do not have permission to modify this order.' });
+
     const { quantity, details, subItems, sortOrder } = req.body;
     const [rows] = await db.query(`SELECT * FROM TailoringOrderItem WHERE id = ?`, [req.params.itemId]);
     const existing = rows[0];
@@ -393,6 +464,21 @@ router.put('/:id/items/:itemId', protect, requirePermission('orders'), async (re
       }
     }
 
+    // If staff user edits item, preserve existing prices so they are not wiped
+    if (req.user.role !== 'admin') {
+      const oldSubs = Array.isArray(existingSubItemsRaw) ? existingSubItemsRaw : [];
+      updatedSubItems = updatedSubItems.map((sub, idx) => {
+        const old = oldSubs[idx] || {};
+        return {
+          ...sub,
+          price: old.price !== undefined ? old.price : (sub.price || ''),
+          sourcePrice: old.sourcePrice !== undefined ? old.sourcePrice : (sub.sourcePrice || ''),
+          liningPrice: old.liningPrice !== undefined ? old.liningPrice : (sub.liningPrice || ''),
+          aryaWorkPrice: old.aryaWorkPrice !== undefined ? old.aryaWorkPrice : (sub.aryaWorkPrice || ''),
+        };
+      });
+    }
+
     let query = `UPDATE TailoringOrderItem SET quantity=?, sortOrder=?, details=?, subItems=?, updatedAt=NOW() WHERE id=?`;
     let params = [
       newQty, 
@@ -413,16 +499,22 @@ router.put('/:id/items/:itemId', protect, requirePermission('orders'), async (re
 });
 
 // ── DELETE /api/tailoring-orders/:id/items/:itemId ────────────────────────
-router.delete('/:id/items/:itemId', protect, requirePermission('orders'), async (req, res, next) => {
+router.delete('/:id/items/:itemId', protect, async (req, res, next) => {
   try {
+    const allowed = await canAccessOrEditOrder(req, req.params.id);
+    if (!allowed) return res.status(403).json({ message: 'You do not have permission to delete items in this order.' });
+
     await db.execute(`DELETE FROM TailoringOrderItem WHERE id = ?`, [req.params.itemId]);
     res.json({ message: 'Item deleted.' });
   } catch (err) { next(err); }
 });
 
 // ── POST /:id/items/:itemId/upload ────────────────────────────────────────
-router.post('/:id/items/:itemId/upload', protect, requirePermission('orders'), upload.single('image'), async (req, res, next) => {
+router.post('/:id/items/:itemId/upload', protect, upload.single('image'), async (req, res, next) => {
   try {
+    const allowed = await canAccessOrEditOrder(req, req.params.id);
+    if (!allowed) return res.status(403).json({ message: 'You do not have permission to upload photos for this order.' });
+
     const { subItemNumber, field } = req.body;
     const allowedFields = ['referenceImageUrl', 'frontDesignImageUrl', 'backDesignImageUrl', 'sleeveDesignImageUrl', 'sampleBlouseImageUrl', 'measurementBlouseImageUrl'];
     if (!allowedFields.includes(field)) return res.status(400).json({ message: 'Invalid field.' });
@@ -463,8 +555,11 @@ router.post('/:id/items/:itemId/upload', protect, requirePermission('orders'), u
 });
 
 // ── POST /:id/items/:itemId/canvas ────────────────────────────────────────
-router.post('/:id/items/:itemId/canvas', protect, requirePermission('orders'), upload.single('canvas'), async (req, res, next) => {
+router.post('/:id/items/:itemId/canvas', protect, upload.single('canvas'), async (req, res, next) => {
   try {
+    const allowed = await canAccessOrEditOrder(req, req.params.id);
+    if (!allowed) return res.status(403).json({ message: 'You do not have permission to upload canvas drawings for this order.' });
+
     const { subItemNumber, section, canvasJSON } = req.body;
     if (!['front', 'back', 'sleeve'].includes(section)) {
       return res.status(400).json({ message: 'section must be front|back|sleeve' });

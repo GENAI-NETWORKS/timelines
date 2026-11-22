@@ -99,7 +99,7 @@ function makeBlankSub(base = {}) {
 }
 
 // ── Single item card ──────────────────────────────────────────────────────────
-const ItemCard = React.memo(function ItemCard({ item, rowIndex, theme, onUpdate, onDelete, onOpenDesignModal, onImageUpload, orderId, measOrder, setMeasOrder }) {
+const ItemCard = React.memo(function ItemCard({ item, rowIndex, theme, onUpdate, onDelete, onOpenDesignModal, onImageUpload, orderId, measOrder, setMeasOrder, hidePrices = false }) {
   let meta = getItemMeta(item.itemType);
   if (item.customConfig) {
     meta = { ...meta, ...item.customConfig };
@@ -322,11 +322,13 @@ const ItemCard = React.memo(function ItemCard({ item, rowIndex, theme, onUpdate,
               <div className="flex flex-col sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
 
             {/* Stitching Price */}
-            <div>
-              <label className={`block text-sm font-semibold mb-1 ${theme.text}`}>Stitching ₹</label>
-              <input type="number" min="0" className={inp} placeholder="₹ 0"
-                value={localSub.price || ''} onChange={e => updateSub('price', e.target.value)} />
-            </div>
+            {!hidePrices && (
+              <div>
+                <label className={`block text-sm font-semibold mb-1 ${theme.text}`}>Stitching ₹</label>
+                <input type="number" min="0" className={inp} placeholder="₹ 0"
+                  value={localSub.price || ''} onChange={e => updateSub('price', e.target.value)} />
+              </div>
+            )}
 
             {/* Meter */}
             {meta.hasMeter && (
@@ -350,7 +352,7 @@ const ItemCard = React.memo(function ItemCard({ item, rowIndex, theme, onUpdate,
             )}
 
             {/* Source Price */}
-            {meta.hasSource && localSub.source !== 'CUSTOMER' && (
+            {!hidePrices && meta.hasSource && localSub.source !== 'CUSTOMER' && (
               <div>
                 <label className={`block text-sm font-semibold mb-1 ${theme.text}`}>Material ₹</label>
                 <input type="number" min="0" className={inp} placeholder="₹ 0"
@@ -396,11 +398,13 @@ const ItemCard = React.memo(function ItemCard({ item, rowIndex, theme, onUpdate,
                   <textarea className={`${inp} min-h-[50px] resize-none`} placeholder="Aari work details, colors…"
                     value={localSub.aryaWorkNotes || ''} onChange={e => updateSub('aryaWorkNotes', e.target.value)} />
                 </div>
-                <div>
-                  <label className={`block text-sm font-semibold mb-1 ${theme.text}`}>Aari Price ₹</label>
-                  <input type="number" min="0" className={inp} placeholder="0"
-                    value={localSub.aryaWorkPrice || ''} onChange={e => updateSub('aryaWorkPrice', e.target.value)} />
-                </div>
+                {!hidePrices && (
+                  <div>
+                    <label className={`block text-sm font-semibold mb-1 ${theme.text}`}>Aari Price ₹</label>
+                    <input type="number" min="0" className={inp} placeholder="0"
+                      value={localSub.aryaWorkPrice || ''} onChange={e => updateSub('aryaWorkPrice', e.target.value)} />
+                  </div>
+                )}
                 <div className="col-span-2 sm:col-span-1 flex items-center mt-6">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" className="w-5 h-5 rounded text-brand-500 border-gray-300 focus:ring-brand-500"
@@ -435,7 +439,7 @@ const ItemCard = React.memo(function ItemCard({ item, rowIndex, theme, onUpdate,
                     value={localSub.liningMeter || ''}
                     onChange={e => updateSub('liningMeter', e.target.value)} />
                 </div>
-                {localSub.liningSource !== 'CUSTOMER' && (
+                {!hidePrices && localSub.liningSource !== 'CUSTOMER' && (
                   <div className="flex-1 min-w-[120px]">
                     <label className="block text-xs font-semibold text-gray-600 mb-1">Price (₹)</label>
                     <input type="number" min="0" placeholder="0"
@@ -673,7 +677,7 @@ function useMeasurementOrder() {
 }
 
 // ── Main QuickEntryTable ────────────────────────────────────────────────────
-export default function QuickEntryTable({ orderId, items = [], onAdd, onUpdate, onDelete, onOpenDesignModal, onImageUpload, adding }) {
+export default function QuickEntryTable({ orderId, items = [], onAdd, onUpdate, onDelete, onOpenDesignModal, onImageUpload, adding, hidePrices = false }) {
   const [measOrder, setMeasOrder] = useMeasurementOrder();
 
   const handleKeyDown = (e) => {
@@ -769,6 +773,7 @@ export default function QuickEntryTable({ orderId, items = [], onAdd, onUpdate, 
             orderId={orderId}
             measOrder={measOrder}
             setMeasOrder={setMeasOrder}
+            hidePrices={hidePrices}
           />
         );
       })}

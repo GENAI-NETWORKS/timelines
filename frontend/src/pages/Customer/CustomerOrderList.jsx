@@ -13,6 +13,7 @@ import TailorPrintout, { TailorPrintContent } from './components/TailorPrintout'
 import ConfirmModal from '../../components/UI/ConfirmModal';
 import Pagination from '../../components/UI/Pagination';
 import StickyNotesModal from './components/StickyNotesModal';
+import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 
@@ -164,6 +165,7 @@ function OrderNumberCell({ orderNo, orderId, onSave }) {
 // ═════════════════════════════════════════════════════════════════════════════
 export default function CustomerOrderList() {
   const navigate = useNavigate();
+  const { isAdmin } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [orders,          setOrders]          = useState([]);
   const [total,           setTotal]           = useState(0);
@@ -372,7 +374,7 @@ export default function CustomerOrderList() {
                   {/* Customer */}
                   <td className="px-4 py-3">
                     <div className="font-semibold text-gray-900">{o.customer?.name || 'Walk-in Customer'}</div>
-                    {o.customer?.phone && (
+                    {isAdmin && o.customer?.phone && (
                       <div className="text-xs text-gray-400 font-mono mt-0.5">{o.customer.phone}</div>
                     )}
                     {o.customer?.address && (
@@ -407,19 +409,25 @@ export default function CustomerOrderList() {
 
                   {/* Assigned To (Panel User) */}
                   <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                    <select
-                      value={o.assignedToId || ''}
-                      onChange={(e) => handleAssignChange(o.id, e.target.value)}
-                      className="text-xs font-medium rounded-lg px-2.5 py-1.5 border border-gray-200 bg-white hover:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-400 text-gray-700 max-w-[150px] truncate"
-                      title="Assign work to panel user"
-                    >
-                      <option value="">Unassigned</option>
-                      {assignableUsers.map(u => (
-                        <option key={u.id} value={u.id}>
-                          {u.name} ({u.role})
-                        </option>
-                      ))}
-                    </select>
+                    {isAdmin ? (
+                      <select
+                        value={o.assignedToId || ''}
+                        onChange={(e) => handleAssignChange(o.id, e.target.value)}
+                        className="text-xs font-medium rounded-lg px-2.5 py-1.5 border border-gray-200 bg-white hover:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-400 text-gray-700 max-w-[150px] truncate"
+                        title="Assign work to panel user"
+                      >
+                        <option value="">Unassigned</option>
+                        {assignableUsers.map(u => (
+                          <option key={u.id} value={u.id}>
+                            {u.name} ({u.role})
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="text-xs font-semibold text-purple-700 bg-purple-50 px-2 py-1 rounded-lg">
+                        {o.assignedToName || 'Unassigned'}
+                      </span>
+                    )}
                   </td>
 
                   {/* Actions */}
@@ -469,7 +477,7 @@ export default function CustomerOrderList() {
                </button>
             </div>
             <div className="p-2">
-              <TailorPrintContent order={previewOrder} customer={previewOrder.customer} showPrices={true} />
+              <TailorPrintContent order={previewOrder} customer={previewOrder.customer} showPrices={isAdmin} />
             </div>
           </div>
         </div>
