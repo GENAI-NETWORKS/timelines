@@ -287,7 +287,7 @@ export default function BillDesignerModal({
     const pad = (n) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   });
-  const [cashier, setCashier] = useState(() => editRecord?.cashier || user?.name || 'Admin');
+  const [cashier, setCashier] = useState(() => user?.name || editRecord?.cashier || 'Admin');
   const [panelUsers, setPanelUsers] = useState([]);
   const [customerName, setCustomerName] = useState(() => editRecord?.customerName || 'Walk-in Customer');
   const [customerPhone, setCustomerPhone] = useState(() => editRecord?.customerPhone || '');
@@ -312,7 +312,8 @@ export default function BillDesignerModal({
       .then(res => {
         const users = res.data || [];
         setPanelUsers(users);
-        if (!editRecord && user?.name) setCashier(user.name);
+        // Always pre-select the currently logged-in user (for both create and edit)
+        if (user?.name) setCashier(user.name);
       })
       .catch(() => {});
   }, []);

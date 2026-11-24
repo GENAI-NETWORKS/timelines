@@ -5,12 +5,15 @@ import {
 } from 'lucide-react';
 import { getBillingRecords, deleteBillingRecord } from '../../api/billingRecords';
 import { getAssignableUsers } from '../../api/panelUsers';
+import { useAuth } from '../../context/AuthContext';
 import { formatINR } from './billUtils';
 import BillDesignerModal from './BillDesignerModal';
 import Pagination from '../../components/UI/Pagination';
 import toast from 'react-hot-toast';
 
 export default function SavedBillsModal({ isOpen, onClose }) {
+  const { user } = useAuth();
+
   const [records, setRecords] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -277,7 +280,8 @@ export default function SavedBillsModal({ isOpen, onClose }) {
                             <button
                               onClick={() => {
                                 setDeleteTarget(bill);
-                                setDeletedBy('');
+                                // Pre-fill with the currently logged-in user
+                                setDeletedBy(user?.name || '');
                               }}
                               className="btn-icon text-rose-600 hover:text-rose-800 hover:bg-rose-50"
                               title="Delete Bill (Mandatory Selector)"
@@ -351,11 +355,15 @@ export default function SavedBillsModal({ isOpen, onClose }) {
                 <option value="">-- Select Person (Required) --</option>
                 {panelUsers.map((u) => (
                   <option key={u.id} value={u.name}>
-                    {u.name} ({u.role || 'Staff'})
+                    {u.name} ({u.role || 'Staff'}){u.name === user?.name ? ' ← You' : ''}
                   </option>
                 ))}
               </select>
-              {!deletedBy && (
+              {deletedBy ? (
+                <p className="text-[11px] text-emerald-600 mt-1 font-semibold">
+                  ✓ Deleting as: <strong>{deletedBy}</strong>
+                </p>
+              ) : (
                 <p className="text-[11px] text-rose-500 mt-1 font-semibold">
                   ⚠️ You must select your name before deleting.
                 </p>
