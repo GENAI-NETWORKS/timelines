@@ -24,6 +24,7 @@ import Payments from './pages/Payments/Payments';
 import BillingSystem from './pages/Billing/BillingSystem';
 import PublicBillView from './pages/Billing/PublicBillView';
 import PaymentRecords from './pages/Billing/PaymentRecords';
+import BillHistory from './pages/Billing/BillHistory';
 import Materials from './pages/Materials/Materials';
 import TailorsPayment from './pages/TailorsPayment/TailorsPayment';
 import TailorDetail from './pages/TailorsPayment/TailorDetail';
@@ -68,6 +69,7 @@ function AppRoutes() {
                 <Route path="/customer/list"   element={<ProtectedRoute permission="orders"><CustomerOrderList /></ProtectedRoute>} />
                 <Route path="/billing"         element={<ProtectedRoute permission="billing"><BillingSystem /></ProtectedRoute>} />
                 <Route path="/payment-records" element={<ProtectedRoute permission="paymentRecords"><PaymentRecords /></ProtectedRoute>} />
+                <Route path="/bill-history"    element={<ProtectedRoute permission="billHistory"><BillHistory /></ProtectedRoute>} />
                 <Route path="/materials"        element={<ProtectedRoute permission="materials"><Materials /></ProtectedRoute>} />
                 <Route path="/tailors-payment"      element={<ProtectedRoute permission="tailorsPayment"><TailorsPayment /></ProtectedRoute>} />
                 <Route path="/tailors-payment/:staffId" element={<ProtectedRoute permission="tailorsPayment"><TailorDetail /></ProtectedRoute>} />

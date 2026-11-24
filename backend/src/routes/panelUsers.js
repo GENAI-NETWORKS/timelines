@@ -28,6 +28,7 @@ const DEFAULT_PERMISSIONS = {
   orders: true,
   billing: true,
   paymentRecords: true,
+  billHistory: true,
   materials: true,
   tailorsPayment: true,
   employees: true,

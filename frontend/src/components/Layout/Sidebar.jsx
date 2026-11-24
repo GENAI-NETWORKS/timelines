@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, ShoppingBag, QrCode, LogOut, Wallet, Package,
-  Scissors, Menu, UserCheck, ShieldCheck
+  Scissors, Menu, UserCheck, ShieldCheck, History
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { logout } from '../../api/auth';
@@ -13,6 +13,7 @@ const navItems = [
   { to: '/customer/list',    label: 'All Orders',       icon: ShoppingBag,    permission: 'orders' },
   { to: '/billing',          label: 'Billing System',   icon: QrCode,         permission: 'billing' },
   { to: '/payment-records',  label: 'Payment Records',  icon: Wallet,         permission: 'paymentRecords' },
+  { to: '/bill-history',     label: 'Bill History',     icon: History,        permission: 'billHistory' },
   { to: '/materials',        label: 'Materials',        icon: Package,        permission: 'materials' },
   { to: '/tailors-payment',  label: 'Tailors Payment',  icon: Scissors,       permission: 'tailorsPayment' },
   { to: '/employees',        label: 'Employee Details', icon: UserCheck,      permission: 'employees' },

@@ -4,12 +4,13 @@ import {
   FileText, Search, Filter, Calendar, IndianRupee, Trash2,
   RefreshCw, TrendingUp, BarChart2, Tag, ChevronDown, ChevronUp,
   ExternalLink, ArrowLeft, CheckCircle2, Wallet, Phone, Smartphone, CreditCard,
-  ImagePlus, Eye, X
+  ImagePlus, Eye, X, Edit2, Printer
 } from 'lucide-react';
 import { getBillingRecords, deleteBillingRecord, updateBillingRecordPayment, uploadBillingRecordPhoto } from '../../api/billingRecords';
 import { formatINR } from './billUtils';
 import Pagination from '../../components/UI/Pagination';
 import ConfirmModal from '../../components/UI/ConfirmModal';
+import BillDesignerModal from './BillDesignerModal';
 import toast from 'react-hot-toast';
 
 // Fixed Payment Methods as requested: UPI, Scanner, phone number, Cash
@@ -61,6 +62,7 @@ export default function PaymentRecords() {
   const [deleteId, setDeleteId] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
   const [editingPaymentId, setEditingPaymentId] = useState(null);
+  const [activeBillModal, setActiveBillModal] = useState(null);
 
   // Photo upload
   const [uploadingId, setUploadingId] = useState(null);
@@ -581,6 +583,25 @@ export default function PaymentRecords() {
                         <div className="font-mono font-black text-gray-900 text-base">
                           ₹ {formatINR(r.grandTotal)}
                         </div>
+                        {Number(r.advanceAmount) > 0 && (
+                          <div className="text-[11px] text-emerald-700 font-semibold flex items-center justify-end gap-1 mt-0.5">
+                            <span>Adv: -₹{formatINR(r.advanceAmount)}</span>
+                            {r.advanceProofUrl && (
+                              <button
+                                onClick={() => setViewPhotoUrl(r.advanceProofUrl)}
+                                className="inline-flex text-purple-600 hover:text-purple-800 cursor-pointer"
+                                title="View Advance Payment Proof"
+                              >
+                                <Eye className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        {Number(r.advanceAmount) > 0 && (
+                          <div className="text-xs font-bold text-blue-900 font-mono mt-0.5">
+                            Due: ₹{formatINR(r.balanceAmount !== undefined ? r.balanceAmount : Math.max(0, r.grandTotal - r.advanceAmount))}
+                          </div>
+                        )}
                         {r.discountAmount > 0 && (
                           <div className="text-[10px] text-emerald-600 font-medium">
                             Saved ₹ {formatINR(r.discountAmount)}
@@ -591,12 +612,28 @@ export default function PaymentRecords() {
                       {/* Actions */}
                       <td className="py-3.5 px-4 text-center">
                         <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => setActiveBillModal({ record: r, isEdit: false })}
+                            className="btn-icon text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                            title="View / Reprint in Bill Designer"
+                          >
+                            <Printer className="w-4 h-4" />
+                          </button>
+
+                          <button
+                            onClick={() => setActiveBillModal({ record: r, isEdit: true })}
+                            className="btn-icon text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                            title="Edit Bill (Items, Discount, Advance, Customer)"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+
                           <Link
                             to={`/bill/view/${encodeURIComponent(r.billNo)}`}
                             target="_blank"
                             rel="noreferrer"
-                            className="btn-icon text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                            title="View / Print Receipt"
+                            className="btn-icon text-gray-500 hover:text-purple-700 hover:bg-purple-50"
+                            title="Open Digital Bill Link"
                           >
                             <FileText className="w-4 h-4" />
                           </Link>
@@ -686,6 +723,18 @@ export default function PaymentRecords() {
           message="Are you sure you want to delete this payment record? This will permanently remove the logged transaction."
           onConfirm={handleDelete}
           onCancel={() => setDeleteId(null)}
+        />
+      )}
+
+      {/* View / Edit Bill in Bill Designer Modal */}
+      {activeBillModal && (
+        <BillDesignerModal
+          editRecord={activeBillModal.record}
+          onClose={() => setActiveBillModal(null)}
+          onBillSaved={() => {
+            setActiveBillModal(null);
+            loadData();
+          }}
         />
       )}
     </div>

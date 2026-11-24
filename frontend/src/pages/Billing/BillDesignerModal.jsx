@@ -3,13 +3,13 @@ import {
   Printer, Plus, Minus, Trash2, Search, QrCode, ShoppingCart,
   Settings2, RefreshCw, Check, IndianRupee, Store, User, FileText,
   Sliders, ArrowRight, Clock, ShieldCheck, Tag, X, ChevronDown, ChevronUp, History,
-  Loader, CheckCircle2
+  Loader, CheckCircle2, Wallet, ImagePlus, Eye
 } from 'lucide-react';
 import Modal from '../../components/UI/Modal';
 import QrCodeView from './QrCodeView';
 import { createQrSvgString } from './qrCodeGenerator';
 import { numberToWordsIndian, generateBillNumber, formatINR, encodeBillToPayload } from './billUtils';
-import { saveBillingRecord } from '../../api/billingRecords';
+import { saveBillingRecord, updateBillingRecord } from '../../api/billingRecords';
 import { searchCustomers } from '../../api/customers';
 import { getAssignableUsers } from '../../api/panelUsers';
 import { useAuth } from '../../context/AuthContext';
@@ -261,7 +261,9 @@ function CustomerSelectDropdown({
 export default function BillDesignerModal({
   availableProducts = [],
   initialProduct = null,
-  onClose
+  editRecord = null,
+  onClose,
+  onBillSaved = null,
 }) {
   // Store & Branding Settings
   const [storeInfo, setStoreInfo] = useState(() => ({
@@ -275,21 +277,29 @@ export default function BillDesignerModal({
   const { user } = useAuth();
 
   // Bill Metadata
-  const [billNo, setBillNo] = useState(() => generateBillNumber());
+  const [billNo, setBillNo] = useState(() => editRecord?.billNo || generateBillNumber());
   const [billDate, setBillDate] = useState(() => {
+    if (editRecord?.billDate) {
+      const s = String(editRecord.billDate);
+      return s.includes('T') ? s.slice(0, 16) : s.slice(0, 10) + 'T12:00';
+    }
     const d = new Date();
     const pad = (n) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   });
-  const [cashier, setCashier] = useState(() => user?.name || 'Admin');
+  const [cashier, setCashier] = useState(() => editRecord?.cashier || user?.name || 'Admin');
   const [panelUsers, setPanelUsers] = useState([]);
-  const [customerName, setCustomerName] = useState('Walk-in Customer');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [paymentMode, setPaymentMode] = useState('Cash');
+  const [customerName, setCustomerName] = useState(() => editRecord?.customerName || 'Walk-in Customer');
+  const [customerPhone, setCustomerPhone] = useState(() => editRecord?.customerPhone || '');
+  const [paymentMode, setPaymentMode] = useState(() => editRecord?.paymentMode || 'Cash');
   const [cashTendered, setCashTendered] = useState('');
   const [footerNotes, setFooterNotes] = useState('Thank you for shopping with us! Please visit again.');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Advance Payment & Proof
+  const [advanceAmount, setAdvanceAmount] = useState(() => Number(editRecord?.advanceAmount) || 0);
+  const [advanceProofUrl, setAdvanceProofUrl] = useState(() => editRecord?.advanceProofUrl || '');
 
   // Reset submitted state whenever a new bill is generated/changed
   useEffect(() => {
@@ -302,8 +312,7 @@ export default function BillDesignerModal({
       .then(res => {
         const users = res.data || [];
         setPanelUsers(users);
-        // Default to logged-in user's name if available
-        if (user?.name) setCashier(user.name);
+        if (!editRecord && user?.name) setCashier(user.name);
       })
       .catch(() => {});
   }, []);
@@ -319,12 +328,22 @@ export default function BillDesignerModal({
   const [showQrCode, setShowQrCode] = useState(true);
 
   // Discount (always flat ₹ — no % toggle)
-  const [discountVal, setDiscountVal] = useState(0);
-  const [taxRate, setTaxRate] = useState(0); // 0%, 5%, 12%, 18%
+  const [discountVal, setDiscountVal] = useState(() => Number(editRecord?.discountAmount) || 0);
+  const [taxRate, setTaxRate] = useState(() => Number(editRecord?.taxRate) || 0); // 0%, 5%, 12%, 18%
   const [roundOff, setRoundOff] = useState(true);
 
   // Bill Items
   const [items, setItems] = useState(() => {
+    if (editRecord?.items && Array.isArray(editRecord.items)) {
+      return editRecord.items.map((it, i) => ({
+        id: it.id || 'item_' + Date.now() + '_' + i,
+        productId: it.productId || '',
+        barcode: it.barcode || '',
+        name: it.name || '',
+        quantity: Number(it.quantity) || 1,
+        price: Number(it.price) || 0,
+      }));
+    }
     if (initialProduct) {
       return [{
         id: 'item_' + Date.now(),
@@ -485,18 +504,23 @@ export default function BillDesignerModal({
   const grandTotal = roundOff ? Math.round(rawGrandTotal) : rawGrandTotal;
   const roundOffAmount = roundOff ? (grandTotal - rawGrandTotal) : 0;
 
+  // Advance Payment calculations
+  const advanceAmountNum = Math.max(0, Number(advanceAmount) || 0);
+  const balanceAmount = Math.max(0, grandTotal - advanceAmountNum);
+
   const totalQuantity = items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
   const totalItemsCount = items.length;
 
   const changeDue = useMemo(() => {
     if (paymentMode?.toLowerCase() !== 'cash' || !cashTendered) return 0;
     const rcvd = parseFloat(cashTendered) || 0;
-    return rcvd >= grandTotal ? rcvd - grandTotal : 0;
-  }, [paymentMode, cashTendered, grandTotal]);
+    const effectiveDue = advanceAmountNum > 0 ? balanceAmount : grandTotal;
+    return rcvd >= effectiveDue ? rcvd - effectiveDue : 0;
+  }, [paymentMode, cashTendered, grandTotal, advanceAmountNum, balanceAmount]);
 
   const wordsTotal = useMemo(() => {
-    return numberToWordsIndian(grandTotal);
-  }, [grandTotal]);
+    return numberToWordsIndian(advanceAmountNum > 0 ? balanceAmount : grandTotal);
+  }, [grandTotal, advanceAmountNum, balanceAmount]);
 
   // Formatted date string for display
   const formattedDateTime = useMemo(() => {
@@ -529,12 +553,14 @@ export default function BillDesignerModal({
         discountAmount,
         taxRate,
         grandTotal,
+        advanceAmount: advanceAmountNum,
+        balanceAmount,
       });
       return `${window.location.origin}/bill/view/${encodeURIComponent(billNo)}?d=${encoded}`;
     } catch {
       return `${window.location.origin}/bill/view/${encodeURIComponent(billNo)}`;
     }
-  }, [billNo, billDate, customerName, customerPhone, paymentMode, items, subtotal, discountAmount, taxRate, grandTotal]);
+  }, [billNo, billDate, customerName, customerPhone, paymentMode, items, subtotal, discountAmount, taxRate, grandTotal, advanceAmountNum, balanceAmount]);
 
   // Save current bill to history
   const saveToHistory = () => {
@@ -546,6 +572,9 @@ export default function BillDesignerModal({
       discountAmount,
       taxRate,
       grandTotal,
+      advanceAmount: advanceAmountNum,
+      advanceProofUrl,
+      balanceAmount,
       customerName,
       customerPhone,
       paymentMode,
@@ -570,6 +599,8 @@ export default function BillDesignerModal({
     setCustomerName(histBill.customerName || 'Walk-in Customer');
     setCustomerPhone(histBill.customerPhone || '');
     setPaymentMode(histBill.paymentMode || 'Cash');
+    if (histBill.advanceAmount !== undefined) setAdvanceAmount(Number(histBill.advanceAmount) || 0);
+    if (histBill.advanceProofUrl) setAdvanceProofUrl(histBill.advanceProofUrl);
     if (histBill.taxRate !== undefined) setTaxRate(histBill.taxRate);
     if (histBill.paperSize) setPaperSize(histBill.paperSize);
     else if (histBill.layoutMode) setPaperSize(histBill.layoutMode === 'thermal' ? 'thermal' : 'a4');
@@ -577,13 +608,30 @@ export default function BillDesignerModal({
     toast.success(`Loaded Bill ${histBill.billNo}`);
   };
 
-  // Submit bill to payment records database (one-time save)
+  // Upload proof photo of advance payment (converts to base64 immediately)
+  const handleAdvanceProofFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please choose a valid image file');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setAdvanceProofUrl(ev.target.result);
+      toast.success('Advance payment proof photo attached!');
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  // Submit bill to payment records database (handles both create and edit)
   const handleSubmitBill = async () => {
     if (items.length === 0) {
       toast.error('Add at least one item before submitting the bill');
       return;
     }
-    if (isSubmitted) {
+    if (isSubmitted && !editRecord) {
       toast('Bill already submitted to Payment Records', { icon: 'ℹ️' });
       return;
     }
@@ -591,7 +639,7 @@ export default function BillDesignerModal({
     setIsSubmitting(true);
     try {
       saveToHistory();
-      await saveBillingRecord({
+      const payload = {
         billNo,
         billDate,
         customerName,
@@ -602,12 +650,25 @@ export default function BillDesignerModal({
         discountAmount,
         taxRate,
         grandTotal,
-      });
+        advanceAmount: advanceAmountNum,
+        advanceProofUrl,
+        balanceAmount,
+        cashier,
+      };
+
+      let res;
+      if (editRecord?.id) {
+        res = await updateBillingRecord(editRecord.id, payload);
+        toast.success(`Bill ${billNo} updated successfully!`);
+      } else {
+        res = await saveBillingRecord(payload);
+        toast.success(`Bill ${billNo} submitted & saved to Payment Records!`);
+      }
       setIsSubmitted(true);
-      toast.success(`Bill ${billNo} submitted & saved to Payment Records!`);
+      onBillSaved?.(res?.data);
     } catch (err) {
       console.error('Submit bill error:', err);
-      toast.error(err?.response?.data?.message || 'Failed to submit bill to payment records');
+      toast.error(err?.response?.data?.message || 'Failed to submit bill');
     } finally {
       setIsSubmitting(false);
     }
@@ -892,9 +953,20 @@ export default function BillDesignerModal({
             ` : ''}
 
             <div class="grand-total-row">
-              <span>GRAND TOTAL:</span>
+              <span>TOTAL AMOUNT:</span>
               <span>₹ ${formatINR(grandTotal)}</span>
             </div>
+
+            ${advanceAmountNum > 0 ? `
+              <div class="summary-row" style="font-weight: 600; color: #15803d; font-size: ${isA4 ? '15px' : '13px'};">
+                <span>ADVANCE PAID (-):</span>
+                <span>- ₹ ${formatINR(advanceAmountNum)}</span>
+              </div>
+              <div class="grand-total-row" style="background: #eff6ff; color: #1e3a8a; border-top: 2px solid #1e3a8a; border-bottom: 2px solid #1e3a8a;">
+                <span>BALANCE DUE / PAYABLE:</span>
+                <span>₹ ${formatINR(balanceAmount)}</span>
+              </div>
+            ` : ''}
 
             ${showWords && wordsTotal ? `
               <div class="words-block">
@@ -946,7 +1018,7 @@ export default function BillDesignerModal({
 
   return (
     <Modal
-      title="Bill Designer & Printout"
+      title={editRecord ? `Edit Bill — ${billNo}` : "Bill Designer & Printout"}
       onClose={onClose}
       size="max-w-7xl"
     >
@@ -1027,15 +1099,15 @@ export default function BillDesignerModal({
             <button
               type="button"
               onClick={handleSubmitBill}
-              disabled={items.length === 0 || isSubmitting || isSubmitted}
+              disabled={items.length === 0 || isSubmitting || (isSubmitted && !editRecord)}
               className={`btn-sm font-semibold flex items-center gap-1.5 shadow-sm transition-all ${
-                isSubmitted
+                isSubmitted && !editRecord
                   ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 cursor-default'
                   : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-100 cursor-pointer'
               }`}
             >
               {isSubmitting ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-              {isSubmitted ? 'Submitted ✓' : 'Submit Bill'}
+              {editRecord ? (isSubmitting ? 'Updating…' : 'Update Bill') : (isSubmitted ? 'Submitted ✓' : 'Submit Bill')}
             </button>
 
             <button
@@ -1583,6 +1655,93 @@ export default function BillDesignerModal({
                 </div>
               </div>
             </div>
+
+            {/* Advance Amount & Proof Upload Section */}
+            <div className="card p-3.5 space-y-3 text-xs bg-purple-50/50 border border-purple-200">
+              <div className="flex items-center justify-between">
+                <div className="font-bold text-gray-900 flex items-center gap-1.5">
+                  <Wallet className="w-4 h-4 text-purple-600" />
+                  <span>Advance Payment Details</span>
+                </div>
+                {advanceAmountNum > 0 && (
+                  <span className="badge bg-emerald-100 text-emerald-800 text-[11px] font-semibold">
+                    ₹{formatINR(advanceAmountNum)} Advance Applied
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+                <div>
+                  <label className="label">Advance Amount Paid (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    className="input text-xs font-bold"
+                    placeholder="e.g. 500"
+                    value={advanceAmount || ''}
+                    onChange={(e) => setAdvanceAmount(parseFloat(e.target.value) || 0)}
+                  />
+                  <p className="text-[10px] text-gray-500 mt-1">
+                    Reduces the total amount payable on the customer bill.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="label">Upload Advance Proof Photo</label>
+                  <div className="flex items-center gap-3">
+                    {advanceProofUrl ? (
+                      <div className="relative w-16 h-16 rounded-xl border-2 border-purple-300 overflow-hidden group shadow-sm bg-white shrink-0">
+                        <img src={advanceProofUrl} alt="Advance Proof" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => window.open(advanceProofUrl, '_blank')}
+                            className="w-6 h-6 rounded-full bg-white/80 hover:bg-white text-gray-900 flex items-center justify-center cursor-pointer"
+                            title="View Full Photo"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAdvanceProofUrl('')}
+                            className="w-6 h-6 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center cursor-pointer"
+                            title="Remove Photo"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <label className="flex-1 cursor-pointer flex items-center justify-center gap-2 border-2 border-dashed border-purple-200 hover:border-purple-400 bg-white hover:bg-purple-50/50 py-2.5 px-3 rounded-xl transition-all">
+                        <ImagePlus className="w-4 h-4 text-purple-600" />
+                        <span className="text-xs font-semibold text-purple-700">Choose / Take Proof Photo</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleAdvanceProofFile}
+                        />
+                      </label>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {advanceAmountNum > 0 && (
+                <div className="bg-white rounded-xl p-2.5 border border-purple-100 flex items-center justify-between text-xs font-medium">
+                  <div>
+                    <span className="text-gray-500">Gross Total: </span>
+                    <span className="font-bold text-gray-800">₹{formatINR(grandTotal)}</span>
+                    <span className="mx-2 text-gray-300">|</span>
+                    <span className="text-emerald-700">Advance: -₹{formatINR(advanceAmountNum)}</span>
+                  </div>
+                  <div className="text-right font-black text-purple-900 text-sm">
+                    <span>Balance Due: ₹{formatINR(balanceAmount)}</span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* RIGHT: Live Bill Preview (5 Cols) */}
@@ -1731,10 +1890,30 @@ export default function BillDesignerModal({
                   )}
                 </div>
 
-                <div className="border-t-2 border-b-2 border-dashed border-gray-900 my-2 py-1.5 flex justify-between text-base font-black text-gray-900">
-                  <span>NET PAYABLE:</span>
+                <div className="flex justify-between text-xs font-bold text-gray-800 pt-1">
+                  <span>TOTAL AMOUNT:</span>
                   <span>₹ {formatINR(grandTotal)}</span>
                 </div>
+
+                {advanceAmountNum > 0 && (
+                  <>
+                    <div className="flex justify-between text-xs font-semibold text-emerald-700">
+                      <span>ADVANCE PAID (-):</span>
+                      <span>- ₹ {formatINR(advanceAmountNum)}</span>
+                    </div>
+                    <div className="border-t-2 border-b-2 border-dashed border-gray-900 my-2 py-1.5 flex justify-between text-base font-black text-blue-900 bg-blue-50/50 px-2 rounded">
+                      <span>BALANCE DUE / PAYABLE:</span>
+                      <span>₹ {formatINR(balanceAmount)}</span>
+                    </div>
+                  </>
+                )}
+
+                {advanceAmountNum === 0 && (
+                  <div className="border-t-2 border-b-2 border-dashed border-gray-900 my-2 py-1.5 flex justify-between text-base font-black text-gray-900">
+                    <span>NET PAYABLE:</span>
+                    <span>₹ {formatINR(grandTotal)}</span>
+                  </div>
+                )}
 
                 {/* Amount in words */}
                 {showWords && wordsTotal && (
@@ -1769,24 +1948,24 @@ export default function BillDesignerModal({
               <button
                 type="button"
                 onClick={handleSubmitBill}
-                disabled={items.length === 0 || isSubmitting || isSubmitted}
+                disabled={items.length === 0 || isSubmitting || (isSubmitted && !editRecord)}
                 className={`py-3 px-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-md transition-all ${
-                  isSubmitted
+                  isSubmitted && !editRecord
                     ? 'bg-emerald-50 text-emerald-800 border-2 border-emerald-300 cursor-default shadow-xs'
                     : 'bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white shadow-emerald-200 cursor-pointer'
                 }`}
               >
                 {isSubmitting ? (
                   <>
-                    <Loader className="w-4 h-4 animate-spin" /> Submitting...
+                    <Loader className="w-4 h-4 animate-spin" /> {editRecord ? 'Updating...' : 'Submitting...'}
                   </>
-                ) : isSubmitted ? (
+                ) : isSubmitted && !editRecord ? (
                   <>
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Submitted
                   </>
                 ) : (
                   <>
-                    <CheckCircle2 className="w-4 h-4" /> Submit Bill
+                    <CheckCircle2 className="w-4 h-4" /> {editRecord ? 'Update Bill' : 'Submit Bill'}
                   </>
                 )}
               </button>

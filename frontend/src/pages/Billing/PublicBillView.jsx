@@ -7,6 +7,7 @@ import {
 import QrCodeView from './QrCodeView';
 import { formatINR, numberToWordsIndian, decodeBillFromPayload } from './billUtils';
 import { getProductByBarcode } from '../../api/billingProducts';
+import { getBillingRecordByBillNo } from '../../api/billingRecords';
 
 const HISTORY_KEY = 'timelines_billing_history';
 
@@ -29,24 +30,50 @@ export default function PublicBillView() {
       }
     }
 
-    // 2. Try looking up in localStorage history
-    try {
-      const saved = localStorage.getItem(HISTORY_KEY);
-      if (saved) {
-        const historyList = JSON.parse(saved);
-        const found = historyList.find((b) => b.billNo === id || b.billNo === decodeURIComponent(id || ''));
-        if (found) {
-          setBill(found);
+    // 2. Try looking up from Backend DB by Bill Number
+    async function fetchBill() {
+      try {
+        const cleanId = decodeURIComponent(id || '').trim();
+        const res = await getBillingRecordByBillNo(cleanId);
+        if (res.data) {
+          const rec = res.data;
+          setBill({
+            billNo: rec.billNo,
+            date: rec.billDate,
+            customerName: rec.customerName,
+            customerPhone: rec.customerPhone,
+            paymentMode: rec.paymentMode,
+            items: rec.items || [],
+            subtotal: rec.subtotal,
+            discountAmount: rec.discountAmount,
+            taxRate: rec.taxRate,
+            grandTotal: rec.grandTotal,
+            advanceAmount: rec.advanceAmount,
+            balanceAmount: rec.balanceAmount,
+            advanceProofUrl: rec.advanceProofUrl,
+          });
           setLoading(false);
           return;
         }
-      }
-    } catch (e) {
-      console.error('History lookup error', e);
-    }
+      } catch (err) {}
 
-    // 3. Fallback: Lookup product by barcode from database to show single-item retail bill
-    async function fetchProduct() {
+      // 3. Try looking up in localStorage history
+      try {
+        const saved = localStorage.getItem(HISTORY_KEY);
+        if (saved) {
+          const historyList = JSON.parse(saved);
+          const found = historyList.find((b) => b.billNo === id || b.billNo === decodeURIComponent(id || ''));
+          if (found) {
+            setBill(found);
+            setLoading(false);
+            return;
+          }
+        }
+      } catch (e) {
+        console.error('History lookup error', e);
+      }
+
+      // 4. Fallback: Lookup product by barcode from database to show single-item retail bill
       try {
         const cleanId = decodeURIComponent(id || '').trim();
         const res = await getProductByBarcode(cleanId);
@@ -76,7 +103,7 @@ export default function PublicBillView() {
       setLoading(false);
     }
 
-    fetchProduct();
+    fetchBill();
   }, [id, encodedData]);
 
   const items = bill?.items || [];
@@ -261,9 +288,22 @@ export default function PublicBillView() {
             )}
 
             <div className="border-t-2 border-b-2 border-gray-900 py-2.5 flex justify-between items-center text-lg font-black text-gray-900">
-              <span>GRAND TOTAL:</span>
+              <span>TOTAL AMOUNT:</span>
               <span className="text-xl font-mono">₹ {formatINR(bill.grandTotal)}</span>
             </div>
+
+            {Number(bill.advanceAmount) > 0 && (
+              <>
+                <div className="flex justify-between items-center text-emerald-700 text-sm font-semibold">
+                  <span>ADVANCE PAID (-):</span>
+                  <span className="font-mono">- ₹ {formatINR(bill.advanceAmount)}</span>
+                </div>
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex justify-between items-center text-lg font-black text-blue-900">
+                  <span>BALANCE DUE / PAYABLE:</span>
+                  <span className="text-xl font-mono">₹ {formatINR(bill.balanceAmount !== undefined ? bill.balanceAmount : Math.max(0, bill.grandTotal - bill.advanceAmount))}</span>
+                </div>
+              </>
+            )}
 
             {wordsTotal && (
               <div className="text-xs italic text-center py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-700">
