@@ -338,7 +338,7 @@ router.post('/', protect, requireBillingAccess, async (req, res, next) => {
       paymentMode = 'Cash', items = [], subtotal = 0,
       discountAmount = 0, taxRate = 0, grandTotal = 0,
       advanceAmount = 0, advanceProofUrl = '', balanceAmount = 0,
-      cashier = '',
+      cashier = '', createdBy = '', lastEditedBy = '',
     } = req.body;
 
     if (!billNo) return res.status(400).json({ message: 'billNo is required.' });
@@ -349,7 +349,6 @@ router.post('/', protect, requireBillingAccess, async (req, res, next) => {
     const id = existing.length > 0 ? existing[0].id : uuidv4();
     const dateStr = billDate ? billDate.slice(0, 10) : new Date().toISOString().slice(0, 10);
     const itemsJson = JSON.stringify(items);
-    const actorName = req.user?.name || cashier || 'Admin';
     const actorId = req.user?.id || '';
 
     // Calculate balanceAmount if not provided
@@ -360,6 +359,11 @@ router.post('/', protect, requireBillingAccess, async (req, res, next) => {
     if (existing.length > 0) {
       // Existing bill being updated via POST upsert
       const prev = existing[0];
+      const actorName = (lastEditedBy || cashier || '').trim();
+      if (!actorName) {
+        return res.status(400).json({ message: 'Selecting who is editing this bill is mandatory.' });
+      }
+
       const newEditCount = (prev.editCount || 0) + 1;
 
       await db.execute(
@@ -373,7 +377,7 @@ router.post('/', protect, requireBillingAccess, async (req, res, next) => {
           dateStr, customerName, customerPhone, paymentMode,
           itemsJson, subtotal, discountAmount, taxRate, parsedGrandTotal,
           parsedAdvance, advanceProofUrl || prev.advanceProofUrl || '', finalBalance,
-          cashier || prev.cashier || actorName,
+          actorName,
           actorName, newEditCount, id
         ]
       );
@@ -401,6 +405,11 @@ router.post('/', protect, requireBillingAccess, async (req, res, next) => {
       });
     } else {
       // New Bill creation
+      const actorName = (createdBy || cashier || '').trim();
+      if (!actorName) {
+        return res.status(400).json({ message: 'Selecting who created this bill is mandatory.' });
+      }
+
       await db.execute(
         `INSERT INTO BillingRecord
          (id, billNo, billDate, customerName, customerPhone, paymentMode,
@@ -412,7 +421,7 @@ router.post('/', protect, requireBillingAccess, async (req, res, next) => {
           id, billNo, dateStr, customerName, customerPhone, paymentMode,
           itemsJson, subtotal, discountAmount, taxRate, parsedGrandTotal,
           parsedAdvance, advanceProofUrl || '', finalBalance,
-          cashier || actorName, actorName, actorName
+          actorName, actorName, actorName
         ]
       );
 
@@ -472,7 +481,10 @@ router.put('/:id', protect, requireBillingAccess, async (req, res, next) => {
 
     const dateStr = billDate ? String(billDate).slice(0, 10) : new Date().toISOString().slice(0, 10);
     const itemsJson = JSON.stringify(items);
-    const actorName = req.user?.name || cashier || 'Admin';
+    const actorName = (req.body.lastEditedBy || req.body.cashier || '').trim();
+    if (!actorName) {
+      return res.status(400).json({ message: 'Selecting who is editing this bill is mandatory.' });
+    }
     const actorId = req.user?.id || '';
 
     const parsedGrandTotal = Number(grandTotal) || 0;
@@ -491,7 +503,7 @@ router.put('/:id', protect, requireBillingAccess, async (req, res, next) => {
       [
         billNo, dateStr, customerName, customerPhone, paymentMode,
         itemsJson, subtotal, discountAmount, taxRate, parsedGrandTotal,
-        parsedAdvance, finalProofUrl, finalBalance, cashier || actorName,
+        parsedAdvance, finalProofUrl, finalBalance, actorName,
         actorName, newEditCount, req.params.id
       ]
     );
@@ -602,10 +614,14 @@ router.patch('/:id/photo', protect, requireBillingAccess, upload.single('photo')
 // ── DELETE /api/billing-records/:id
 router.delete('/:id', protect, requireBillingAccess, async (req, res, next) => {
   try {
+    const actorName = (req.body?.deletedBy || req.query?.deletedBy || '').trim();
+    if (!actorName) {
+      return res.status(400).json({ message: 'Selecting who is deleting this bill is mandatory.' });
+    }
+
     const [existing] = await db.query('SELECT * FROM BillingRecord WHERE id = ?', [req.params.id]);
     if (existing.length) {
       const rec = existing[0];
-      const actorName = req.user?.name || 'Admin';
       await logBillHistory({
         billNo: rec.billNo,
         billingRecordId: rec.id,

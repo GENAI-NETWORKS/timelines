@@ -26,8 +26,11 @@ export const uploadBillingRecordPhoto = (id, file) => {
   });
 };
 
-export const deleteBillingRecord = (id) =>
-  api.delete(`/billing-records/${id}`);
+export const deleteBillingRecord = (id, deletedBy) =>
+  api.delete(`/billing-records/${id}`, {
+    data: { deletedBy },
+    params: { deletedBy },
+  });
 
 export const getBillHistory = (params) =>
   api.get('/billing-records/history', { params });

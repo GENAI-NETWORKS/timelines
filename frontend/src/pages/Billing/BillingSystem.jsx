@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, Component } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Printer, Trash2, Edit2, Loader,
-  ShoppingBag, IndianRupee, Layers, CheckCircle2, AlertCircle, FileText
+  ShoppingBag, IndianRupee, Layers, CheckCircle2, AlertCircle, FileText, Receipt
 } from 'lucide-react';
 import {
   getBillingProducts, getProductByBarcode, createBillingProduct,
@@ -12,6 +12,7 @@ import BarcodePrintModal from './BarcodePrintModal';
 import SheetPrintModal from './SheetPrintModal';
 import ScannedProductModal from './ScannedProductModal';
 import BillDesignerModal from './BillDesignerModal';
+import SavedBillsModal from './SavedBillsModal';
 import ConfirmModal from '../../components/UI/ConfirmModal';
 import Pagination from '../../components/UI/Pagination';
 import QrCodeView from './QrCodeView';
@@ -70,6 +71,7 @@ export default function BillingSystem() {
   const [scannedProduct, setScannedProduct] = useState(null);
   const [showBillModal, setShowBillModal] = useState(false);
   const [billInitialProduct, setBillInitialProduct] = useState(null);
+  const [showSavedBillsModal, setShowSavedBillsModal] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const barcodeInputRef = useRef(null);
 
@@ -209,6 +211,14 @@ export default function BillingSystem() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setShowSavedBillsModal(true)}
+            className="btn bg-purple-600 hover:bg-purple-700 text-white flex items-center gap-2 shadow-md transition-all hover:scale-[1.02]"
+            title="View, edit and manage existing bills"
+          >
+            <Receipt className="w-4 h-4" /> Saved Bills (View / Edit)
+          </button>
+
           <button
             onClick={() => {
               setBillInitialProduct(null);
@@ -459,6 +469,14 @@ export default function BillingSystem() {
             setShowBillModal(false);
             setBillInitialProduct(null);
           }}
+        />
+      )}
+
+      {/* Saved Bills (View / Edit / Delete) Modal */}
+      {showSavedBillsModal && (
+        <SavedBillsModal
+          isOpen={showSavedBillsModal}
+          onClose={() => setShowSavedBillsModal(false)}
         />
       )}
 

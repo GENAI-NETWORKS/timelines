@@ -636,6 +636,16 @@ export default function BillDesignerModal({
       return;
     }
 
+    // Mandatory actor validation
+    if (!cashier || !cashier.trim()) {
+      toast.error(
+        editRecord
+          ? '⚠️ Please select who is editing this bill (Mandatory)'
+          : '⚠️ Please select who is creating this bill (Mandatory)'
+      );
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       saveToHistory();
@@ -653,7 +663,12 @@ export default function BillDesignerModal({
         advanceAmount: advanceAmountNum,
         advanceProofUrl,
         balanceAmount,
-        cashier,
+        cashier: cashier.trim(),
+        // Explicit actor fields for backend validation
+        ...(editRecord?.id
+          ? { lastEditedBy: cashier.trim() }
+          : { createdBy: cashier.trim() }
+        ),
       };
 
       let res;
@@ -1174,17 +1189,19 @@ export default function BillDesignerModal({
                 />
               </div>
               <div>
-                <label className="label">Billed By (Cashier)</label>
+                <label className="label font-bold text-gray-800">
+                  {editRecord ? 'Bill Edited By * (Mandatory)' : 'Bill Created By * (Mandatory)'}
+                  <span className="ml-1 text-rose-500 text-[11px] font-semibold">(Required)</span>
+                </label>
                 <select
-                  className="input text-xs mb-1"
+                  className={`input text-xs mb-1 font-semibold ${!cashier || !cashier.trim() ? 'border-rose-400 ring-1 ring-rose-300' : 'border-purple-300'}`}
                   value={panelUsers.some(u => u.name === cashier) ? cashier : '__other__'}
                   onChange={(e) => {
                     if (e.target.value !== '__other__') setCashier(e.target.value);
                   }}
+                  required
                 >
-                  {panelUsers.length === 0 && (
-                    <option value="Admin">Admin</option>
-                  )}
+                  <option value="">-- Select Person (Required) --</option>
                   {panelUsers.map(u => (
                     <option key={u.id} value={u.name}>{u.name} ({u.role})</option>
                   ))}
@@ -1192,11 +1209,17 @@ export default function BillDesignerModal({
                 </select>
                 <input
                   type="text"
-                  className="input text-xs"
-                  placeholder="Custom cashier name..."
+                  className={`input text-xs ${!cashier || !cashier.trim() ? 'border-rose-400' : ''}`}
+                  placeholder="Or type custom name here (required)..."
                   value={cashier}
                   onChange={(e) => setCashier(e.target.value)}
+                  required
                 />
+                {(!cashier || !cashier.trim()) && (
+                  <p className="text-[11px] text-rose-500 mt-1 font-semibold">
+                    ⚠️ This field is mandatory before submitting.
+                  </p>
+                )}
               </div>
             </div>
 

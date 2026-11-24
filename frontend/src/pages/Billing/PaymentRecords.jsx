@@ -1,16 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
-  FileText, Search, Filter, Calendar, IndianRupee, Trash2,
+  FileText, Search, Filter, Calendar, IndianRupee,
   RefreshCw, TrendingUp, BarChart2, Tag, ChevronDown, ChevronUp,
   ExternalLink, ArrowLeft, CheckCircle2, Wallet, Phone, Smartphone, CreditCard,
-  ImagePlus, Eye, X, Edit2, Printer
+  ImagePlus, Eye, X
 } from 'lucide-react';
-import { getBillingRecords, deleteBillingRecord, updateBillingRecordPayment, uploadBillingRecordPhoto } from '../../api/billingRecords';
+import { getBillingRecords, updateBillingRecordPayment, uploadBillingRecordPhoto } from '../../api/billingRecords';
 import { formatINR } from './billUtils';
 import Pagination from '../../components/UI/Pagination';
-import ConfirmModal from '../../components/UI/ConfirmModal';
-import BillDesignerModal from './BillDesignerModal';
 import toast from 'react-hot-toast';
 
 // Fixed Payment Methods as requested: UPI, Scanner, phone number, Cash
@@ -59,10 +57,8 @@ export default function PaymentRecords() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [deleteId, setDeleteId] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
   const [editingPaymentId, setEditingPaymentId] = useState(null);
-  const [activeBillModal, setActiveBillModal] = useState(null);
 
   // Photo upload
   const [uploadingId, setUploadingId] = useState(null);
@@ -152,18 +148,6 @@ export default function PaymentRecords() {
   };
 
   const hasActiveFilters = Boolean(search || paymentMode || dateFrom || dateTo);
-
-  const handleDelete = async () => {
-    if (!deleteId) return;
-    try {
-      await deleteBillingRecord(deleteId);
-      toast.success('Payment record deleted');
-      setDeleteId(null);
-      loadData();
-    } catch {
-      toast.error('Failed to delete payment record');
-    }
-  };
 
   const handleUpdatePayment = async (id, newMode) => {
     try {
@@ -612,27 +596,11 @@ export default function PaymentRecords() {
                       {/* Actions */}
                       <td className="py-3.5 px-4 text-center">
                         <div className="flex items-center justify-center gap-1">
-                          <button
-                            onClick={() => setActiveBillModal({ record: r, isEdit: false })}
-                            className="btn-icon text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                            title="View / Reprint in Bill Designer"
-                          >
-                            <Printer className="w-4 h-4" />
-                          </button>
-
-                          <button
-                            onClick={() => setActiveBillModal({ record: r, isEdit: true })}
-                            className="btn-icon text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                            title="Edit Bill (Items, Discount, Advance, Customer)"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-
                           <Link
                             to={`/bill/view/${encodeURIComponent(r.billNo)}`}
                             target="_blank"
                             rel="noreferrer"
-                            className="btn-icon text-gray-500 hover:text-purple-700 hover:bg-purple-50"
+                            className="btn-icon text-purple-600 hover:text-purple-700 hover:bg-purple-50"
                             title="Open Digital Bill Link"
                           >
                             <FileText className="w-4 h-4" />
@@ -658,14 +626,6 @@ export default function PaymentRecords() {
                               ? <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
                               : <ImagePlus className="w-4 h-4" />
                             }
-                          </button>
-
-                          <button
-                            onClick={() => setDeleteId(r.id)}
-                            className="btn-icon text-rose-500 hover:text-rose-600 hover:bg-rose-50"
-                            title="Delete Record"
-                          >
-                            <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
                       </td>
@@ -715,28 +675,6 @@ export default function PaymentRecords() {
           </div>
         )}
       </div>
-
-      {/* Delete Confirmation Modal */}
-      {deleteId && (
-        <ConfirmModal
-          title="Delete Payment Record?"
-          message="Are you sure you want to delete this payment record? This will permanently remove the logged transaction."
-          onConfirm={handleDelete}
-          onCancel={() => setDeleteId(null)}
-        />
-      )}
-
-      {/* View / Edit Bill in Bill Designer Modal */}
-      {activeBillModal && (
-        <BillDesignerModal
-          editRecord={activeBillModal.record}
-          onClose={() => setActiveBillModal(null)}
-          onBillSaved={() => {
-            setActiveBillModal(null);
-            loadData();
-          }}
-        />
-      )}
     </div>
   );
 }
