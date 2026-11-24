@@ -5,7 +5,7 @@ import {
   CreditCard, User, IndianRupee, ShieldCheck
 } from 'lucide-react';
 import QrCodeView from './QrCodeView';
-import { formatINR, numberToWordsIndian, decodeBillFromPayload } from './billUtils';
+import { formatINR, numberToWordsIndian, decodeBillFromPayload, getPublicBaseUrl } from './billUtils';
 import { getProductByBarcode } from '../../api/billingProducts';
 import { getBillingRecordByBillNo } from '../../api/billingRecords';
 
@@ -315,7 +315,7 @@ export default function PublicBillView() {
           {/* QR Code & Footer */}
           <div className="pt-4 border-t border-dashed border-gray-300 text-center space-y-3">
             <div className="inline-block p-2 bg-white border border-gray-200 rounded-xl shadow-sm">
-              <QrCodeView value={window.location.href} size={110} />
+              <QrCodeView value={`${getPublicBaseUrl()}/bill/view/${encodeURIComponent(billNo)}`} size={110} />
             </div>
             <div className="text-[11px] font-mono font-semibold text-gray-600">
               Scan QR to view digital receipt

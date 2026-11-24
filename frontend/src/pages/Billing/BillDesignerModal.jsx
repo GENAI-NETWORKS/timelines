@@ -3,16 +3,18 @@ import {
   Printer, Plus, Minus, Trash2, Search, QrCode, ShoppingCart,
   Settings2, RefreshCw, Check, IndianRupee, Store, User, FileText,
   Sliders, ArrowRight, Clock, ShieldCheck, Tag, X, ChevronDown, ChevronUp, History,
-  Loader, CheckCircle2, Wallet, ImagePlus, Eye
+  Loader, CheckCircle2, Wallet, ImagePlus, Eye, Camera
 } from 'lucide-react';
 import Modal from '../../components/UI/Modal';
 import QrCodeView from './QrCodeView';
 import { createQrSvgString } from './qrCodeGenerator';
-import { numberToWordsIndian, generateBillNumber, formatINR, encodeBillToPayload } from './billUtils';
+import { numberToWordsIndian, generateBillNumber, formatINR, encodeBillToPayload, getPublicBaseUrl, parseScannedCode } from './billUtils';
 import { saveBillingRecord, updateBillingRecord } from '../../api/billingRecords';
+import { getProductByBarcode } from '../../api/billingProducts';
 import { searchCustomers } from '../../api/customers';
 import { getAssignableUsers } from '../../api/panelUsers';
 import { useAuth } from '../../context/AuthContext';
+import CameraQrScannerModal from './CameraQrScannerModal';
 import toast from 'react-hot-toast';
 
 const HISTORY_KEY = 'timelines_billing_history';
@@ -360,6 +362,7 @@ export default function BillDesignerModal({
 
   // Product Search & Custom Item states
   const [searchQuery, setSearchQuery] = useState('');
+  const [showCameraScanner, setShowCameraScanner] = useState(false);
   const [customName, setCustomName] = useState('');
   const [customPrice, setCustomPrice] = useState('');
   const [customQty, setCustomQty] = useState(1);
@@ -413,6 +416,67 @@ export default function BillDesignerModal({
     setSearchQuery('');
     toast.success(`Added ${prod.name}`);
   };
+
+  // Direct QR / Barcode Scan Code Handler (handles raw barcode or full URL from scanner/camera)
+  const handleScanProductCode = async (rawCode) => {
+    if (!rawCode || !rawCode.trim()) return;
+    const cleanCode = parseScannedCode(rawCode);
+
+    // 1. Check in availableProducts first
+    let match = availableProducts.find(
+      (p) =>
+        p.barcode?.toLowerCase() === cleanCode.toLowerCase() ||
+        p.name?.toLowerCase() === cleanCode.toLowerCase()
+    );
+
+    // 2. Query backend API if not found in current page
+    if (!match) {
+      try {
+        const res = await getProductByBarcode(cleanCode);
+        if (res.data) match = res.data;
+      } catch {}
+    }
+
+    if (match) {
+      handleAddProduct(match);
+      setSearchQuery('');
+    } else {
+      toast.error(`No product found for code "${cleanCode}"`);
+    }
+  };
+
+  // Hardware Scanner Listener inside Bill Designer
+  useEffect(() => {
+    let buffer = '';
+    let lastKeyTime = Date.now();
+
+    const handleKeyDown = (e) => {
+      const activeTag = document.activeElement?.tagName?.toLowerCase();
+      const isInput = activeTag === 'input' || activeTag === 'textarea';
+
+      const currentTime = Date.now();
+      const charDiff = currentTime - lastKeyTime;
+      lastKeyTime = currentTime;
+
+      if (e.key === 'Enter') {
+        if (buffer.length >= 3 && !isInput) {
+          e.preventDefault();
+          handleScanProductCode(buffer);
+          buffer = '';
+        }
+      } else if (e.key.length === 1) {
+        if (charDiff > 80 && !isInput) {
+          buffer = '';
+        }
+        if (!isInput) {
+          buffer += e.key;
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [availableProducts]);
 
   // Add custom unlisted item
   const handleAddCustom = (e) => {
@@ -540,28 +604,11 @@ export default function BillDesignerModal({
     }
   }, [billDate]);
 
-  // Generate public view URL with encoded bill data so scanning QR code immediately shows the bill
+  // Generate public view URL so scanning QR code immediately opens the verified bill receipt
   const billQrUrl = useMemo(() => {
-    try {
-      const encoded = encodeBillToPayload({
-        billNo,
-        date: billDate,
-        customerName,
-        customerPhone,
-        paymentMode,
-        items,
-        subtotal,
-        discountAmount,
-        taxRate,
-        grandTotal,
-        advanceAmount: advanceAmountNum,
-        balanceAmount,
-      });
-      return `${window.location.origin}/bill/view/${encodeURIComponent(billNo)}?d=${encoded}`;
-    } catch {
-      return `${window.location.origin}/bill/view/${encodeURIComponent(billNo)}`;
-    }
-  }, [billNo, billDate, customerName, customerPhone, paymentMode, items, subtotal, discountAmount, taxRate, grandTotal, advanceAmountNum, balanceAmount]);
+    const base = getPublicBaseUrl();
+    return `${base}/bill/view/${encodeURIComponent(billNo)}`;
+  }, [billNo]);
 
   // Save current bill to history
   const saveToHistory = () => {
@@ -1373,55 +1420,65 @@ export default function BillDesignerModal({
               </div>
 
               {/* QR Code / Product Search Bar */}
-              <div className="relative">
-                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input
-                  type="text"
-                  className="input pl-9 text-xs"
-                  placeholder="Scan QR code with scanner or search product name / item code…"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && searchQuery.trim()) {
-                      e.preventDefault();
-                      const match = availableProducts.find(
-                        (p) =>
-                          p.barcode?.toLowerCase() === searchQuery.trim().toLowerCase() ||
-                          p.name?.toLowerCase() === searchQuery.trim().toLowerCase()
-                      ) || searchResults[0];
-
-                      if (match) {
-                        handleAddProduct(match);
-                      } else {
-                        toast.error(`No catalog product found for "${searchQuery.trim()}"`);
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    className="input pl-9 pr-8 text-xs w-full"
+                    placeholder="Scan QR code or search product name / item code…"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && searchQuery.trim()) {
+                        e.preventDefault();
+                        handleScanProductCode(searchQuery);
                       }
-                    }
-                  }}
-                />
+                    }}
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
 
-                {/* Autocomplete Dropdown */}
-                {searchResults.length > 0 && (
-                  <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-30 divide-y divide-gray-100 overflow-hidden">
-                    {searchResults.map((p) => (
-                      <div
-                        key={p.id}
-                        onClick={() => handleAddProduct(p)}
-                        className="p-2.5 hover:bg-brand-50 cursor-pointer flex items-center justify-between transition-colors"
-                      >
-                        <div>
-                          <div className="font-semibold text-xs text-gray-900">{p.name}</div>
-                          <div className="text-[11px] text-gray-400 font-mono flex items-center gap-1 mt-0.5">
-                            <QrCode className="w-3 h-3 text-brand-600" /> Code: {p.barcode} • Available: {p.quantity}
+                  {/* Autocomplete Dropdown */}
+                  {searchResults.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-30 divide-y divide-gray-100 overflow-hidden">
+                      {searchResults.map((p) => (
+                        <div
+                          key={p.id}
+                          onClick={() => handleAddProduct(p)}
+                          className="p-2.5 hover:bg-brand-50 cursor-pointer flex items-center justify-between transition-colors"
+                        >
+                          <div>
+                            <div className="font-semibold text-xs text-gray-900">{p.name}</div>
+                            <div className="text-[11px] text-gray-400 font-mono flex items-center gap-1 mt-0.5">
+                              <QrCode className="w-3 h-3 text-brand-600" /> Code: {p.barcode} • Available: {p.quantity}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="font-bold text-xs text-brand-600">₹ {formatINR(p.price)}</span>
+                            <span className="btn-sm btn-primary py-0.5 px-2 text-[11px]">+ Add</span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <span className="font-bold text-xs text-brand-600">₹ {formatINR(p.price)}</span>
-                          <span className="btn-sm btn-primary py-0.5 px-2 text-[11px]">+ Add</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowCameraScanner(true)}
+                  className="btn bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 font-bold transition-all flex-shrink-0 shadow-xs"
+                  title="Scan product QR code using device camera"
+                >
+                  <Camera className="w-3.5 h-3.5" /> Scan QR
+                </button>
               </div>
 
               {/* Quick-add chips for available products */}
@@ -2006,6 +2063,16 @@ export default function BillDesignerModal({
           </div>
         </div>
       </div>
+
+      {/* Camera QR Code Live Scanner Modal */}
+      {showCameraScanner && (
+        <CameraQrScannerModal
+          isOpen={showCameraScanner}
+          onClose={() => setShowCameraScanner(false)}
+          onScan={handleScanProductCode}
+          title="Scan Product QR to Add to Bill"
+        />
+      )}
     </Modal>
   );
 }

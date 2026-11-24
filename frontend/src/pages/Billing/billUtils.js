@@ -193,26 +193,68 @@ export function decodeBillFromPayload(encodedStr, fallbackId = '') {
 }
 
 /**
+ * Returns the public canonical base URL for scannable QR codes.
+ * If running on localhost or local LAN IP, points to the live production domain
+ * (https://timelines-seven-mu.vercel.app) so smartphone camera scans always open.
+ */
+export function getPublicBaseUrl() {
+  if (typeof window !== 'undefined') {
+    const origin = window.location.origin;
+    if (
+      origin.includes('localhost') ||
+      origin.includes('127.0.0.1') ||
+      origin.includes('192.168.') ||
+      origin.includes('10.') ||
+      origin.includes('172.')
+    ) {
+      return 'https://timelines-seven-mu.vercel.app';
+    }
+    return origin;
+  }
+  return 'https://timelines-seven-mu.vercel.app';
+}
+
+/**
+ * Parse any scanned string (plain barcode, bill number, full URL, or URL with query)
+ * and extract the clean item code / bill number.
+ */
+export function parseScannedCode(raw) {
+  if (!raw) return '';
+  let str = String(raw).trim();
+
+  // If scanner read a full URL like https://.../bill/view/PRD-1001?d=... or /bill/view/TL-1001
+  if (str.includes('/bill/view/')) {
+    const after = str.substring(str.indexOf('/bill/view/') + 11);
+    const clean = after.split('?')[0].split('#')[0];
+    try {
+      return decodeURIComponent(clean).trim();
+    } catch {
+      return clean.trim();
+    }
+  }
+
+  // If scanner read any other URL with a path (e.g. /product/123)
+  if (str.startsWith('http://') || str.startsWith('https://')) {
+    try {
+      const parsedUrl = new URL(str);
+      const segments = parsedUrl.pathname.split('/').filter(Boolean);
+      if (segments.length > 0) {
+        return decodeURIComponent(segments[segments.length - 1]).trim();
+      }
+    } catch {}
+  }
+
+  return str;
+}
+
+/**
  * Returns the full scannable URL for a product sticker.
- * When scanned by ANY smartphone camera, Google Lens, or barcode scanner,
- * it immediately opens the verified digital bill receipt for this item.
+ * Kept clean and short so the resulting QR code has large, bold blocks
+ * that scan instantaneously on 100% of phone cameras and 2D barcode scanners.
  */
 export function getProductStickerUrl(product) {
-  if (!product) return typeof window !== 'undefined' ? window.location.origin : '';
-  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  if (!product) return getPublicBaseUrl();
+  const base = getPublicBaseUrl();
   const code = product.barcode || product.id || 'ITEM';
-  const payload = encodeBillToPayload({
-    billNo: code,
-    date: new Date().toISOString(),
-    customerName: 'Walk-in Customer',
-    items: [{
-      name: product.name,
-      quantity: 1,
-      price: product.price,
-      barcode: code
-    }],
-    subtotal: product.price,
-    grandTotal: product.price
-  });
-  return `${origin}/bill/view/${encodeURIComponent(code)}?d=${payload}`;
+  return `${base}/bill/view/${encodeURIComponent(code)}`;
 }

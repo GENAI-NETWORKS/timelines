@@ -1,22 +1,24 @@
 import { useState, useEffect, useCallback, useRef, Component } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Printer, Trash2, Edit2, Loader,
-  ShoppingBag, IndianRupee, Layers, CheckCircle2, AlertCircle, FileText, Receipt
+  ShoppingBag, IndianRupee, Layers, CheckCircle2, AlertCircle, FileText, Receipt, Camera
 } from 'lucide-react';
 import {
   getBillingProducts, getProductByBarcode, createBillingProduct,
   updateBillingProduct, deleteBillingProduct
 } from '../../api/billingProducts';
+import { getBillingRecordByBillNo } from '../../api/billingRecords';
 import NewProductModal from './NewProductModal';
 import BarcodePrintModal from './BarcodePrintModal';
 import SheetPrintModal from './SheetPrintModal';
 import ScannedProductModal from './ScannedProductModal';
 import BillDesignerModal from './BillDesignerModal';
 import SavedBillsModal from './SavedBillsModal';
+import CameraQrScannerModal from './CameraQrScannerModal';
 import ConfirmModal from '../../components/UI/ConfirmModal';
 import Pagination from '../../components/UI/Pagination';
 import QrCodeView from './QrCodeView';
-import { getProductStickerUrl } from './billUtils';
+import { getProductStickerUrl, parseScannedCode } from './billUtils';
 import toast from 'react-hot-toast';
 
 // Error boundary for QR code cells — prevents one bad row from wiping the whole table
@@ -72,6 +74,7 @@ export default function BillingSystem() {
   const [showBillModal, setShowBillModal] = useState(false);
   const [billInitialProduct, setBillInitialProduct] = useState(null);
   const [showSavedBillsModal, setShowSavedBillsModal] = useState(false);
+  const [showCameraScanner, setShowCameraScanner] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const barcodeInputRef = useRef(null);
 
@@ -94,19 +97,32 @@ export default function BillingSystem() {
     load();
   }, [load]);
 
-  // Direct QR Code / Barcode Lookup handler
-  const handleScanCode = async (code) => {
-    if (!code || !code.trim()) return;
-    const cleanCode = code.trim();
+  // Direct QR Code / Barcode Lookup handler (handles raw barcode, bill no, or full URL)
+  const handleScanCode = async (rawCode) => {
+    if (!rawCode || !rawCode.trim()) return;
+    const cleanCode = parseScannedCode(rawCode);
 
-    // 1. If scanned code is a Bill URL (e.g., http://.../bill/view/TL-xxx?d=...) or a Bill No:
-    if (cleanCode.includes('/bill/view/')) {
-      const billPath = cleanCode.substring(cleanCode.indexOf('/bill/view/'));
-      navigate(billPath);
-      return;
-    }
+    // 1. Try looking up as Product item code first
+    try {
+      const res = await getProductByBarcode(cleanCode);
+      if (res.data) {
+        setScannedProduct(res.data);
+        toast.success(`Scanned: ${res.data.name}`);
+        setSearch('');
+        return;
+      }
+    } catch (e) {}
 
-    // Check if it matches a Bill Number saved in local history
+    // 2. Check if it's a Bill Number in database
+    try {
+      const billRes = await getBillingRecordByBillNo(cleanCode);
+      if (billRes.data) {
+        navigate(`/bill/view/${encodeURIComponent(cleanCode)}`);
+        return;
+      }
+    } catch {}
+
+    // 3. Check in local history
     try {
       const saved = localStorage.getItem('timelines_billing_history');
       if (saved) {
@@ -120,17 +136,13 @@ export default function BillingSystem() {
       }
     } catch {}
 
-    // 2. Otherwise look up as Product item code
-    try {
-      const res = await getProductByBarcode(cleanCode);
-      if (res.data) {
-        setScannedProduct(res.data);
-        toast.success(`Scanned: ${res.data.name}`);
-        setSearch('');
-      }
-    } catch (e) {
-      toast.error(`No item found for code "${cleanCode}"`);
+    // 4. If it starts with TL- or INV-, navigate to bill view
+    if (cleanCode.startsWith('TL-') || cleanCode.startsWith('INV-')) {
+      navigate(`/bill/view/${encodeURIComponent(cleanCode)}`);
+      return;
     }
+
+    toast.error(`No item or bill found for "${cleanCode}"`);
   };
 
   // Hardware Scanner Listener:
@@ -302,6 +314,16 @@ export default function BillingSystem() {
               }}
             />
           </div>
+
+          <button
+            type="button"
+            onClick={() => setShowCameraScanner(true)}
+            className="btn bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 font-bold transition-all flex-shrink-0 shadow-xs"
+            title="Scan QR code using device camera"
+          >
+            <Camera className="w-4 h-4" /> Scan with Camera
+          </button>
+
           {search && (
             <button
               onClick={() => handleScanCode(search.trim())}
@@ -487,6 +509,16 @@ export default function BillingSystem() {
           message="Are you sure you want to remove this product and QR code from the billing system?"
           onConfirm={handleDelete}
           onCancel={() => setDeleteId(null)}
+        />
+      )}
+
+      {/* Live Camera QR Scanner Modal */}
+      {showCameraScanner && (
+        <CameraQrScannerModal
+          isOpen={showCameraScanner}
+          onClose={() => setShowCameraScanner(false)}
+          onScan={handleScanCode}
+          title="Scan QR Code / Barcode"
         />
       )}
     </div>
