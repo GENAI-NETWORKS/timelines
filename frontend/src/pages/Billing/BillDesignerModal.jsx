@@ -756,8 +756,9 @@ export default function BillDesignerModal({
     const isA5 = paperSize === 'a5';
     const isA4 = paperSize === 'a4';
 
-    const qrSize = isA4 ? 220 : isA5 ? 190 : 170;
-    const qrSvgHtml = showQrCode ? createQrSvgString(billQrUrl, { size: qrSize, margin: 4, ecLevel: 'L' }) : '';
+    // Increased QR size for bold, instant smartphone/hardware scanning
+    const qrSize = isA4 ? 280 : isA5 ? 250 : 230;
+    const qrSvgHtml = showQrCode ? createQrSvgString(billQrUrl, { size: qrSize, margin: 2, ecLevel: 'M' }) : '';
 
     const html = `
       <!DOCTYPE html>
@@ -768,152 +769,225 @@ export default function BillDesignerModal({
           <style>
             @page {
               size: ${isThermal ? '80mm auto' : isA5 ? 'A5 portrait' : 'A4 portrait'};
-              margin: ${isThermal ? '2mm 3mm' : isA5 ? '8mm 10mm' : '10mm 15mm'};
+              margin: ${isThermal ? '0mm !important' : isA5 ? '6mm 8mm' : '8mm 12mm'};
             }
             * {
               box-sizing: border-box;
               margin: 0;
               padding: 0;
+              color: #000000 !important;
+              font-weight: 700 !important; /* Bold of ALL text in the bill */
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
             }
-            body {
-              font-family: ${isThermal ? `'Courier New', Courier, monospace` : `'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`};
-              color: #000;
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
+              height: auto !important;
+              min-height: 0 !important;
               background: #fff;
+              font-family: ${isThermal ? `'Courier New', Courier, monospace` : `'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`};
+              color: #000000 !important;
               font-size: ${isA4 ? '16px' : isA5 ? '15px' : '14px'};
-              line-height: ${isThermal ? '1.35' : '1.5'};
-              padding: ${isThermal ? '2px' : '0'};
+              font-weight: 700 !important;
+              line-height: ${isThermal ? '1.3' : '1.45'};
               width: 100%;
             }
             .bill-wrapper {
-              width: ${isThermal ? '76mm' : '100%'};
-              max-width: ${isThermal ? '76mm' : '100%'};
+              width: ${isThermal ? '74mm' : '100%'};
+              max-width: ${isThermal ? '74mm' : '100%'};
               margin: 0 auto;
-              padding: ${isThermal ? '4px 0' : '8px 0'};
+              padding: 0 !important; /* Eliminates white gap at starting and ending */
             }
             .text-center { text-align: center; }
             .text-right { text-align: right; }
             .text-left { text-align: left; }
-            .bold { font-weight: 700; }
+            .bold { font-weight: 800 !important; }
+            .extra-bold { font-weight: 900 !important; }
             .uppercase { text-transform: uppercase; }
 
             .store-header {
               text-align: center;
-              margin-bottom: ${isA4 ? '12px' : '8px'};
-              padding-bottom: 4px;
+              margin-top: 0 !important;
+              padding-top: 0 !important;
+              margin-bottom: ${isA4 ? '8px' : '4px'};
+              padding-bottom: 2px;
             }
             .store-name {
-              font-size: ${isA4 ? '26px' : isA5 ? '22px' : '19px'};
-              font-weight: 800;
+              font-size: ${isA4 ? '26px' : isA5 ? '22px' : '20px'};
+              font-weight: 900 !important;
               letter-spacing: 0.5px;
+              color: #000000 !important;
             }
             .store-sub {
               font-size: ${isA4 ? '15px' : isA5 ? '13.5px' : '12.5px'};
-              color: #333;
-              margin-top: 2px;
+              font-weight: 800 !important;
+              color: #000000 !important;
+              margin-top: 1px;
             }
             .store-contact {
               font-size: ${isA4 ? '15px' : isA5 ? '13.5px' : '12.5px'};
-              margin-top: 2px;
+              font-weight: 800 !important;
+              color: #000000 !important;
+              margin-top: 1px;
             }
 
             .divider {
               border: none;
-              border-top: ${isThermal ? '1.5px dashed #000' : '1.5px dashed #000'};
-              margin: ${isA4 ? '10px 0' : '6px 0'};
+              border-top: 2px dashed #000000 !important;
+              margin: ${isA4 ? '8px 0' : '4px 0'};
             }
 
             .bill-title {
               text-align: center;
-              font-weight: 800;
+              font-weight: 900 !important;
               font-size: ${isA4 ? '18px' : isA5 ? '16px' : '15px'};
               letter-spacing: 1.5px;
-              margin: 4px 0;
+              margin: 3px 0;
+              color: #000000 !important;
             }
 
             .meta-grid {
               font-size: ${isA4 ? '15px' : isA5 ? '14px' : '13px'};
-              margin: ${isA4 ? '8px 0' : '5px 0'};
+              font-weight: 700 !important;
+              margin: ${isA4 ? '6px 0' : '4px 0'};
+              color: #000000 !important;
             }
             .meta-row {
               display: flex;
               justify-content: space-between;
-              margin-bottom: ${isA4 ? '4px' : '3px'};
+              margin-bottom: 2px;
+              font-weight: 700 !important;
+              color: #000000 !important;
+            }
+            .meta-row strong {
+              font-weight: 900 !important;
+              color: #000000 !important;
             }
 
             table.items-table {
               width: 100%;
               border-collapse: collapse;
-              margin: ${isA4 ? '10px 0' : '6px 0'};
+              margin: ${isA4 ? '8px 0' : '4px 0'};
               font-size: ${isA4 ? '15px' : isA5 ? '14px' : '13px'};
+              font-weight: 700 !important;
+              color: #000000 !important;
             }
             table.items-table th {
-              border-top: ${isThermal ? '1.5px dashed #000' : '1.5px dashed #000'};
-              border-bottom: ${isThermal ? '1.5px dashed #000' : '1.5px dashed #000'};
-              padding: ${isA4 ? '8px 6px' : isA5 ? '6px 4px' : '5px 2px'};
-              font-weight: 700;
+              border-top: 2px dashed #000000 !important;
+              border-bottom: 2px dashed #000000 !important;
+              padding: ${isA4 ? '6px 4px' : isA5 ? '5px 3px' : '4px 2px'};
+              font-weight: 900 !important;
+              color: #000000 !important;
             }
             table.items-table td {
-              padding: ${isA4 ? '7px 6px' : isA5 ? '5px 4px' : '4px 2px'};
+              padding: ${isA4 ? '6px 4px' : isA5 ? '5px 3px' : '3px 2px'};
               vertical-align: top;
-              border-bottom: 1px dashed ${isThermal ? 'transparent' : '#eee'};
+              font-weight: 700 !important;
+              color: #000000 !important;
+              border-bottom: 1px dashed ${isThermal ? '#000000' : '#cccccc'};
             }
 
             .summary-row {
               display: flex;
               justify-content: space-between;
               font-size: ${isA4 ? '15px' : isA5 ? '14px' : '13px'};
-              margin-bottom: ${isA4 ? '4px' : '3px'};
+              margin-bottom: 2px;
+              font-weight: 800 !important;
+              color: #000000 !important;
             }
             .grand-total-row {
               display: flex;
               justify-content: space-between;
               font-size: ${isA4 ? '22px' : isA5 ? '20px' : '18px'};
-              font-weight: 800;
-              padding: ${isA4 ? '8px 0' : '6px 0'};
-              border-top: ${isThermal ? '1.5px dashed #000' : '2px dashed #000'};
-              border-bottom: ${isThermal ? '1.5px dashed #000' : '2px dashed #000'};
-              margin: ${isA4 ? '8px 0' : '5px 0'};
+              font-weight: 900 !important;
+              padding: ${isA4 ? '6px 0' : '4px 0'};
+              border-top: 2px dashed #000000 !important;
+              border-bottom: 2px dashed #000000 !important;
+              margin: ${isA4 ? '6px 0' : '4px 0'};
+              color: #000000 !important;
+            }
+
+            .advance-row {
+              display: flex;
+              justify-content: space-between;
+              font-size: ${isA4 ? '15px' : isA5 ? '14px' : '13px'};
+              font-weight: 800 !important;
+              color: #000000 !important;
+              margin-bottom: 2px;
+            }
+            .balance-row {
+              display: flex;
+              justify-content: space-between;
+              font-size: ${isA4 ? '20px' : isA5 ? '18px' : '17px'};
+              font-weight: 900 !important;
+              padding: ${isA4 ? '6px 0' : '4px 0'};
+              border-top: 2px dashed #000000 !important;
+              border-bottom: 2px dashed #000000 !important;
+              margin: ${isA4 ? '6px 0' : '4px 0'};
+              color: #000000 !important;
             }
 
             .words-block {
               font-size: ${isA4 ? '14px' : isA5 ? '13px' : '12px'};
-              font-style: italic;
-              margin: ${isA4 ? '8px 0' : '5px 0'};
+              font-weight: 800 !important;
+              font-style: normal;
+              margin: ${isA4 ? '6px 0' : '4px 0'};
               text-align: center;
-              background: #f9fafb;
-              border: 1px dashed #ddd;
-              padding: ${isA4 ? '6px 10px' : '5px'};
+              border: 1.5px dashed #000000 !important;
+              padding: 4px;
+              color: #000000 !important;
             }
 
             .qrcode-section {
               text-align: center;
-              margin: ${isA4 ? '14px 0 8px' : '10px 0 6px'};
+              margin: ${isA4 ? '12px 0 4px' : '8px 0 2px'};
+              padding: 0;
             }
             .qrcode-section svg {
               display: inline-block;
-              width: ${isA4 ? '200px' : isA5 ? '175px' : '155px'};
-              max-width: ${isA4 ? '200px' : isA5 ? '175px' : '155px'};
+              width: ${isA4 ? '260px' : isA5 ? '240px' : '220px'};
+              max-width: ${isA4 ? '260px' : isA5 ? '240px' : '220px'};
               height: auto;
             }
 
             .footer-notes {
               text-align: center;
               font-size: ${isA4 ? '14px' : isA5 ? '13px' : '12px'};
-              color: #444;
-              margin-top: ${isA4 ? '10px' : '6px'};
-              line-height: 1.4;
+              color: #000000 !important;
+              font-weight: 700 !important;
+              margin-top: ${isA4 ? '8px' : '4px'};
+              margin-bottom: 0 !important;
+              padding-bottom: 0 !important;
+              line-height: 1.35;
             }
 
             .sign-box {
-              margin-top: 35px;
+              margin-top: 25px;
               display: flex;
               justify-content: space-between;
               font-size: 14px;
-              font-weight: 600;
+              font-weight: 800;
+              color: #000000 !important;
             }
 
             @media print {
-              body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+              @page {
+                size: ${isThermal ? '80mm auto' : isA5 ? 'A5 portrait' : 'A4 portrait'};
+                margin: ${isThermal ? '0mm !important' : isA5 ? '6mm 8mm' : '8mm 12mm'};
+              }
+              html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                height: auto !important;
+                min-height: 0 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              .bill-wrapper {
+                margin: 0 auto !important;
+                padding: 0 !important;
+              }
             }
           </style>
         </head>
@@ -925,7 +999,7 @@ export default function BillDesignerModal({
                 ${storeInfo.tagline ? `<div class="store-sub">${storeInfo.tagline}</div>` : ''}
                 ${storeInfo.address ? `<div class="store-contact">${storeInfo.address}</div>` : ''}
                 ${storeInfo.phone ? `<div class="store-contact">Ph: ${storeInfo.phone}</div>` : ''}
-                ${storeInfo.gstin ? `<div class="store-contact bold">GSTIN: ${storeInfo.gstin}</div>` : ''}
+                ${storeInfo.gstin ? `<div class="store-contact extra-bold">GSTIN: ${storeInfo.gstin}</div>` : ''}
               </div>
             ` : ''}
 
@@ -944,8 +1018,8 @@ export default function BillDesignerModal({
               </div>
               ${showCustomerDetails && (customerName || customerPhone) ? `
                 <div class="meta-row">
-                  <span>Customer: ${customerName || 'Walk-in'}</span>
-                  ${customerPhone ? `<span>Ph: ${customerPhone}</span>` : ''}
+                  <span>Customer: <strong>${customerName || 'Walk-in'}</strong></span>
+                  ${customerPhone ? `<span>Ph: <strong>${customerPhone}</strong></span>` : ''}
                 </div>
               ` : ''}
             </div>
@@ -967,7 +1041,7 @@ export default function BillDesignerModal({
                     <td class="text-left">${idx + 1}</td>
                     <td class="text-left">
                       <div class="bold">${it.name}</div>
-                      ${it.barcode ? `<div style="font-size: ${isA4 ? '12px' : '11px'}; color: #555;">${it.barcode}</div>` : ''}
+                      ${it.barcode ? `<div style="font-size: ${isA4 ? '12px' : '11px'}; font-weight: 700; color: #000;">${it.barcode}</div>` : ''}
                     </td>
                     <td class="text-center">${it.quantity}</td>
                     <td class="text-right">${formatINR(it.price)}</td>
@@ -1021,11 +1095,11 @@ export default function BillDesignerModal({
             </div>
 
             ${advanceAmountNum > 0 ? `
-              <div class="summary-row" style="font-weight: 600; color: #15803d; font-size: ${isA4 ? '15px' : '13px'};">
+              <div class="advance-row">
                 <span>ADVANCE PAID (-):</span>
                 <span>- ₹ ${formatINR(advanceAmountNum)}</span>
               </div>
-              <div class="grand-total-row" style="background: #eff6ff; color: #1e3a8a; border-top: 2px solid #1e3a8a; border-bottom: 2px solid #1e3a8a;">
+              <div class="balance-row">
                 <span>BALANCE DUE / PAYABLE:</span>
                 <span>₹ ${formatINR(balanceAmount)}</span>
               </div>
@@ -1037,14 +1111,13 @@ export default function BillDesignerModal({
               </div>
             ` : ''}
 
-
             ${showQrCode && qrSvgHtml ? `
               <div class="qrcode-section">
                 ${qrSvgHtml}
-                <div style="font-family: monospace; font-size: ${isA4 ? '13px' : '12px'}; font-weight: bold; margin-top: 3px;">
+                <div style="font-family: monospace; font-size: ${isA4 ? '15px' : '13px'}; font-weight: 900; margin-top: 2px; color: #000;">
                   ${billNo}
                 </div>
-                <div style="font-size: ${isA4 ? '12px' : '11px'}; color: #666; margin-top: 1px;">
+                <div style="font-size: ${isA4 ? '12px' : '11px'}; font-weight: 800; color: #000; margin-top: 1px;">
                   Scan QR to view digital bill
                 </div>
               </div>
@@ -1052,8 +1125,8 @@ export default function BillDesignerModal({
 
             <hr class="divider" />
             <div class="footer-notes">
-              <p>${footerNotes}</p>
-              <p style="font-size: ${isA4 ? '13px' : '11px'}; margin-top: 3px; color: #666;">Goods once sold cannot be returned without bill.</p>
+              <p style="font-weight: 800; color: #000;">${footerNotes}</p>
+              <p style="font-size: ${isA4 ? '12px' : '11px'}; font-weight: 700; margin-top: 2px; color: #000;">Goods once sold cannot be returned without bill.</p>
             </div>
 
             ${!isThermal ? `
@@ -2007,9 +2080,9 @@ export default function BillDesignerModal({
                 {showQrCode && (
                   <div className="text-center pt-3 flex flex-col items-center">
                     <div className="p-4 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col items-center">
-                      <QrCodeView value={billQrUrl} size={paperSize === 'thermal' ? 200 : paperSize === 'a5' ? 210 : 230} margin={4} />
-                      <div className="font-mono text-sm font-bold text-gray-800 tracking-wider mt-2.5">{billNo}</div>
-                      <div className="text-xs font-semibold text-brand-600 mt-1">Scan QR Code to view digital bill</div>
+                      <QrCodeView value={billQrUrl} size={paperSize === 'thermal' ? 220 : paperSize === 'a5' ? 240 : 260} margin={2} />
+                      <div className="font-mono text-sm font-black text-gray-900 tracking-wider mt-2.5">{billNo}</div>
+                      <div className="text-xs font-bold text-brand-700 mt-1">Scan QR Code to view digital bill</div>
                     </div>
                   </div>
                 )}

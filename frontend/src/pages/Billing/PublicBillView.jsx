@@ -158,6 +158,14 @@ export default function PublicBillView() {
 
   return (
     <div className="min-h-screen bg-slate-100 py-8 px-4 sm:px-6">
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          @page { margin: 2mm 4mm; size: auto; }
+          body, html { margin: 0 !important; padding: 0 !important; color: #000 !important; font-weight: 700 !important; -webkit-print-color-adjust: exact !important; }
+          #digital-bill { margin: 0 !important; padding: 2px !important; color: #000 !important; font-weight: 700 !important; }
+          #digital-bill * { color: #000 !important; font-weight: 700 !important; }
+        }
+      `}} />
       <div className="max-w-2xl mx-auto space-y-4">
         {/* Top Floating Action Bar */}
         <div className="no-print flex items-center justify-between bg-white px-5 py-3 rounded-xl shadow-sm border border-gray-200">
@@ -315,14 +323,14 @@ export default function PublicBillView() {
           {/* QR Code & Footer */}
           <div className="pt-4 border-t border-dashed border-gray-300 text-center space-y-3">
             <div className="inline-block p-2 bg-white border border-gray-200 rounded-xl shadow-sm">
-              <QrCodeView value={`${getPublicBaseUrl()}/bill/view/${encodeURIComponent(billNo)}`} size={110} />
+              <QrCodeView value={`${getPublicBaseUrl()}/bill/view/${encodeURIComponent(billNo)}`} size={180} margin={2} />
             </div>
-            <div className="text-[11px] font-mono font-semibold text-gray-600">
+            <div className="text-xs font-mono font-bold text-gray-900">
               Scan QR to view digital receipt
             </div>
-            <div className="text-xs text-gray-500 space-y-0.5">
+            <div className="text-xs text-gray-700 font-semibold space-y-0.5">
               <p>Thank you for shopping with us! Please visit again.</p>
-              <p className="text-[10px] text-gray-400">Goods once sold cannot be returned without bill.</p>
+              <p className="text-[11px] text-gray-600">Goods once sold cannot be returned without bill.</p>
             </div>
           </div>
         </div>
