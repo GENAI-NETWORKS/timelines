@@ -432,7 +432,10 @@ router.post('/:id/items', protect, requirePermission('orders'), async (req, res,
     const [[{ count }]] = await db.query(`SELECT COUNT(*) as count FROM TailoringOrderItem WHERE orderId = ?`, [req.params.id]);
     const id = uuidv4();
     
-    const subItemsData = subItems || buildDefaultSubItems(parseInt(quantity), itemType);
+    const defaults = buildDefaultSubItems(parseInt(quantity), itemType);
+    const subItemsData = subItems
+      ? subItems.map((s, idx) => ({ ...(defaults[idx] || defaults[0] || {}), ...s }))
+      : defaults;
     
     await db.execute(
       `INSERT INTO TailoringOrderItem (id, orderId, itemType, quantity, sortOrder, details, subItems, createdAt, updatedAt)

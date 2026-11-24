@@ -5,9 +5,11 @@
  * Supports multiple sub-items (quantity > 1) with per-item theming.
  */
 import React, { useState, useEffect, useRef } from 'react';
-import { Trash2, Plus, ChevronDown, ChevronUp, FileText, Image as ImageIcon, Ruler, Scissors, Copy, Layers, Text, Palette } from 'lucide-react';
+import { Trash2, Plus, ChevronDown, ChevronUp, FileText, Image as ImageIcon, Ruler, Scissors, Copy, Layers, Text, Palette, Bookmark, Sparkles, SlidersHorizontal } from 'lucide-react';
 import ParticularRow, { getItemMeta, ITEM_TYPES } from './ParticularRow';
 import ImageUploadSlot from './ImageUploadSlot';
+import PresetManagerModal from './PresetManagerModal';
+import { getOrderItemPresets } from '../../../api/orderItemPresets';
 import toast from 'react-hot-toast';
 const THEMES = [
   {
@@ -99,7 +101,7 @@ function makeBlankSub(base = {}) {
 }
 
 // ── Single item card ──────────────────────────────────────────────────────────
-const ItemCard = React.memo(function ItemCard({ item, rowIndex, theme, onUpdate, onDelete, onOpenDesignModal, onImageUpload, orderId, measOrder, setMeasOrder, hidePrices = false }) {
+const ItemCard = React.memo(function ItemCard({ item, rowIndex, theme, onUpdate, onDelete, onOpenDesignModal, onImageUpload, orderId, measOrder, setMeasOrder, hidePrices = false, onOpenSavePreset }) {
   let meta = getItemMeta(item.itemType);
   if (item.customConfig) {
     meta = { ...meta, ...item.customConfig };
@@ -278,6 +280,16 @@ const ItemCard = React.memo(function ItemCard({ item, rowIndex, theme, onUpdate,
               <button onClick={() => toggleCustomField('hasReferenceImage')} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors ${meta.hasReferenceImage ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}><ImageIcon className="w-3.5 h-3.5" /> Ref Image</button>
               <button onClick={() => toggleCustomField('hasLining')} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors ${meta.hasLining ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}><Layers className="w-3.5 h-3.5" /> Lining</button>
               <button onClick={() => toggleCustomFields(['hasMeter', 'hasSource'])} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors ${meta.hasMeter ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}><Scissors className="w-3.5 h-3.5" /> Meter</button>
+              
+              <button
+                type="button"
+                onClick={() => onOpenSavePreset && onOpenSavePreset(item, meta)}
+                className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-sm transition-all hover:scale-[1.02]"
+                title="Save this custom item format as a reusable preset"
+              >
+                <Bookmark className="w-3.5 h-3.5" />
+                <span>Save as Preset</span>
+              </button>
             </div>
           )}
 
@@ -679,6 +691,15 @@ function useMeasurementOrder() {
 // ── Main QuickEntryTable ────────────────────────────────────────────────────
 export default function QuickEntryTable({ orderId, items = [], onAdd, onUpdate, onDelete, onOpenDesignModal, onImageUpload, adding, hidePrices = false }) {
   const [measOrder, setMeasOrder] = useMeasurementOrder();
+  const [customPresets, setCustomPresets] = useState([]);
+  const [showPresetModal, setShowPresetModal] = useState(false);
+  const [savePresetData, setSavePresetData] = useState(null);
+
+  useEffect(() => {
+    getOrderItemPresets()
+      .then(res => setCustomPresets(res.data || []))
+      .catch(() => {});
+  }, []);
 
   const handleKeyDown = (e) => {
     if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
@@ -729,24 +750,63 @@ export default function QuickEntryTable({ orderId, items = [], onAdd, onUpdate, 
     <div className="space-y-5 quick-entry-container" onKeyDown={handleKeyDown}>
       {/* ── Add item panel (always at top) ── */}
       <div className="card p-4">
-        <div className="flex items-center gap-4 mb-3">
-          <button 
-            onClick={() => onAdd('CUSTOM_ITEM')} 
-            disabled={adding}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-50 border border-brand-200 text-brand-700 hover:bg-brand-100 hover:border-brand-300 transition-all font-bold text-sm disabled:opacity-50"
+        <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => onAdd('CUSTOM_ITEM')} 
+              disabled={adding}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white transition-all font-bold text-sm shadow-md disabled:opacity-50 hover:scale-[1.02]"
+            >
+              <Plus className="w-4 h-4" />
+              {adding ? 'Adding…' : 'Add Item'}
+            </button>
+            <span className="text-xs text-gray-500 uppercase tracking-wider font-bold">Or select preset:</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSavePresetData(null);
+              setShowPresetModal(true);
+            }}
+            className="text-xs font-bold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all shadow-xs"
+            title="Manage, create, edit or delete item presets"
           >
-            <Plus className="w-4 h-4" />
-            {adding ? 'Adding…' : 'Add Item'}
+            <SlidersHorizontal className="w-3.5 h-3.5" /> Manage Presets
           </button>
-          <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Or select preset:</span>
         </div>
-        <div className="flex flex-wrap gap-2">
+
+        {/* All Presets */}
+        <div className="flex flex-wrap gap-2 items-center">
+          {/* Built-in Presets */}
           {ITEM_TYPES.filter(t => t.value !== 'CUSTOM_ITEM').map(t => (
             <button key={t.value}
               onClick={() => onAdd(t.value)}
               disabled={adding}
-              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-surface-elevated border border-surface-border text-gray-700 hover:bg-brand-50 hover:border-brand-300 hover:text-brand-700 transition-all disabled:opacity-50">
+              className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-surface-elevated border border-surface-border text-gray-700 hover:bg-brand-50 hover:border-brand-300 hover:text-brand-700 transition-all disabled:opacity-50 shadow-xs">
               {t.label}
+            </button>
+          ))}
+
+          {/* Custom Saved Presets — Always Visible */}
+          {customPresets.map(preset => (
+            <button key={preset.id}
+              onClick={() => onAdd('CUSTOM_ITEM', {
+                customName: preset.name,
+                customConfig: preset.config,
+                defaultPrice: preset.defaultPrice,
+              })}
+              disabled={adding}
+              className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-300 text-purple-800 hover:from-purple-100 hover:to-indigo-100 hover:border-purple-400 transition-all shadow-xs flex items-center gap-1.5 disabled:opacity-50"
+              title={`Click to add preset "${preset.name}"`}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+              <span>{preset.name}</span>
+              {Number(preset.defaultPrice) > 0 && (
+                <span className="text-[10px] font-mono text-emerald-700 bg-white px-1.5 py-0.2 rounded border border-emerald-200">
+                  ₹{preset.defaultPrice}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -774,9 +834,30 @@ export default function QuickEntryTable({ orderId, items = [], onAdd, onUpdate, 
             measOrder={measOrder}
             setMeasOrder={setMeasOrder}
             hidePrices={hidePrices}
+            onOpenSavePreset={(targetItem, targetMeta) => {
+              setSavePresetData({
+                name: targetItem.customName || '',
+                config: targetMeta,
+                price: targetItem.subItems?.[0]?.price || '',
+              });
+              setShowPresetModal(true);
+            }}
           />
         );
       })}
+
+      {/* Presets Manager & Save Modal */}
+      {showPresetModal && (
+        <PresetManagerModal
+          isOpen={showPresetModal}
+          onClose={() => {
+            setShowPresetModal(false);
+            setSavePresetData(null);
+          }}
+          initialSaveData={savePresetData}
+          onPresetsChanged={(updated) => setCustomPresets(updated)}
+        />
+      )}
     </div>
   );
 }

@@ -339,13 +339,26 @@ export default function CustomerOrderPage() {
   };
 
   // Add a new particular
-  const handleAddItem = async (itemType) => {
+  const handleAddItem = async (itemType, customData = null) => {
     if (!order) return;
     setAdding(true);
     try {
-      const res = await addOrderItem(order.id, { itemType, quantity: 1 });
+      const payload = { itemType, quantity: 1 };
+      if (customData) {
+        payload.details = {
+          customName: customData.customName,
+          customConfig: customData.customConfig,
+        };
+        if (customData.defaultPrice) {
+          payload.subItems = [{
+            number: 1,
+            price: String(customData.defaultPrice),
+          }];
+        }
+      }
+      const res = await addOrderItem(order.id, payload);
       setItems(prev => [...prev, mapLoadedItem(res.data)]);
-      toast.success(`${ITEM_TYPES.find(t => t.value === itemType)?.label} added!`);
+      toast.success(`${customData?.customName || ITEM_TYPES.find(t => t.value === itemType)?.label || 'Item'} added!`);
     } catch { toast.error('Failed to add item.'); }
     finally { setAdding(false); }
   };

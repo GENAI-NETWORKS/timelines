@@ -73,6 +73,7 @@ app.use('/api/materials',           require('./src/routes/materials'));
 app.use('/api/tailors-payments',    require('./src/routes/tailorsPayments'));
 app.use('/api/tailor-staff',        require('./src/routes/tailorStaff'));
 app.use('/api/panel-users',         require('./src/routes/panelUsers'));
+app.use('/api/order-item-presets',   require('./src/routes/orderItemPresets'));
 
 // Health check
 app.get('/api/health', async (req, res) => {
